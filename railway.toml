@@ -1,0 +1,15 @@
+[project]
+name = "habits"
+
+[build]
+builder = "DOCKERFILE"
+
+[deploy]
+startCommand = "npm run start"
+healthcheckPath = "/"
+healthcheckTimeout = 30
+
+[[deploy.volumeMounts]]
+name = "assets"
+mountPath = "/data/videos"
+sizeGB = 5

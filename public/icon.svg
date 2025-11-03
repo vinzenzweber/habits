@@ -1,0 +1,15 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="512" height="512" fill="#020617" rx="64"/>
+
+  <!-- Emerald accent circle -->
+  <circle cx="256" cy="256" r="180" fill="#34d399" opacity="0.2"/>
+
+  <!-- Main icon - stylized "H" for Habits -->
+  <path d="M 160 140 L 160 372 M 160 256 L 352 256 M 352 140 L 352 372"
+        stroke="#34d399"
+        stroke-width="40"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        fill="none"/>
+</svg>

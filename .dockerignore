@@ -1,0 +1,2 @@
+# Exclude local video assets from Docker builds
+public/videos/
