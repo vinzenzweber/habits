@@ -5,6 +5,8 @@ import {
   listAssignments,
   listAssets,
 } from "./media";
+import { structuredWorkouts } from "./workoutPlan";
+import type { StructuredWorkout } from "./workoutPlan";
 
 export type WorkoutMeta = {
   slug: DaySlug;
@@ -33,16 +35,59 @@ export type WorkoutWithMedia = {
   videoUrl: string | null;
   originalFilename: string | null;
   thumbnailUrl: string | null;
+  routine: StructuredWorkout | null;
 };
 
 const workoutMetas: WorkoutMeta[] = [
-  { slug: "monday", label: "Monday" },
-  { slug: "tuesday", label: "Tuesday" },
-  { slug: "wednesday", label: "Wednesday" },
-  { slug: "thursday", label: "Thursday" },
-  { slug: "friday", label: "Friday" },
-  { slug: "saturday", label: "Saturday" },
-  { slug: "sunday", label: "Sunday" },
+  {
+    slug: "monday",
+    label: "Monday",
+    title: structuredWorkouts.monday.title,
+    focus: structuredWorkouts.monday.focus,
+    description: structuredWorkouts.monday.description,
+  },
+  {
+    slug: "tuesday",
+    label: "Tuesday",
+    title: structuredWorkouts.tuesday.title,
+    focus: structuredWorkouts.tuesday.focus,
+    description: structuredWorkouts.tuesday.description,
+  },
+  {
+    slug: "wednesday",
+    label: "Wednesday",
+    title: structuredWorkouts.wednesday.title,
+    focus: structuredWorkouts.wednesday.focus,
+    description: structuredWorkouts.wednesday.description,
+  },
+  {
+    slug: "thursday",
+    label: "Thursday",
+    title: structuredWorkouts.thursday.title,
+    focus: structuredWorkouts.thursday.focus,
+    description: structuredWorkouts.thursday.description,
+  },
+  {
+    slug: "friday",
+    label: "Friday",
+    title: structuredWorkouts.friday.title,
+    focus: structuredWorkouts.friday.focus,
+    description: structuredWorkouts.friday.description,
+  },
+  {
+    slug: "saturday",
+    label: "Saturday",
+    title: structuredWorkouts.saturday.title,
+    focus: structuredWorkouts.saturday.focus,
+    description: structuredWorkouts.saturday.description,
+  },
+  {
+    slug: "sunday",
+    label: "Sunday",
+    title: structuredWorkouts.sunday.title,
+    focus: structuredWorkouts.sunday.focus,
+    description: structuredWorkouts.sunday.description,
+  },
 ];
 
 const metaMap = new Map(workoutMetas.map((meta) => [meta.slug, meta]));
@@ -72,6 +117,7 @@ export async function getWorkoutsWithAssignments(): Promise<WorkoutWithMedia[]> 
       thumbnailUrl: assigned
         ? getPublicThumbnailUrl(assigned.thumbnailFilename)
         : null,
+      routine: structuredWorkouts[meta.slug],
     };
   });
 }
@@ -104,6 +150,7 @@ export async function getWorkoutForToday(now: Date = new Date()) {
     originalFilename: asset?.originalFilename ?? null,
     videoUrl: asset ? getPublicVideoUrl(asset.storedFilename) : null,
     thumbnailUrl: asset ? getPublicThumbnailUrl(asset.thumbnailFilename) : null,
+    routine: structuredWorkouts[meta.slug],
   } satisfies WorkoutWithMedia;
 }
 
@@ -123,6 +170,7 @@ export async function getWorkoutWithMedia(slug: string) {
     originalFilename: asset?.originalFilename ?? null,
     videoUrl: asset ? getPublicVideoUrl(asset.storedFilename) : null,
     thumbnailUrl: asset ? getPublicThumbnailUrl(asset.thumbnailFilename) : null,
+    routine: structuredWorkouts[meta.slug],
   } satisfies WorkoutWithMedia;
 }
 

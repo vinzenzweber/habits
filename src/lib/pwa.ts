@@ -1,24 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 /**
  * Detects if the app is running as an installed PWA
  */
 export function useIsPWA(): boolean {
-  const [isPWA, setIsPWA] = useState(false);
-
-  useEffect(() => {
-    // Check if running in standalone mode (installed PWA)
-    const isStandalone =
+  return useMemo(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    return (
       window.matchMedia("(display-mode: standalone)").matches ||
       (window.navigator as Navigator & { standalone?: boolean }).standalone ||
-      document.referrer.includes("android-app://");
-
-    setIsPWA(isStandalone);
+      document.referrer.includes("android-app://")
+    );
   }, []);
-
-  return isPWA;
 }
 
 /**
@@ -75,44 +72,38 @@ export function useAutoplayCapability(): {
   canAutoplayUnmuted: boolean;
   platform: "ios" | "android" | "desktop" | "unknown";
 } {
-  const [capability, setCapability] = useState<{
-    canAutoplayUnmuted: boolean;
-    platform: "ios" | "android" | "desktop" | "unknown";
-  }>({
-    canAutoplayUnmuted: false,
-    platform: "unknown",
-  });
-
   const isPWA = useIsPWA();
 
-  useEffect(() => {
+  return useMemo(() => {
+    if (typeof window === "undefined") {
+      return { canAutoplayUnmuted: false, platform: "unknown" as const };
+    }
+
     const ua = window.navigator.userAgent.toLowerCase();
     const isIOS = /iphone|ipad|ipod/.test(ua);
     const isAndroid = /android/.test(ua);
     const isDesktop = !isIOS && !isAndroid;
 
-    let platform: "ios" | "android" | "desktop" | "unknown" = "unknown";
-    let canAutoplayUnmuted = false;
-
     if (isIOS) {
-      platform = "ios";
-      // iOS never allows unmuted autoplay, even as PWA
-      canAutoplayUnmuted = false;
-    } else if (isAndroid) {
-      platform = "android";
-      // Android Chrome allows unmuted autoplay when installed as PWA
-      canAutoplayUnmuted = isPWA;
-    } else if (isDesktop) {
-      platform = "desktop";
-      // Desktop Chrome allows unmuted autoplay based on Media Engagement Index
-      // We can't reliably detect MEI, so assume it works if installed as PWA
-      canAutoplayUnmuted = isPWA;
+      return { canAutoplayUnmuted: false, platform: "ios" as const };
     }
 
-    setCapability({ canAutoplayUnmuted, platform });
-  }, [isPWA]);
+    if (isAndroid) {
+      return {
+        canAutoplayUnmuted: isPWA,
+        platform: "android" as const,
+      };
+    }
 
-  return capability;
+    if (isDesktop) {
+      return {
+        canAutoplayUnmuted: isPWA,
+        platform: "desktop" as const,
+      };
+    }
+
+    return { canAutoplayUnmuted: false, platform: "unknown" as const };
+  }, [isPWA]);
 }
 
 // TypeScript interface for the beforeinstallprompt event

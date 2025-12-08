@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
+import { GuidedRoutinePlayer } from "./GuidedRoutinePlayer";
 import type { WorkoutWithMedia } from "@/lib/workouts";
 import { useAutoplayCapability } from "@/lib/pwa";
 
@@ -10,10 +11,17 @@ type WorkoutPlayerProps = {
   workout: WorkoutWithMedia;
 };
 
-export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
+type ViewMode = "guided" | "video";
+
+function VideoWorkoutView({
+  workout,
+  onSelectGuided,
+}: {
+  workout: WorkoutWithMedia;
+  onSelectGuided?: () => void;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isMuted, setIsMuted] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [showPlayButton, setShowPlayButton] = useState(true);
   const { canAutoplayUnmuted, platform } = useAutoplayCapability();
 
@@ -22,10 +30,12 @@ export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
     if (!video) return;
 
     try {
-      // Enter fullscreen first
       if (video.requestFullscreen) {
         await video.requestFullscreen();
-      } else if (typeof (video as typeof video & { webkitEnterFullscreen?: () => void }).webkitEnterFullscreen === "function") {
+      } else if (
+        typeof (video as typeof video & { webkitEnterFullscreen?: () => void })
+          .webkitEnterFullscreen === "function"
+      ) {
         (video as typeof video & { webkitEnterFullscreen?: () => void }).webkitEnterFullscreen?.();
       }
     } catch (error) {
@@ -33,16 +43,12 @@ export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
     }
 
     try {
-      // Ensure unmuted
       video.muted = false;
       setIsMuted(false);
-
-      // Start playback
       await video.play();
       setIsPlaying(true);
       setShowPlayButton(false);
     } catch (error) {
-      // If unmuted autoplay fails, try muted
       console.warn("Unmuted playback blocked, trying muted", error);
       video.muted = true;
       setIsMuted(true);
@@ -58,23 +64,6 @@ export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
   };
 
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
-
-    video.addEventListener("play", handlePlay);
-    video.addEventListener("pause", handlePause);
-
-    return () => {
-      video.removeEventListener("play", handlePlay);
-      video.removeEventListener("pause", handlePause);
-    };
-  }, []);
-
-  // Auto-start video when running as PWA with autoplay capability
-  useEffect(() => {
     if (!workout.videoUrl || !canAutoplayUnmuted) {
       return;
     }
@@ -87,7 +76,6 @@ export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
     const autoStart = async () => {
       if (cancelled) return;
 
-      // Wait for video to be ready
       if (video.readyState < 2) {
         await new Promise<void>((resolve) => {
           const onCanPlay = () => {
@@ -99,8 +87,6 @@ export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
       }
 
       if (cancelled) return;
-
-      // Auto-start with sound and fullscreen
       await handlePlayWithSound();
     };
 
@@ -132,12 +118,23 @@ export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
           Upload a video in the media manager and link it to this day to start
           streaming your routine.
         </p>
-        <Link
-          href="/admin"
-          className="inline-flex items-center justify-center rounded-full bg-emerald-400 px-6 py-3 text-sm font-semibold uppercase tracking-[0.3em] text-slate-950 shadow-lg shadow-emerald-500/30 hover:bg-emerald-300"
-        >
-          Open Media Manager
-        </Link>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          {onSelectGuided ? (
+            <button
+              type="button"
+              onClick={onSelectGuided}
+              className="inline-flex items-center justify-center rounded-full bg-emerald-400 px-6 py-3 text-sm font-semibold uppercase tracking-[0.3em] text-slate-950 shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-300"
+            >
+              Start guided timer
+            </button>
+          ) : null}
+          <Link
+            href="/admin"
+            className="inline-flex items-center justify-center rounded-full border border-slate-700 bg-slate-900/60 px-6 py-3 text-sm font-semibold uppercase tracking-[0.3em] text-slate-100 transition hover:border-emerald-400/60 hover:text-emerald-300"
+          >
+            Open Media Manager
+          </Link>
+        </div>
       </div>
     );
   }
@@ -192,6 +189,17 @@ export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
             Home
           </Link>
           <span>{workout.label}</span>
+          {onSelectGuided ? (
+            <button
+              type="button"
+              onClick={onSelectGuided}
+              className="rounded-full border border-white/30 px-4 py-2 text-[10px] font-semibold tracking-[0.35em] text-white transition hover:border-emerald-300 hover:text-emerald-200"
+            >
+              Guided timer
+            </button>
+          ) : (
+            <span className="w-[108px]" aria-hidden />
+          )}
         </div>
         <div className="pointer-events-auto max-w-xl space-y-3">
           <h1 className="text-3xl font-semibold sm:text-4xl">
@@ -213,6 +221,52 @@ export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+export function WorkoutPlayer({ workout }: WorkoutPlayerProps) {
+  const hasRoutine = Boolean(workout.routine);
+  const hasVideo = Boolean(workout.videoUrl);
+  const defaultView: ViewMode = hasRoutine ? "guided" : "video";
+  const [view, setView] = useState<ViewMode>(defaultView);
+  const activeView: ViewMode =
+    view === "video" && !hasVideo && hasRoutine ? "guided" : view;
+
+  if (activeView === "guided" && workout.routine) {
+    return (
+      <GuidedRoutinePlayer
+        key={workout.slug}
+        workout={workout}
+        onSelectVideo={hasVideo ? () => setView("video") : undefined}
+      />
+    );
+  }
+
+  if (hasVideo) {
+    return (
+      <VideoWorkoutView
+        workout={workout}
+        onSelectGuided={hasRoutine ? () => setView("guided") : undefined}
+      />
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-slate-950 px-6 text-center text-slate-100">
+      <h1 className="text-3xl font-semibold sm:text-4xl">
+        No guided or video workout found.
+      </h1>
+      <p className="max-w-md text-sm text-slate-300 sm:text-base">
+        Add a routine to the codebase or upload a video for {workout.label} to
+        start training.
+      </p>
+      <Link
+        href="/"
+        className="rounded-full border border-slate-700 bg-slate-900/60 px-6 py-3 text-sm font-semibold uppercase tracking-[0.3em] text-slate-100 transition hover:border-emerald-400/60 hover:text-emerald-300"
+      >
+        Back home
+      </Link>
     </div>
   );
 }
