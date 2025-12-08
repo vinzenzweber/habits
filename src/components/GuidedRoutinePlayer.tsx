@@ -56,6 +56,9 @@ export function GuidedRoutinePlayer({
     () => routine?.totalSeconds ?? 0,
     [routine],
   );
+  const routineTitle = routine?.title ?? workout.title;
+  const routineFocus = routine?.focus ?? workout.focus ?? workout.description ?? "";
+  const routineDescription = routine?.description ?? workout.description ?? "";
   const hasRoutine = segments.length > 0;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [remainingSeconds, setRemainingSeconds] = useState(
@@ -118,9 +121,9 @@ export function GuidedRoutinePlayer({
         ((currentSegment.durationSeconds - remainingSeconds) /
           currentSegment.durationSeconds) *
           100,
-      )
-    : 0;
-  const totalRemaining = Math.max(0, routine.totalSeconds - elapsedSeconds);
+          )
+        : 0;
+  const totalRemaining = Math.max(0, totalSeconds - elapsedSeconds);
 
   const currentStyles =
     CATEGORY_STYLES[currentSegment?.category ?? "main"] ??
@@ -207,7 +210,7 @@ export function GuidedRoutinePlayer({
             <p className="text-sm text-slate-200 sm:text-base">
               {hasFinished
                 ? "Nice work. Recover, hydrate, and come back tomorrow."
-                : currentSegment?.detail ?? routine.description}
+                : currentSegment?.detail ?? routineDescription}
             </p>
           </div>
 
@@ -273,7 +276,7 @@ export function GuidedRoutinePlayer({
                     {nextSegment.title}
                   </p>
                   <p className="mt-1 text-sm text-slate-200">
-                    {nextSegment.detail ?? routine.description}
+                    {nextSegment.detail ?? routineDescription}
                   </p>
                   <p className="mt-3 text-sm font-semibold text-emerald-200">
                     {formatTime(nextSegment.durationSeconds)} on deck
@@ -290,8 +293,8 @@ export function GuidedRoutinePlayer({
             <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-300">
               Session info
             </p>
-            <p className="text-sm text-slate-200">{routine.title}</p>
-            <p className="text-sm text-slate-400">{routine.focus}</p>
+            <p className="text-sm text-slate-200">{routineTitle}</p>
+            <p className="text-sm text-slate-400">{routineFocus}</p>
             <p className="text-sm text-slate-400">
               Total: {formatTime(totalSeconds)}
             </p>
@@ -309,11 +312,11 @@ export function GuidedRoutinePlayer({
               Timeline
             </p>
             <p className="text-xs text-slate-400">
-              Auto-started · {routine.segments.length} steps
+              Auto-started · {segments.length} steps
             </p>
           </div>
           <div className="grid gap-2">
-            {routine.segments.map((segment, index) => {
+            {segments.map((segment, index) => {
               const progressWithinSegment =
                 index === currentIndex && !hasFinished
                   ? currentProgress

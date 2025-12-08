@@ -46,7 +46,6 @@ function VideoWorkoutView({
       video.muted = false;
       setIsMuted(false);
       await video.play();
-      setIsPlaying(true);
       setShowPlayButton(false);
     } catch (error) {
       console.warn("Unmuted playback blocked, trying muted", error);
@@ -55,7 +54,6 @@ function VideoWorkoutView({
 
       try {
         await video.play();
-        setIsPlaying(true);
         setShowPlayButton(false);
       } catch (innerError) {
         console.warn("Autoplay completely blocked", innerError);
