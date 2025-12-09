@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 import type {
@@ -29,6 +29,8 @@ const CATEGORY_STYLES: Record<RoutineSegmentCategory, CategoryStyles> = {
   cooldown: { badge: "bg-blue-500/20 text-blue-200", bar: "bg-blue-400" },
   rest: { badge: "bg-slate-500/20 text-slate-200", bar: "bg-slate-200" },
 };
+
+const BEEP_TRIGGER_SECONDS = 4;
 
 function formatTime(seconds: number) {
   const clamped = Math.max(0, Math.ceil(seconds));
@@ -66,9 +68,17 @@ export function GuidedRoutinePlayer({
   );
   const [isRunning, setIsRunning] = useState(true);
   const [hasFinished, setHasFinished] = useState(false);
+  const countdownAudioRef = useRef<HTMLAudioElement | null>(null);
+  const segmentBeepPlayedRef = useRef(false);
 
   useEffect(() => {
-    if (!hasRoutine || !isRunning) {
+    const audio = new Audio("/short-beep-countdown-81121.mp3");
+    audio.preload = "auto";
+    countdownAudioRef.current = audio;
+  }, []);
+
+  useEffect(() => {
+    if (!hasRoutine || !isRunning || hasFinished) {
       return undefined;
     }
 
@@ -79,12 +89,14 @@ export function GuidedRoutinePlayer({
             if (index >= segments.length - 1) {
               setHasFinished(true);
               setIsRunning(false);
+              segmentBeepPlayedRef.current = false;
               return index;
             }
             const nextIndex = index + 1;
             const nextDuration = segments[nextIndex]?.durationSeconds ?? 0;
             setRemainingSeconds(nextDuration);
-            return index + 1;
+            segmentBeepPlayedRef.current = false;
+            return nextIndex;
           });
           return 0;
         }
@@ -93,7 +105,38 @@ export function GuidedRoutinePlayer({
     }, 250);
 
     return () => window.clearInterval(interval);
-  }, [hasRoutine, isRunning, segments]);
+  }, [hasFinished, hasRoutine, isRunning, segments]);
+
+  useEffect(() => {
+    const audio = countdownAudioRef.current;
+    if (!audio) {
+      return;
+    }
+
+    if (!hasRoutine || hasFinished) {
+      audio.pause();
+      audio.currentTime = 0;
+      return;
+    }
+
+    if (!isRunning) {
+      audio.pause();
+      return;
+    }
+
+    const roundedRemaining = Math.ceil(remainingSeconds);
+
+    if (roundedRemaining > BEEP_TRIGGER_SECONDS || roundedRemaining <= 0) {
+      segmentBeepPlayedRef.current = false;
+      return;
+    }
+
+    if (!segmentBeepPlayedRef.current && roundedRemaining === BEEP_TRIGGER_SECONDS) {
+      segmentBeepPlayedRef.current = true;
+      audio.currentTime = 0;
+      void audio.play();
+    }
+  }, [hasFinished, hasRoutine, isRunning, remainingSeconds]);
 
   const currentSegment = segments[currentIndex];
   const nextSegment = segments[currentIndex + 1];
@@ -136,6 +179,7 @@ export function GuidedRoutinePlayer({
       setCurrentIndex(0);
       setRemainingSeconds(segments[0]?.durationSeconds ?? 0);
       setHasFinished(false);
+      segmentBeepPlayedRef.current = false;
       setIsRunning(true);
       return;
     }
@@ -146,6 +190,7 @@ export function GuidedRoutinePlayer({
     setCurrentIndex(0);
     setRemainingSeconds(segments[0]?.durationSeconds ?? 0);
     setHasFinished(false);
+    segmentBeepPlayedRef.current = false;
     setIsRunning(true);
   };
 
@@ -201,10 +246,7 @@ export function GuidedRoutinePlayer({
             ) : null}
           </div>
           <div className="mt-4 space-y-3">
-            <p className="text-sm uppercase tracking-[0.35em] text-emerald-300">
-              Current exercise
-            </p>
-            <h1 className="text-3xl font-semibold leading-tight sm:text-4xl">
+          <h1 className="text-3xl font-semibold leading-tight sm:text-4xl">
               {hasFinished ? "Workout complete" : currentSegment?.title}
             </h1>
             <p className="text-sm text-slate-200 sm:text-base">
@@ -219,12 +261,6 @@ export function GuidedRoutinePlayer({
               <span className="text-5xl font-mono font-semibold sm:text-6xl">
                 {formatTime(hasFinished ? 0 : remainingSeconds)}
               </span>
-              <div className="flex flex-col text-xs uppercase tracking-[0.3em] text-slate-300">
-                <span>Timer</span>
-                <span className="text-[11px] text-slate-400">
-                  Auto-advances through all sets
-                </span>
-              </div>
             </div>
             <div className="flex flex-wrap gap-2">
               <button
@@ -253,10 +289,6 @@ export function GuidedRoutinePlayer({
         </section>
 
         <section className="grid gap-4 rounded-3xl border border-white/10 bg-white/5 p-5 sm:grid-cols-3 sm:p-6">
-          <div className="sm:col-span-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-300">
-              Up next
-            </p>
             <div className="mt-2 rounded-2xl border border-white/5 bg-white/5 p-4">
               {nextSegment ? (
                 <>
@@ -288,7 +320,6 @@ export function GuidedRoutinePlayer({
                 </p>
               )}
             </div>
-          </div>
           <div className="space-y-2 rounded-2xl border border-white/5 bg-slate-950/50 p-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-300">
               Session info
@@ -298,11 +329,6 @@ export function GuidedRoutinePlayer({
             <p className="text-sm text-slate-400">
               Total: {formatTime(totalSeconds)}
             </p>
-            {workout.originalFilename ? (
-              <p className="text-xs text-slate-500">
-                Video ready: {workout.originalFilename}
-              </p>
-            ) : null}
           </div>
         </section>
 
