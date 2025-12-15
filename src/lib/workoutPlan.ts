@@ -6,7 +6,6 @@ export type RoutineSegmentCategory =
   | "main"
   | "hiit"
   | "recovery"
-  | "cooldown"
   | "rest";
 
 export type RoutineSegment = {
@@ -150,14 +149,7 @@ const structuredWorkouts: Record<DaySlug, StructuredWorkout> = {
           },
         ],
       },
-      {
-        title: "Cool-down",
-        category: "cooldown",
-        steps: [
-          { title: "Shoulder + arm stretch", durationSeconds: 60 },
-          { title: "Breathing reset", durationSeconds: 60 },
-        ],
-      },
+
     ],
   }),
   tuesday: buildStructuredWorkout({
@@ -211,14 +203,7 @@ const structuredWorkouts: Record<DaySlug, StructuredWorkout> = {
           },
         ],
       },
-      {
-        title: "Cool-down",
-        category: "cooldown",
-        steps: [
-          { title: "Thoracic spine mobility", durationSeconds: 60 },
-          { title: "Lat stretch", durationSeconds: 60 },
-        ],
-      },
+
     ],
   }),
   wednesday: buildStructuredWorkout({
@@ -273,14 +258,7 @@ const structuredWorkouts: Record<DaySlug, StructuredWorkout> = {
           },
         ],
       },
-      {
-        title: "Cool-down",
-        category: "cooldown",
-        steps: [
-          { title: "Hip flexor stretch", durationSeconds: 30 },
-          { title: "Hamstring stretch", durationSeconds: 30 },
-        ],
-      },
+
     ],
   }),
   thursday: buildStructuredWorkout({
@@ -333,14 +311,7 @@ const structuredWorkouts: Record<DaySlug, StructuredWorkout> = {
           },
         ],
       },
-      {
-        title: "Cool-down",
-        category: "cooldown",
-        steps: [
-          { title: "Child's pose", durationSeconds: 45 },
-          { title: "Breathing + gentle stretch", durationSeconds: 45 },
-        ],
-      },
+
     ],
   }),
   friday: buildStructuredWorkout({
@@ -348,7 +319,7 @@ const structuredWorkouts: Record<DaySlug, StructuredWorkout> = {
     title: "Push + HIIT (High)",
     focus: "EMOM Druck plus Herzfrequenz",
     description:
-      "Kurzes Warm-up, dann 12 Minuten EMOM mit Push Press, Burpees, Floor Press und Mountain Climbers. Abschließend cool-down.",
+      "Kurzes Warm-up, dann 12 Minuten EMOM mit Push Press, Burpees, Floor Press und Mountain Climbers.",
     phases: [
       {
         title: "Get ready",
@@ -397,14 +368,7 @@ const structuredWorkouts: Record<DaySlug, StructuredWorkout> = {
           },
         ],
       },
-      {
-        title: "Cool-down",
-        category: "cooldown",
-        steps: [
-          { title: "Walk + deep breathing", durationSeconds: 60 },
-          { title: "Reset posture", durationSeconds: 30 },
-        ],
-      },
+
     ],
   }),
   saturday: buildStructuredWorkout({
@@ -458,14 +422,7 @@ const structuredWorkouts: Record<DaySlug, StructuredWorkout> = {
           },
         ],
       },
-      {
-        title: "Cool-down",
-        category: "cooldown",
-        steps: [
-          { title: "Lower back stretch", durationSeconds: 45 },
-          { title: "Thoracic mobility", durationSeconds: 45 },
-        ],
-      },
+
     ],
   }),
   sunday: buildStructuredWorkout({
@@ -523,14 +480,7 @@ const structuredWorkouts: Record<DaySlug, StructuredWorkout> = {
           },
         ],
       },
-      {
-        title: "Cool-down",
-        category: "cooldown",
-        steps: [
-          { title: "Full body stretch", durationSeconds: 60 },
-          { title: "Breathing finish", durationSeconds: 60 },
-        ],
-      },
+
     ],
   }),
 };

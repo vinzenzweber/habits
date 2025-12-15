@@ -26,7 +26,6 @@ const CATEGORY_STYLES: Record<RoutineSegmentCategory, CategoryStyles> = {
   main: { badge: "bg-emerald-500/20 text-emerald-200", bar: "bg-emerald-400" },
   hiit: { badge: "bg-rose-500/20 text-rose-200", bar: "bg-rose-400" },
   recovery: { badge: "bg-cyan-500/20 text-cyan-200", bar: "bg-cyan-400" },
-  cooldown: { badge: "bg-blue-500/20 text-blue-200", bar: "bg-blue-400" },
   rest: { badge: "bg-slate-500/20 text-slate-200", bar: "bg-slate-200" },
 };
 
