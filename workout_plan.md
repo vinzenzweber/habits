@@ -18,7 +18,6 @@ Dieses Programm nutzt eine **Push/Pull/Legs/Core-Rotation mit integrierten Erhol
 ### Struktur (15 Minuten)
 - **Warm-up**: 2 Minuten
 - **Hauptteil**: 11 Minuten (3 Runden)
-- **Cool-down**: 2 Minuten
 
 ### Warm-up (2 Minuten)
 - Arm-Kreise vorwärts/rückwärts: 30 Sek
@@ -47,10 +46,6 @@ Dieses Programm nutzt eine **Push/Pull/Legs/Core-Rotation mit integrierten Erhol
    - *Fokus*: Schulterblatt-Stabilität, keine Rückenhyperextension
 
 **Pause**: 60 Sekunden, dann nächste Runde
-
-### Cool-down (2 Minuten)
-- Arm/Schulter Stretching
-- Tiefe Atmung
 
 **Ziel-RPE**: 7/10 (moderat anstrengend, aber nachhaltig)
 
@@ -85,10 +80,6 @@ Dieses Programm nutzt eine **Push/Pull/Legs/Core-Rotation mit integrierten Erhol
    - *Fokus*: Hüftkraft, Trapezius-Aktivierung
 
 **Pause**: 60 Sekunden zwischen Runden
-
-### Cool-down (2 Minuten)
-- Thoracic Spine Mobility
-- Latissimus Stretch
 
 **Ziel-RPE**: 7/10
 
@@ -125,10 +116,6 @@ Dieses Programm nutzt eine **Push/Pull/Legs/Core-Rotation mit integrierten Erhol
 
 **Pause**: 60-90 Sekunden zwischen Runden
 
-### Cool-down (1 Minute)
-- Hip Flexor Stretch
-- Hamstring Stretch
-
 **Ziel-RPE**: 8/10 (herausfordernd, aber keine Erschöpfung)
 
 ---
@@ -163,11 +150,6 @@ Dieses Programm nutzt eine **Push/Pull/Legs/Core-Rotation mit integrierten Erhol
 
 **Pause**: 60 Sekunden zwischen Runden
 
-### Cool-down (2 Minuten)
-- Child's Pose
-- Gentle Stretching
-- Breathing Exercises
-
 **Ziel-RPE**: 5-6/10 (Erholungstag)
 
 ---
@@ -199,9 +181,6 @@ Dieses Programm nutzt eine **Push/Pull/Legs/Core-Rotation mit integrierten Erhol
 - Rest: 30 Sekunden
 
 **Wiederhole 3x = 12 Minuten**
-
-### Cool-down (1 Minute)
-- Walking, Deep Breathing
 
 **Ziel-RPE**: 8-9/10 (einer der intensivsten Tage)
 
@@ -236,10 +215,6 @@ Dieses Programm nutzt eine **Push/Pull/Legs/Core-Rotation mit integrierten Erhol
 
 **Pause**: 45 Sekunden zwischen Runden
 
-### Cool-down (2 Minuten)
-- Lower Back Stretch
-- Thoracic Mobility
-
 **Ziel-RPE**: 7/10
 
 ---
@@ -272,10 +247,6 @@ Dieses Programm nutzt eine **Push/Pull/Legs/Core-Rotation mit integrierten Erhol
    - Explosiv, Hüftantrieb
 
 **Nach jeder Runde: 60-90 Sek Pause**
-
-### Cool-down (2 Minuten)
-- Full Body Stretch
-- Breathing
 
 **Ziel-RPE**: 8/10 (anstrengend, aber technisch sauber)
 
