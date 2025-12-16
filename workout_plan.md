@@ -67,11 +67,11 @@ Dieses Programm nutzt eine **Push/Pull/Legs/Core-Rotation mit integrierten Erhol
    - Vorgebeugt, freie Hand auf Oberschenkel gestützt, KB zum Bauch ziehen
    - *Fokus*: Schulterblatt-Retraktion, neutraler Rücken
 
-2. **Bodyweight Inverted Rows** (unter Tisch oder niedrige Stange)
-   - **12-15 Wiederholungen**
+2. **Kettlebell Gorilla Rows** (20kg, abwechselnd)
+   - **12 Wiederholungen pro Arm** (24 gesamt)
    - **Tempo**: 3:0:2:0
-   - Falls nicht verfügbar: Wide Push-ups als Alternative
-   - *Fokus*: Rückenmuskulatur aktivieren
+   - KB auf Boden, breiter Stand, abwechselnd rudern
+   - *Fokus*: Rückenmuskulatur, Anti-Rotation Core-Stabilität
 
 3. **Kettlebell High Pulls** (20kg, beidhändig)
    - **15 Wiederholungen**
@@ -459,10 +459,9 @@ Dieses Programm ist an verschiedene Ausgangssituationen anpassbar. Hier die wich
 
 ### Bei fehlender Ausrüstung
 
-**Kein Pull-up Bar oder Möglichkeit für Inverted Rows:**
-- **Alternative**: Wide Push-ups (betont andere Winkel)
-- **Alternative**: Pike Push-ups (mehr Schulter-Fokus)
-- **Alternative**: Superman Holds + Reverse Snow Angels
+**Nur eine Kettlebell verfügbar (für Übungen die 2 benötigen):**
+- **Gorilla Rows**: Einfach zu einarmigen Bent-Over Rows wechseln (12 pro Arm)
+- **Alternative**: Renegade Rows ohne zweite KB (aus Push-up Position)
 
 **Keine Möglichkeit für Turkish Get-Up (zu komplex/Platzprobleme):**
 - **Alternative**: Half Get-Up (nur bis zur Ellbogen-Position)

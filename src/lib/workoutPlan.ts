@@ -192,9 +192,9 @@ const structuredWorkouts: Record<DaySlug, StructuredWorkout> = {
             detail: "12/arm · Tempo 3:0:2:0",
           },
           {
-            title: "Bodyweight inverted rows",
-            durationSeconds: 70,
-            detail: "12-15 reps · Tempo 3:0:2:0",
+            title: "Kettlebell gorilla rows",
+            durationSeconds: 120,
+            detail: "12/arm · Tempo 3:0:2:0",
           },
           {
             title: "Kettlebell high pulls",
