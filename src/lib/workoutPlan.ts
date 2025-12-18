@@ -296,12 +296,12 @@ const structuredWorkouts: Record<DaySlug, StructuredWorkout> = {
         steps: [
           {
             title: "Turkish Get-Up (slow)",
-            durationSeconds: 120,
+            durationSeconds: 150,
             detail: "3/side · Fokus Stabilität",
           },
           {
             title: "Plank to Down Dog",
-            durationSeconds: 90,
+            durationSeconds: 60,
             detail: "10 reps · Tempo 3:1:3:1",
           },
           {
