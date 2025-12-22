@@ -1,10 +1,9 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `src/app/` contains Next.js route handlers, components, and pages. Media management logic lives under `src/app/admin/`, while shared UI lives in `src/components/`.
-- `src/lib/` houses reusable domain logic (video metadata, database helpers).
-- Static assets (e.g., public screenshots, icons, development videos) belong in `public/`.
-- `scripts/` includes local tooling such as database bootstrap scripts.
+- `src/app/` contains Next.js route handlers, components, and pages. Guided workout views live under `src/app/workouts/`, while shared UI lives in `src/components/`.
+- `src/lib/` houses reusable domain logic (workout plan and PWA helpers).
+- Static assets (e.g., public screenshots, icons) belong in `public/`.
 
 ## Build, Test, and Development Commands
 - `npm run dev` — start the local Next.js dev server with hot reload.
@@ -14,7 +13,7 @@
 ## Coding Style & Naming Conventions
 - TypeScript throughout; prefer explicit types for exported functions.
 - Use functional React components and `use client` directives only when interactivity is required.
-- Database helpers live in `src/lib/*` and expose small, composable functions.
+- Workout plan helpers live in `src/lib/*` and expose small, composable functions.
 - Linting is enforced via ESLint (see `eslint.config.mjs`); follow existing import alias `@/` for src root.
 
 ## Testing Guidelines
@@ -22,10 +21,9 @@
 - When adding tests, mirror directory structure of the code under test and suffix files with `.test.ts` or `.spec.ts`.
 
 ## Commit & Pull Request Guidelines
-- Use short, imperative commit messages (e.g., "Add dropzone component", "Refine admin layout").
+- Use short, imperative commit messages (e.g., "Add guided timer cue", "Refine workout layout").
 - Pull requests should describe functional changes, include screenshots for UI updates, and reference issue IDs when applicable.
 - Ensure `npm run lint` and `npm run build` pass before requesting review.
 
 ## Security & Configuration Tips
 - Local env vars live in `.env`; copy from `.env.example` and never commit secrets.
-- For large uploads, ensure `NEXT_SERVER_ACTIONS_BODY_SIZE_LIMIT` is set appropriately (default 5gb).

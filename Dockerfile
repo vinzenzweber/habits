@@ -3,7 +3,6 @@
 FROM node:20-alpine AS base
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN apk add --no-cache ffmpeg
 
 FROM base AS deps
 ENV NODE_ENV=development

@@ -1,7 +1,7 @@
 {
   "name": "Habits — Morning Workout Routines",
   "short_name": "Habits",
-  "description": "Mobile-first morning workout videos matched to every day of the week to build a sustainable habit streak.",
+  "description": "Mobile-first morning workout routines matched to every day of the week to build a sustainable habit streak.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#020617",

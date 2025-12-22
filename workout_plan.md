@@ -441,9 +441,9 @@ Tempo ist der Schlüssel zu Kraft-Ausdauer-Entwicklung. Während traditionelles 
 - Stellen Sie "work" auf die Gesamtzeit pro Wiederholung ein
 - Beispiel: 5 Sekunden pro Rep (3:0:2:0)
 
-**Methode 3: Video-Aufnahme**
-- Filmen Sie einen Satz
-- Überprüfen Sie das Tempo im Nachhinein
+**Methode 3: Selbst-Check**
+- Beobachten Sie einen Satz im Spiegel
+- Überprüfen Sie das Tempo währenddessen
 - Justieren Sie beim nächsten Training
 
 **Häufiger Fehler**: Zu schnell in der konzentrischen Phase
@@ -689,7 +689,7 @@ Dieses Programm basiert auf evidenzbasierten Trainingsprinzipien, nicht auf Tren
 
 **3. Technik niemals opfern**
 - **Eine perfekte Wiederholung** \u003e zehn unsaubere
-- Video-Analyse alle 2 Wochen
+- Technik-Check alle 2 Wochen
 - **Bei Technik-Zusammenbruch**: Satz beenden, egal wie viele Reps fehlen
 
 ### Realistische Erwartungen nach 12 Wochen:

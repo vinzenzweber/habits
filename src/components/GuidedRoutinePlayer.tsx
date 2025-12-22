@@ -6,13 +6,11 @@ import Link from "next/link";
 import type {
   RoutineSegment,
   RoutineSegmentCategory,
-  StructuredWorkout,
+  WorkoutDay,
 } from "@/lib/workoutPlan";
-import type { WorkoutWithMedia } from "@/lib/workouts";
 
 type GuidedRoutinePlayerProps = {
-  workout: WorkoutWithMedia;
-  onSelectVideo?: () => void;
+  workout: WorkoutDay;
 };
 
 type CategoryStyles = {
@@ -46,20 +44,12 @@ function sumDuration(segments: RoutineSegment[], endIndex: number) {
 
 export function GuidedRoutinePlayer({
   workout,
-  onSelectVideo,
 }: GuidedRoutinePlayerProps) {
-  const routine: StructuredWorkout | null = workout.routine ?? null;
-  const segments = useMemo(
-    () => routine?.segments ?? [],
-    [routine],
-  );
-  const totalSeconds = useMemo(
-    () => routine?.totalSeconds ?? 0,
-    [routine],
-  );
-  const routineTitle = routine?.title ?? workout.title;
-  const routineFocus = routine?.focus ?? workout.focus ?? workout.description ?? "";
-  const routineDescription = routine?.description ?? workout.description ?? "";
+  const segments = useMemo(() => workout.segments ?? [], [workout.segments]);
+  const totalSeconds = useMemo(() => workout.totalSeconds ?? 0, [workout.totalSeconds]);
+  const routineTitle = workout.title;
+  const routineFocus = workout.focus;
+  const routineDescription = workout.description;
   const hasRoutine = segments.length > 0;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [remainingSeconds, setRemainingSeconds] = useState(
@@ -173,6 +163,24 @@ export function GuidedRoutinePlayer({
   const nextStyles =
     CATEGORY_STYLES[nextSegment?.category ?? "rest"] ?? CATEGORY_STYLES.rest;
 
+  const groupedSegments = useMemo(() => {
+    const groups: Array<{
+      category: RoutineSegmentCategory;
+      items: Array<{ segment: RoutineSegment; index: number }>;
+    }> = [];
+
+    segments.forEach((segment, index) => {
+      const last = groups[groups.length - 1];
+      if (!last || last.category !== segment.category) {
+        groups.push({ category: segment.category, items: [{ segment, index }] });
+        return;
+      }
+      last.items.push({ segment, index });
+    });
+
+    return groups;
+  }, [segments]);
+
   const handleToggle = () => {
     if (hasFinished) {
       setCurrentIndex(0);
@@ -206,17 +214,7 @@ export function GuidedRoutinePlayer({
         <div className="text-center text-[11px] font-semibold uppercase tracking-[0.35em] text-emerald-200">
           {workout.label} · Guided Timer
         </div>
-        {onSelectVideo ? (
-          <button
-            type="button"
-            onClick={onSelectVideo}
-            className="rounded-full bg-white/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-white transition hover:bg-white/20"
-          >
-            Video
-          </button>
-        ) : (
-          <div className="w-[88px]" aria-hidden />
-        )}
+        <div className="w-[88px]" aria-hidden />
       </header>
 
       <main className="relative z-10 mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-5 pb-12 pt-4 sm:px-8">
@@ -248,11 +246,11 @@ export function GuidedRoutinePlayer({
           <h1 className="text-3xl font-semibold leading-tight sm:text-4xl">
               {hasFinished ? "Workout complete" : currentSegment?.title}
             </h1>
-            <p className="text-sm text-slate-200 sm:text-base">
-              {hasFinished
-                ? "Nice work. Recover, hydrate, and come back tomorrow."
-                : currentSegment?.detail ?? routineDescription}
-            </p>
+            {!hasFinished && currentSegment?.detail ? (
+              <p className="text-sm text-slate-200 sm:text-base">
+                {currentSegment.detail}
+              </p>
+            ) : null}
           </div>
 
           <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -287,50 +285,6 @@ export function GuidedRoutinePlayer({
           </div>
         </section>
 
-        <section className="grid gap-4 rounded-3xl border border-white/10 bg-white/5 p-5 sm:grid-cols-3 sm:p-6">
-            <div className="mt-2 rounded-2xl border border-white/5 bg-white/5 p-4">
-              {nextSegment ? (
-                <>
-                  <div className="flex items-center justify-between gap-3">
-                    <span
-                      className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.25em] ${nextStyles.badge}`}
-                    >
-                      Next
-                    </span>
-                    {nextSegment.round ? (
-                      <span className="text-xs text-slate-300">
-                        {nextSegment.round}
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="mt-3 text-2xl font-semibold text-white">
-                    {nextSegment.title}
-                  </p>
-                  <p className="mt-1 text-sm text-slate-200">
-                    {nextSegment.detail ?? routineDescription}
-                  </p>
-                  <p className="mt-3 text-sm font-semibold text-emerald-200">
-                    {formatTime(nextSegment.durationSeconds)} on deck
-                  </p>
-                </>
-              ) : (
-                <p className="text-lg font-semibold text-emerald-200">
-                  Final stretch done — breathe easy.
-                </p>
-              )}
-            </div>
-          <div className="space-y-2 rounded-2xl border border-white/5 bg-slate-950/50 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-300">
-              Session info
-            </p>
-            <p className="text-sm text-slate-200">{routineTitle}</p>
-            <p className="text-sm text-slate-400">{routineFocus}</p>
-            <p className="text-sm text-slate-400">
-              Total: {formatTime(totalSeconds)}
-            </p>
-          </div>
-        </section>
-
         <section className="space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-300">
@@ -340,57 +294,70 @@ export function GuidedRoutinePlayer({
               Auto-started · {segments.length} steps
             </p>
           </div>
-          <div className="grid gap-2">
-            {segments.map((segment, index) => {
-              const progressWithinSegment =
-                index === currentIndex && !hasFinished
-                  ? currentProgress
-                  : index < currentIndex
-                    ? 100
-                    : 0;
-              const styles =
-                CATEGORY_STYLES[segment.category] ?? CATEGORY_STYLES.main;
+          <div className="grid gap-4">
+            {groupedSegments.map((group, groupIndex) => {
+              const groupStyles =
+                CATEGORY_STYLES[group.category] ?? CATEGORY_STYLES.main;
+
               return (
-                <div
-                  key={segment.id}
-                  className={`rounded-2xl border border-white/5 bg-white/5 px-4 py-3 transition ${
-                    index === currentIndex
-                      ? "border-emerald-300/50 shadow-lg shadow-emerald-500/10"
-                      : ""
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex flex-col gap-1">
-                      <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-300">
-                        <span
-                          className={`inline-flex items-center rounded-full px-2 py-1 ${styles.badge}`}
+                <section key={`${group.category}-${groupIndex}`}>
+                  <div className="px-1 pb-2">
+                    <span
+                      className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] ${groupStyles.badge}`}
+                    >
+                      {group.category.toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="grid gap-2">
+                    {group.items.map(({ segment, index }) => {
+                      const progressWithinSegment =
+                        index === currentIndex && !hasFinished
+                          ? currentProgress
+                          : index < currentIndex
+                            ? 100
+                            : 0;
+                      const styles =
+                        CATEGORY_STYLES[segment.category] ?? CATEGORY_STYLES.main;
+                      return (
+                        <div
+                          key={segment.id}
+                          className={`rounded-2xl border border-white/5 bg-white/5 px-4 py-3 transition ${
+                            index === currentIndex
+                              ? "border-emerald-300/50 shadow-lg shadow-emerald-500/10"
+                              : ""
+                          }`}
                         >
-                          {segment.category}
-                        </span>
-                        {segment.round ? (
-                          <span className="text-[11px] text-slate-400">
-                            {segment.round}
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="text-base font-semibold text-white">
-                        {segment.title}
-                      </p>
-                      {segment.detail ? (
-                        <p className="text-xs text-slate-400">{segment.detail}</p>
-                      ) : null}
-                    </div>
-                    <div className="text-sm font-semibold text-emerald-200">
-                      {formatTime(segment.durationSeconds)}
-                    </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex flex-col gap-1">
+                              <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-300">
+                                {segment.round ? (
+                                  <span className="text-[11px] text-slate-400">
+                                    {segment.round}
+                                  </span>
+                                ) : null}
+                              </div>
+                              <p className="text-base font-semibold text-white">
+                                {segment.title}
+                              </p>
+                              {segment.detail ? (
+                                <p className="text-xs text-slate-400">{segment.detail}</p>
+                              ) : null}
+                            </div>
+                            <div className="text-sm font-semibold text-emerald-200">
+                              {formatTime(segment.durationSeconds)}
+                            </div>
+                          </div>
+                          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                            <div
+                              className={`h-full ${styles.bar}`}
+                              style={{ width: `${progressWithinSegment}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-                    <div
-                      className={`h-full ${styles.bar}`}
-                      style={{ width: `${progressWithinSegment}%` }}
-                    />
-                  </div>
-                </div>
+                </section>
               );
             })}
           </div>
@@ -403,17 +370,8 @@ export function GuidedRoutinePlayer({
         No guided plan available for this day.
       </p>
       <p className="mt-2 text-sm text-slate-300">
-        Add a routine in code or switch to the video player if available.
+        Add a routine in the workout plan to start training.
       </p>
-      {onSelectVideo ? (
-        <button
-          type="button"
-          onClick={onSelectVideo}
-          className="mt-4 rounded-full bg-emerald-400 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-300"
-        >
-          Switch to video
-        </button>
-      ) : null}
     </div>
   );
 

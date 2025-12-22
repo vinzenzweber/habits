@@ -68,44 +68,6 @@ export function useCanInstallPWA(): {
 /**
  * Detects platform-specific autoplay capabilities
  */
-export function useAutoplayCapability(): {
-  canAutoplayUnmuted: boolean;
-  platform: "ios" | "android" | "desktop" | "unknown";
-} {
-  const isPWA = useIsPWA();
-
-  return useMemo(() => {
-    if (typeof window === "undefined") {
-      return { canAutoplayUnmuted: false, platform: "unknown" as const };
-    }
-
-    const ua = window.navigator.userAgent.toLowerCase();
-    const isIOS = /iphone|ipad|ipod/.test(ua);
-    const isAndroid = /android/.test(ua);
-    const isDesktop = !isIOS && !isAndroid;
-
-    if (isIOS) {
-      return { canAutoplayUnmuted: false, platform: "ios" as const };
-    }
-
-    if (isAndroid) {
-      return {
-        canAutoplayUnmuted: isPWA,
-        platform: "android" as const,
-      };
-    }
-
-    if (isDesktop) {
-      return {
-        canAutoplayUnmuted: isPWA,
-        platform: "desktop" as const,
-      };
-    }
-
-    return { canAutoplayUnmuted: false, platform: "unknown" as const };
-  }, [isPWA]);
-}
-
 // TypeScript interface for the beforeinstallprompt event
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;

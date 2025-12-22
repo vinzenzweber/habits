@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Habits — Morning Workout Routines",
   description:
-    "Mobile-first morning workout videos matched to every day of the week to build a sustainable habit streak.",
+    "Mobile-first morning workout routines matched to every day of the week to build a sustainable habit streak.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
