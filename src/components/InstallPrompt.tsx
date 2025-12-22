@@ -46,7 +46,6 @@ export function InstallPrompt() {
           </h3>
           <p className="mt-2 text-sm text-slate-300">
             Install this app on your home screen for the best experience.
-            Videos will auto-play with sound when installed on Android/Desktop.
           </p>
           <div className="mt-4 flex gap-3">
             <button

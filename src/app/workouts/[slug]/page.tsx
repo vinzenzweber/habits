@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { WorkoutPlayer } from "@/components/WorkoutPlayer";
-import { getWorkoutMetaBySlug, getWorkoutWithMedia } from "@/lib/workouts";
+import { GuidedRoutinePlayer } from "@/components/GuidedRoutinePlayer";
+import { getWorkoutBySlug } from "@/lib/workoutPlan";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +14,7 @@ type WorkoutPageProps = {
 
 export async function generateMetadata({ params }: WorkoutPageProps): Promise<Metadata> {
   const { slug } = await Promise.resolve(params);
-  const workout = getWorkoutMetaBySlug(slug);
+  const workout = getWorkoutBySlug(slug);
 
   if (!workout) {
     return {
@@ -26,17 +26,17 @@ export async function generateMetadata({ params }: WorkoutPageProps): Promise<Me
   const title = workout.title ?? label;
   return {
     title: `${label} | Habits`,
-    description: `Stream the assigned workout for ${label}. ${workout.description ?? ""}`.trim(),
+    description: `${workout.title} — ${workout.description}`.trim(),
   };
 }
 
 export default async function WorkoutPage({ params }: WorkoutPageProps) {
   const { slug } = await Promise.resolve(params);
-  const workout = await getWorkoutWithMedia(slug ?? "");
+  const workout = getWorkoutBySlug(slug ?? "");
 
   if (!workout) {
     notFound();
   }
 
-  return <WorkoutPlayer workout={workout} />;
+  return <GuidedRoutinePlayer workout={workout} />;
 }
