@@ -1,4 +1,31 @@
-import type { DaySlug } from "./workouts";
+export type DaySlug =
+  | "monday"
+  | "tuesday"
+  | "wednesday"
+  | "thursday"
+  | "friday"
+  | "saturday"
+  | "sunday";
+
+const DAY_ORDER: DaySlug[] = [
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+];
+
+const DAY_LABELS: Record<DaySlug, string> = {
+  monday: "Monday",
+  tuesday: "Tuesday",
+  wednesday: "Wednesday",
+  thursday: "Thursday",
+  friday: "Friday",
+  saturday: "Saturday",
+  sunday: "Sunday",
+};
 
 export type RoutineSegmentCategory =
   | "prep"
@@ -49,6 +76,67 @@ type WorkoutConfig = {
   phases: PhaseConfig[];
 };
 
+export type WorkoutDay = StructuredWorkout & {
+  label: string;
+};
+
+const EXERCISE_DESCRIPTIONS: Record<string, string> = {
+  "Get ready": "Clear space, grab the bell, stand tall, breathe.",
+  "Arm circles (forward/back)": "Arms straight, small to big circles both ways.",
+  "Jumping jacks": "Hop feet out, arms overhead, land softly.",
+  "Light Kettlebell press patterning": "Press the bell overhead, lockout, lower under control.",
+  "Inchworms": "Hinge down, walk hands to plank, walk back up.",
+  "Arm swings": "Swing arms across chest, then open wide.",
+  "Shoulder rotations": "Elbows bent, rotate shoulders forward and back.",
+  "Cat-Cow": "On all fours, round spine then arch with breath.",
+  "Scapula push-ups": "Plank, keep elbows straight, pinch and spread shoulder blades.",
+  "Marching in place": "Lift knees to hip height, keep core tight.",
+  "Leg swings": "Hold support, swing leg front-to-back, then side-to-side.",
+  "Bodyweight squats": "Feet shoulder width, sit hips back, stand tall.",
+  "Hip circles": "Hands on hips, draw slow circles both directions.",
+  "Walking lunges": "Step forward, drop back knee, push through front heel.",
+  "Spinal rotations": "Tall posture, rotate torso side to side.",
+  "Dead bug": "Back flat, extend opposite arm/leg, return controlled.",
+  "Explosive arm swings": "Swing arms fast and big to prime speed.",
+  "Light jump squats": "Squat down, jump lightly, land soft and reset.",
+  "Dynamic stretches": "Flow through reaches, lunges, and twists.",
+  "Band pull-aparts / arm swings": "Pull band to chest or swing arms wide.",
+  "Hip hinges (no weight)": "Push hips back, torso forward, flat back.",
+  "World's greatest stretch": "Lunge, elbow to instep, rotate chest up.",
+  "Mobility flow": "Smooth full-body circles and hinges.",
+  "Prime all movement patterns": "Quick mix of squat, hinge, push, pull.",
+  "Kettlebell floor press": "Lie down, elbow at 45 degrees, press bell up, lower to triceps.",
+  "Push-ups": "Hands under shoulders, body straight, lower chest, press up.",
+  "Kettlebell overhead press": "Brace core, press bell overhead, biceps by ear.",
+  "Kettlebell bent-over row": "Hinge, flat back, row bell to ribs, pause, lower.",
+  "Kettlebell gorilla rows": "Wide stance hinge, row one bell, then the other.",
+  "Kettlebell high pulls": "Hinge and snap hips, pull elbows up and back.",
+  "Goblet squats": "Hold bell at chest, squat deep, drive up.",
+  "Single-leg RDL": "Hinge on one leg, reach bell down, stand tall.",
+  "Kettlebell swing": "Hike back, snap hips, bell floats to chest height.",
+  "Gentle movement flow": "Slow hinges, reaches, and rotations.",
+  "Core control circuit": "Brace ribs down, move slow and steady.",
+  "Turkish Get-Up (slow)": "Roll to elbow, post hand, bridge, sweep leg, stand.",
+  "Plank to Down Dog": "From plank, push hips up, return to plank.",
+  "Kettlebell suitcase carry": "Hold bell at side, walk tall, no leaning.",
+  "Minute 1: Kettlebell push press": "Dip knees, drive bell overhead, reset.",
+  "Minute 2: Burpees": "Squat down, kick to plank, jump up.",
+  "Minute 3: Kettlebell floor press": "Lie down, press bell up, control the descent.",
+  "Minute 4: Mountain climbers": "Plank, drive knees fast to chest.",
+  "Kettlebell Romanian deadlift": "Soft knees, hinge back, stand tall.",
+  "Renegade rows": "Plank on bells, row one side, resist rotation.",
+  "Kettlebell halo": "Circle bell around head, keep ribs down.",
+  "Dynamic full-body prep": "Traveling reaches, squats, and hinges.",
+  "Kettlebell clean": "Hike back, pop hips, catch bell softly at rack.",
+  "Front squat": "Bell at rack, squat down, drive up.",
+  "Push press": "Dip and drive, finish with strong lockout.",
+  "Swing": "Hinge, snap hips, let bell float, repeat.",
+};
+
+function describeExercise(title: string) {
+  return EXERCISE_DESCRIPTIONS[title] ?? "Controlled reps with steady tempo.";
+}
+
 function buildStructuredWorkout(config: WorkoutConfig): StructuredWorkout {
   const segments: RoutineSegment[] = [];
 
@@ -60,7 +148,7 @@ function buildStructuredWorkout(config: WorkoutConfig): StructuredWorkout {
           id: `${config.slug}-${segments.length}`,
           title: step.title,
           durationSeconds: step.durationSeconds,
-          detail: step.detail ?? phase.title,
+          detail: step.detail ?? describeExercise(step.title),
           category: step.category ?? phase.category,
           round: rounds > 1 ? `Round ${roundIndex + 1}/${rounds}` : undefined,
         });
@@ -122,7 +210,7 @@ const structuredWorkouts: Record<DaySlug, StructuredWorkout> = {
         steps: [
           { title: "Arm circles (forward/back)", durationSeconds: 30 },
           { title: "Jumping jacks", durationSeconds: 30 },
-          { title: "Light KB press patterning", durationSeconds: 30 },
+          { title: "Light Kettlebell press patterning", durationSeconds: 30 },
           { title: "Inchworms", durationSeconds: 30 },
         ],
       },
@@ -220,7 +308,7 @@ const structuredWorkouts: Record<DaySlug, StructuredWorkout> = {
           {
             title: "Get ready",
             durationSeconds: 10,
-            detail: "Stabile Fläche, KB bereitstellen",
+            detail: "Stabile Fläche, Kettlebell bereitstellen",
           },
         ],
       },
@@ -347,7 +435,7 @@ const structuredWorkouts: Record<DaySlug, StructuredWorkout> = {
         rounds: 3,
         steps: [
           {
-            title: "Minute 1: KB push press",
+            title: "Minute 1: Kettlebell push press",
             durationSeconds: 60,
             detail: "12 reps · Rest in remaining seconds",
           },
@@ -357,7 +445,7 @@ const structuredWorkouts: Record<DaySlug, StructuredWorkout> = {
             detail: "8-10 reps · Rest in remaining seconds",
           },
           {
-            title: "Minute 3: KB floor press",
+            title: "Minute 3: Kettlebell floor press",
             durationSeconds: 60,
             detail: "15 reps · Rest in remaining seconds",
           },
@@ -430,7 +518,7 @@ const structuredWorkouts: Record<DaySlug, StructuredWorkout> = {
     title: "Total Body Conditioning",
     focus: "Komplex für Ganzkörper-Kondition",
     description:
-      "Dynamisches Warm-up, dann 5 Runden KB Complex (Clean, Front Squat, Push Press, Swing) mit kurzen Pausen.",
+      "Dynamisches Warm-up, dann 5 Runden Kettlebell Complex (Clean, Front Squat, Push Press, Swing) mit kurzen Pausen.",
     phases: [
       {
         title: "Get ready",
@@ -439,7 +527,7 @@ const structuredWorkouts: Record<DaySlug, StructuredWorkout> = {
           {
             title: "Get ready",
             durationSeconds: 10,
-            detail: "Komplex ohne KB absetzen",
+            detail: "Komplex ohne Kettlebell absetzen",
           },
         ],
       },
@@ -453,7 +541,7 @@ const structuredWorkouts: Record<DaySlug, StructuredWorkout> = {
         ],
       },
       {
-        title: "KB complex",
+        title: "Kettlebell complex",
         category: "main",
         rounds: 5,
         restBetweenRoundsSeconds: 60,
@@ -485,8 +573,36 @@ const structuredWorkouts: Record<DaySlug, StructuredWorkout> = {
   }),
 };
 
+function isDaySlug(value: string): value is DaySlug {
+  return (DAY_ORDER as string[]).includes(value);
+}
+
 export function getStructuredWorkout(slug: DaySlug) {
   return structuredWorkouts[slug];
 }
 
-export { structuredWorkouts };
+export function getWorkoutBySlug(slug: string | null | undefined): WorkoutDay | null {
+  if (!slug) return null;
+  const normalized = slug.toLowerCase();
+  if (!isDaySlug(normalized)) return null;
+  const workout = structuredWorkouts[normalized];
+  if (!workout) return null;
+  return {
+    ...workout,
+    label: DAY_LABELS[normalized],
+  };
+}
+
+export function getWorkoutForToday(now: Date = new Date()): WorkoutDay | null {
+  const slug = DAY_ORDER[now.getDay()];
+  return getWorkoutBySlug(slug);
+}
+
+export function getAllWorkouts(): WorkoutDay[] {
+  return DAY_ORDER.map((slug) => ({
+    ...structuredWorkouts[slug],
+    label: DAY_LABELS[slug],
+  }));
+}
+
+export { structuredWorkouts, DAY_ORDER, DAY_LABELS };

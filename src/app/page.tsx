@@ -1,180 +1,133 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import { InstallPrompt } from "@/components/InstallPrompt";
-import {
-  getWorkoutForToday,
-  getWorkoutsWithAssignments,
-  type WorkoutWithMedia,
-} from "@/lib/workouts";
+import { getWorkoutForToday } from "@/lib/workoutPlan";
 
 const CTA_CLASSES =
   "inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2";
 
 export const dynamic = "force-dynamic";
 
-type WorkoutSectionProps = {
-  id: string;
-  title: string;
-  description: string;
-  workouts: WorkoutWithMedia[];
-  emptyLabel: string;
-  highlightSlug?: WorkoutWithMedia["slug"];
-};
+function formatDuration(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  const remaining = seconds % 60;
+  return `${minutes}:${remaining.toString().padStart(2, "0")}`;
+}
 
-function WorkoutSection({
-  id,
-  title,
-  description,
-  workouts,
-  emptyLabel,
-  highlightSlug,
-}: WorkoutSectionProps) {
-  return (
-    <section
-      id={id}
-      className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/50 backdrop-blur"
-      aria-label={`${title} list`}
-    >
-      <div className="border-b border-slate-800 px-5 py-4 sm:px-6">
-        <h2 className="text-lg font-semibold text-white">{title}</h2>
-        <p className="mt-1 text-sm text-slate-300">{description}</p>
-      </div>
-      {workouts.length === 0 ? (
-        <div className="px-5 py-6 text-sm text-slate-400">{emptyLabel}</div>
-      ) : (
-        <ul className="divide-y divide-slate-800">
-          {workouts.map((workout) => (
-            <li key={workout.slug}>
-              <Link
-                href={`/workouts/${workout.slug}`}
-                className="group flex flex-col gap-3 px-5 py-6 transition hover:bg-slate-900/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
-                  {workout.thumbnailUrl ? (
-                    <div className="relative h-24 w-full flex-shrink-0 overflow-hidden rounded-2xl border border-slate-800 sm:h-28 sm:w-44">
-                      <Image
-                        src={workout.thumbnailUrl}
-                        alt={`Thumbnail for ${workout.label}`}
-                        fill
-                        className="object-cover"
-                        sizes="(min-width: 640px) 176px, 100vw"
-                        priority={highlightSlug === workout.slug}
-                      />
-                    </div>
-                  ) : null}
-                  <div className="flex flex-1 flex-col gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-500">
-                      {workout.label}
-                    </span>
-                    <h2 className="text-xl font-semibold text-white">
-                      {workout.title}
-                    </h2>
-                    <p className="text-xs font-medium uppercase tracking-[0.3em] text-emerald-300">
-                      {workout.videoUrl
-                        ? workout.originalFilename ?? "Video assigned"
-                        : "Video not assigned"}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 text-sm font-medium text-emerald-300">
-                  <span className="uppercase tracking-wider">View</span>
-                  <span
-                    aria-hidden
-                    className="text-lg transition-transform group-hover:translate-x-1"
-                  >
-                    →
-                  </span>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
+function groupSegments<T extends { category: string }>(segments: T[]) {
+  const groups: Array<{
+    category: string;
+    items: T[];
+    startIndex: number;
+  }> = [];
+  let indexOffset = 0;
+
+  for (const segment of segments) {
+    const last = groups[groups.length - 1];
+    if (!last || last.category !== segment.category) {
+      groups.push({
+        category: segment.category,
+        items: [segment],
+        startIndex: indexOffset,
+      });
+    } else {
+      last.items.push(segment);
+    }
+    indexOffset += 1;
+  }
+
+  return groups;
 }
 
 export default async function Home() {
-  const [todayWorkout, workouts] = await Promise.all([
-    getWorkoutForToday(),
-    getWorkoutsWithAssignments(),
-  ]);
+  const workout = getWorkoutForToday();
+  if (!workout) {
+    throw new Error("Workout plan missing.");
+  }
 
-  const workoutsWithVideo = workouts.filter((workout) => Boolean(workout.videoUrl));
-  const workoutsWithoutVideo = workouts.filter((workout) => !workout.videoUrl);
+  const groupedSegments = groupSegments(workout.segments);
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="mx-auto flex max-w-2xl flex-col gap-8 px-5 pb-16 pt-12 sm:px-8">
-        <header className="flex flex-col gap-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.4em] text-emerald-400">
-            Habits
-          </p>
-          <div className="space-y-3">
-            <h1 className="text-3xl font-semibold sm:text-4xl">
-              Your daily routine.
-            </h1>
-            <p className="text-sm text-slate-300 sm:text-base">
-              Use the media manager to add videos for each day of the week. Once
-              assigned, you can launch the current day&apos;s session instantly or pick
-              any day below.
-            </p>
-          </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+      <div className="mx-auto flex max-w-3xl flex-col gap-8 px-5 pb-16 pt-12 sm:px-8">
+        <header className="flex flex-col gap-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.4em] text-emerald-400">
+                Habits
+              </p>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">
+                  Today · {workout.label}
+                </p>
+                <h1 className="mt-2 text-3xl font-semibold text-white sm:text-4xl">
+                  {workout.title}
+                </h1>
+              </div>
+              <p className="text-sm text-slate-300 sm:text-base">
+                {workout.focus}
+              </p>
+            </div>
             <Link
-              href="/today"
+              href={`/workouts/${workout.slug}`}
               className={`${CTA_CLASSES} bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/30 hover:bg-emerald-300`}
             >
-              Today
-            </Link>
-            <Link
-              href="#workouts"
-              className={`${CTA_CLASSES} border border-emerald-500/50 bg-emerald-500/10 text-emerald-200 hover:border-emerald-300 hover:text-emerald-100`}
-            >
-              Workouts
-            </Link>
-            <Link
-              href="#videos"
-              className={`${CTA_CLASSES} border border-slate-700 bg-slate-900/60 text-slate-100 hover:border-emerald-400/60 hover:text-emerald-300`}
-            >
-              Videos
-            </Link>
-            <Link
-              href="/admin"
-              className={`${CTA_CLASSES} border border-slate-700 bg-slate-900/60 text-slate-100 hover:border-emerald-400/60 hover:text-emerald-300`}
-            >
-              Media manager
+              Start
             </Link>
           </div>
+          <p className="text-sm text-slate-300 sm:text-base">
+            {workout.description}
+          </p>
         </header>
 
         <InstallPrompt />
 
-        <WorkoutSection
-          id="workouts"
-          title="Workouts"
-          description="Guided routines without assigned videos."
-          emptyLabel="All workouts currently have a video assigned."
-          workouts={workoutsWithoutVideo}
-          highlightSlug={todayWorkout?.slug}
-        />
-
-        <WorkoutSection
-          id="videos"
-          title="Videos"
-          description="Sessions with uploaded videos attached."
-          emptyLabel="No video workouts yet — add one in the media manager."
-          workouts={workoutsWithVideo}
-          highlightSlug={todayWorkout?.slug}
-        />
-
-        <footer className="pt-2 text-xs text-slate-500">
-          <p>
-            Tip: Upload videos on desktop, then open Habits on your phone for
-            full-screen playback each morning.
-          </p>
-        </footer>
+        <section
+          className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/50 backdrop-blur"
+          aria-label="Today workout plan"
+        >
+          <div className="border-b border-slate-800 px-5 py-4 sm:px-6">
+            <h2 className="text-lg font-semibold text-white">Workout plan</h2>
+            <p className="mt-1 text-sm text-slate-300">
+              {workout.segments.length} exercises · {formatDuration(workout.totalSeconds)} total
+            </p>
+          </div>
+          <div className="divide-y divide-slate-800">
+            {groupedSegments.map((group, groupIndex) => (
+              <section key={`${group.category}-${groupIndex}`}>
+                <div className="px-5 pb-2 pt-5 sm:px-6">
+                  <p className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-300">
+                    {group.category.toUpperCase()}
+                  </p>
+                </div>
+                <ol className="divide-y divide-slate-800">
+                  {group.items.map((segment, index) => (
+                    <li
+                      key={segment.id}
+                      className="flex flex-col gap-3 px-5 py-4 sm:px-6"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <h3 className="text-lg font-semibold text-white">
+                            {group.startIndex + index + 1}. {segment.title}
+                          </h3>
+                        </div>
+                        <span className="text-sm font-semibold text-emerald-200">
+                          {formatDuration(segment.durationSeconds)}
+                        </span>
+                      </div>
+                      {segment.detail ? (
+                        <p className="text-sm text-slate-300">
+                          {segment.detail}
+                        </p>
+                      ) : null}
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            ))}
+          </div>
+        </section>
       </div>
     </main>
   );
