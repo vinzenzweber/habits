@@ -57,6 +57,236 @@ You have access to web search for looking up current fitness research, exercise 
 - Keep responses focused and practical
 - For exercise instructions, include key form cues`;
 
+// Tool definitions
+const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
+  {
+    type: "function",
+    function: {
+      name: "get_workout",
+      description: "Get current workout plan for a specific day",
+      parameters: {
+        type: "object",
+        properties: {
+          slug: {
+            type: "string",
+            enum: ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
+            description: "The day of the week"
+          }
+        },
+        required: ["slug"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_all_workouts",
+      description: "Get the complete weekly workout plan (all 7 days). Use this when the user asks about their overall program, weekly schedule, or wants to see all workouts.",
+      parameters: {
+        type: "object",
+        properties: {}
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_workout",
+      description: "Update and SAVE workout plan with modifications. You MUST call this to persist changes.",
+      parameters: {
+        type: "object",
+        properties: {
+          slug: {
+            type: "string",
+            description: "The day of the week (monday-sunday)"
+          },
+          workout: {
+            type: "object",
+            description: "Complete workout object with all required fields",
+            properties: {
+              slug: { type: "string" },
+              title: { type: "string" },
+              focus: { type: "string" },
+              description: { type: "string" },
+              totalSeconds: { type: "number" },
+              segments: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    id: { type: "string" },
+                    title: { type: "string" },
+                    durationSeconds: { type: "number" },
+                    detail: { type: "string" },
+                    category: {
+                      type: "string",
+                      enum: ["prep", "warmup", "main", "hiit", "recovery", "rest"]
+                    },
+                    round: { type: "string" }
+                  },
+                  required: ["id", "title", "durationSeconds", "category"]
+                }
+              }
+            },
+            required: ["slug", "title", "segments", "totalSeconds"]
+          }
+        },
+        required: ["slug", "workout"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "save_memory",
+      description: "Save important information about the user for future reference. Use this when the user mentions equipment, goals, medical conditions, preferences, experience level, or schedule constraints.",
+      parameters: {
+        type: "object",
+        properties: {
+          category: {
+            type: "string",
+            enum: MEMORY_CATEGORIES as unknown as string[],
+            description: "Category of information: equipment, goals, medical, preferences, experience, schedule, or measurements"
+          },
+          key: {
+            type: "string",
+            description: "Short identifier for this memory (e.g., 'kettlebell_weight', 'primary_goal', 'knee_injury')"
+          },
+          value: {
+            type: "string",
+            description: "The information to remember"
+          }
+        },
+        required: ["category", "key", "value"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_memories",
+      description: "Retrieve stored information about the user. Call this at the start of conversations or when you need to check what you know about the user.",
+      parameters: {
+        type: "object",
+        properties: {
+          category: {
+            type: "string",
+            enum: MEMORY_CATEGORIES as unknown as string[],
+            description: "Optional: filter by category"
+          }
+        }
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_memory",
+      description: "Remove stored information that is no longer accurate or relevant.",
+      parameters: {
+        type: "object",
+        properties: {
+          category: {
+            type: "string",
+            enum: MEMORY_CATEGORIES as unknown as string[],
+            description: "Category of the memory to delete"
+          },
+          key: {
+            type: "string",
+            description: "The key of the memory to delete"
+          }
+        },
+        required: ["category", "key"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "web_search",
+      description: "Search the web for current fitness research, exercise variations, nutrition information, or any topic that benefits from up-to-date information.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "The search query"
+          }
+        },
+        required: ["query"]
+      }
+    }
+  }
+];
+
+// Execute a tool call
+async function executeTool(
+  openai: OpenAI,
+  userId: string,
+  toolCall: OpenAI.Chat.Completions.ChatCompletionMessageToolCall
+): Promise<string> {
+  // Only handle function tool calls
+  if (toolCall.type !== 'function') {
+    return JSON.stringify({ error: `Unsupported tool type: ${toolCall.type}` });
+  }
+
+  const args = JSON.parse(toolCall.function.arguments);
+  let result: unknown;
+
+  switch (toolCall.function.name) {
+    case "get_workout":
+      const workout = await getWorkoutTool(userId, args.slug);
+      result = workout || { error: "Workout not found" };
+      break;
+
+    case "get_all_workouts":
+      const allWorkouts = await getAllWorkoutsTool(userId);
+      result = allWorkouts.length > 0 ? { workouts: allWorkouts } : { error: "No workouts found" };
+      break;
+
+    case "update_workout":
+      try {
+        const workoutData = args.workout || args;
+        result = await updateWorkoutTool(userId, args.slug, workoutData);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to update workout";
+        result = { error: message };
+      }
+      break;
+
+    case "save_memory":
+      result = await saveMemory(userId, args.category as MemoryCategory, args.key, args.value);
+      break;
+
+    case "get_memories":
+      const userMemories = await getMemories(userId, args.category);
+      result = userMemories.length > 0 ? { memories: userMemories } : { message: "No memories stored yet" };
+      break;
+
+    case "delete_memory":
+      result = await deleteMemory(userId, args.category as MemoryCategory, args.key);
+      break;
+
+    case "web_search":
+      try {
+        const searchResponse = await openai.chat.completions.create({
+          model: "gpt-4o-search-preview",
+          messages: [{ role: "user", content: `Search the web and summarize findings for: ${args.query}` }],
+          web_search_options: { search_context_size: "medium" }
+        });
+        result = { results: searchResponse.choices[0].message.content, query: args.query };
+      } catch {
+        result = { error: "Web search failed", query: args.query };
+      }
+      break;
+
+    default:
+      result = { error: `Unknown tool: ${toolCall.function.name}` };
+  }
+
+  return JSON.stringify(result);
+}
+
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -82,7 +312,7 @@ export async function POST(request: Request) {
       chatSession = result.rows[0].id;
     }
 
-    // Get the latest user message to save
+    // Save user message
     const latestUserMessage = messages[messages.length - 1];
     if (latestUserMessage && latestUserMessage.role === 'user') {
       await query(`
@@ -95,13 +325,10 @@ export async function POST(request: Request) {
     const memories = await getMemories(userId);
     const memoryContext = formatMemoriesAsContext(memories);
 
-    // Build system prompt with user context and current date
+    // Build system prompt with date and memories
     const today = new Date();
     const dateStr = today.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
     });
 
     const systemPrompt = `${PERSONAL_TRAINER_PROMPT}
@@ -111,430 +338,111 @@ export async function POST(request: Request) {
 **User Profile (from memory):**
 ${memoryContext}`;
 
-    // Define all tools
-    const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
-      {
-        type: "function",
-        function: {
-          name: "get_workout",
-          description: "Get current workout plan for a specific day",
-          parameters: {
-            type: "object",
-            properties: {
-              slug: {
-                type: "string",
-                enum: ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
-                description: "The day of the week"
-              }
-            },
-            required: ["slug"]
-          }
-        }
-      },
-      {
-        type: "function",
-        function: {
-          name: "get_all_workouts",
-          description: "Get the complete weekly workout plan (all 7 days). Use this when the user asks about their overall program, weekly schedule, or wants to see all workouts.",
-          parameters: {
-            type: "object",
-            properties: {}
-          }
-        }
-      },
-      {
-        type: "function",
-        function: {
-          name: "update_workout",
-          description: "Update and SAVE workout plan with modifications. You MUST call this to persist changes.",
-          parameters: {
-            type: "object",
-            properties: {
-              slug: {
-                type: "string",
-                description: "The day of the week (monday-sunday)"
-              },
-              workout: {
-                type: "object",
-                description: "Complete workout object with all required fields",
-                properties: {
-                  slug: { type: "string" },
-                  title: { type: "string" },
-                  focus: { type: "string" },
-                  description: { type: "string" },
-                  totalSeconds: { type: "number" },
-                  segments: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        id: { type: "string" },
-                        title: { type: "string" },
-                        durationSeconds: { type: "number" },
-                        detail: { type: "string" },
-                        category: {
-                          type: "string",
-                          enum: ["prep", "warmup", "main", "hiit", "recovery", "rest"]
-                        },
-                        round: { type: "string" }
-                      },
-                      required: ["id", "title", "durationSeconds", "category"]
-                    }
-                  }
-                },
-                required: ["slug", "title", "segments", "totalSeconds"]
-              }
-            },
-            required: ["slug", "workout"]
-          }
-        }
-      },
-      {
-        type: "function",
-        function: {
-          name: "save_memory",
-          description: "Save important information about the user for future reference. Use this when the user mentions equipment, goals, medical conditions, preferences, experience level, or schedule constraints.",
-          parameters: {
-            type: "object",
-            properties: {
-              category: {
-                type: "string",
-                enum: MEMORY_CATEGORIES as unknown as string[],
-                description: "Category of information: equipment, goals, medical, preferences, experience, schedule, or measurements"
-              },
-              key: {
-                type: "string",
-                description: "Short identifier for this memory (e.g., 'kettlebell_weight', 'primary_goal', 'knee_injury')"
-              },
-              value: {
-                type: "string",
-                description: "The information to remember"
-              }
-            },
-            required: ["category", "key", "value"]
-          }
-        }
-      },
-      {
-        type: "function",
-        function: {
-          name: "get_memories",
-          description: "Retrieve stored information about the user. Call this at the start of conversations or when you need to check what you know about the user.",
-          parameters: {
-            type: "object",
-            properties: {
-              category: {
-                type: "string",
-                enum: MEMORY_CATEGORIES as unknown as string[],
-                description: "Optional: filter by category"
-              }
-            }
-          }
-        }
-      },
-      {
-        type: "function",
-        function: {
-          name: "delete_memory",
-          description: "Remove stored information that is no longer accurate or relevant.",
-          parameters: {
-            type: "object",
-            properties: {
-              category: {
-                type: "string",
-                enum: MEMORY_CATEGORIES as unknown as string[],
-                description: "Category of the memory to delete"
-              },
-              key: {
-                type: "string",
-                description: "The key of the memory to delete"
-              }
-            },
-            required: ["category", "key"]
-          }
-        }
-      },
-      {
-        type: "function",
-        function: {
-          name: "web_search",
-          description: "Search the web for current fitness research, exercise variations, nutrition information, or any topic that benefits from up-to-date information.",
-          parameters: {
-            type: "object",
-            properties: {
-              query: {
-                type: "string",
-                description: "The search query"
-              }
-            },
-            required: ["query"]
-          }
-        }
-      }
+    const apiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+      { role: "system", content: systemPrompt },
+      ...messages
     ];
 
-    // Initial API call - use gpt-4o for function calling (search-preview doesn't support tools)
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...messages
-      ],
-      tools
-    });
+    // Process tool calls first (non-streaming)
+    let allToolCalls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[] = [];
+    let maxIterations = 5;
 
-    // Handle tool calls
-    const message = response.choices[0].message;
-    let finalMessage = message;
-    let allToolCalls: any[] = []; // Track all tool calls made
+    while (maxIterations > 0) {
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: apiMessages,
+        tools
+      });
 
-    console.log('AI Response tool_calls:', message.tool_calls);
+      const message = response.choices[0].message;
 
-    if (message.tool_calls && message.tool_calls.length > 0) {
-      // Collect initial tool calls
+      // No tool calls - ready to stream final response
+      if (!message.tool_calls || message.tool_calls.length === 0) {
+        break;
+      }
+
+      // Execute tool calls
       allToolCalls.push(...message.tool_calls);
-      const toolMessages: any[] = [message];
+      apiMessages.push(message);
 
       for (const toolCall of message.tool_calls) {
-        if (toolCall.type !== 'function') continue;
-
-        console.log('Executing tool:', toolCall.function.name, 'with args:', toolCall.function.arguments);
-
-        const args = JSON.parse(toolCall.function.arguments);
-        let toolResult: any;
-
-        switch (toolCall.function.name) {
-          case "get_workout":
-            const workout = await getWorkoutTool(userId, args.slug);
-            toolResult = workout || { error: "Workout not found" };
-            break;
-
-          case "get_all_workouts":
-            const allWorkouts = await getAllWorkoutsTool(userId);
-            toolResult = allWorkouts.length > 0
-              ? { workouts: allWorkouts }
-              : { error: "No workouts found" };
-            break;
-
-          case "update_workout":
-            try {
-              const workoutData = args.workout || args;
-              console.log('Calling updateWorkoutTool with:', userId, args.slug);
-              const result = await updateWorkoutTool(userId, args.slug, workoutData);
-              console.log('updateWorkoutTool result:', result);
-              toolResult = result;
-            } catch (error: any) {
-              console.error('updateWorkoutTool error:', error);
-              toolResult = { error: error.message || "Failed to update workout" };
-            }
-            break;
-
-          case "save_memory":
-            toolResult = await saveMemory(
-              userId,
-              args.category as MemoryCategory,
-              args.key,
-              args.value
-            );
-            break;
-
-          case "get_memories":
-            const userMemories = await getMemories(userId, args.category);
-            toolResult = userMemories.length > 0
-              ? { memories: userMemories }
-              : { message: "No memories stored yet" };
-            break;
-
-          case "delete_memory":
-            toolResult = await deleteMemory(
-              userId,
-              args.category as MemoryCategory,
-              args.key
-            );
-            break;
-
-          case "web_search":
-            // Use OpenAI's built-in web search via a separate call
-            try {
-              const searchResponse = await openai.chat.completions.create({
-                model: "gpt-4o-search-preview",
-                messages: [
-                  {
-                    role: "user",
-                    content: `Search the web and summarize findings for: ${args.query}`
-                  }
-                ],
-                web_search_options: {
-                  search_context_size: "medium"
-                }
-              });
-              toolResult = {
-                results: searchResponse.choices[0].message.content,
-                query: args.query
-              };
-            } catch (searchError: any) {
-              console.error('Web search error:', searchError);
-              toolResult = { error: "Web search failed", query: args.query };
-            }
-            break;
-
-          default:
-            toolResult = { error: `Unknown tool: ${toolCall.function.name}` };
-        }
-
-        toolMessages.push({
+        const result = await executeTool(openai, userId, toolCall);
+        apiMessages.push({
           role: "tool",
           tool_call_id: toolCall.id,
-          content: JSON.stringify(toolResult)
+          content: result
         });
       }
 
-      // Continue conversation with tool results - keep looping while AI wants to call more tools
-      let allToolMessages = [...toolMessages];
-      let maxIterations = 5;
-
-      while (maxIterations > 0) {
-        const followupResponse = await openai.chat.completions.create({
-          model: "gpt-4o",
-          messages: [
-            { role: "system", content: systemPrompt },
-            ...messages,
-            ...allToolMessages
-          ],
-          tools
-        });
-
-        finalMessage = followupResponse.choices[0].message;
-
-        // If no more tool calls, we're done
-        if (!finalMessage.tool_calls || finalMessage.tool_calls.length === 0) {
-          break;
-        }
-
-        console.log('Follow-up tool_calls:', finalMessage.tool_calls);
-
-        // Collect follow-up tool calls
-        allToolCalls.push(...finalMessage.tool_calls);
-
-        // Handle the new tool calls
-        allToolMessages.push(finalMessage);
-
-        for (const toolCall of finalMessage.tool_calls) {
-          if (toolCall.type !== 'function') continue;
-
-          console.log('Executing follow-up tool:', toolCall.function.name);
-
-          const args = JSON.parse(toolCall.function.arguments);
-          let toolResult: any;
-
-          switch (toolCall.function.name) {
-            case "get_workout":
-              const workout = await getWorkoutTool(userId, args.slug);
-              toolResult = workout || { error: "Workout not found" };
-              break;
-
-            case "get_all_workouts":
-              const allWorkouts = await getAllWorkoutsTool(userId);
-              toolResult = allWorkouts.length > 0
-                ? { workouts: allWorkouts }
-                : { error: "No workouts found" };
-              break;
-
-            case "update_workout":
-              try {
-                const workoutData = args.workout || args;
-                console.log('Calling updateWorkoutTool with:', userId, args.slug);
-                const result = await updateWorkoutTool(userId, args.slug, workoutData);
-                console.log('updateWorkoutTool result:', result);
-                toolResult = result;
-              } catch (error: any) {
-                console.error('updateWorkoutTool error:', error);
-                toolResult = { error: error.message || "Failed to update workout" };
-              }
-              break;
-
-            case "save_memory":
-              toolResult = await saveMemory(
-                userId,
-                args.category as MemoryCategory,
-                args.key,
-                args.value
-              );
-              break;
-
-            case "get_memories":
-              const userMemories = await getMemories(userId, args.category);
-              toolResult = userMemories.length > 0
-                ? { memories: userMemories }
-                : { message: "No memories stored yet" };
-              break;
-
-            case "delete_memory":
-              toolResult = await deleteMemory(
-                userId,
-                args.category as MemoryCategory,
-                args.key
-              );
-              break;
-
-            case "web_search":
-              try {
-                const searchResponse = await openai.chat.completions.create({
-                  model: "gpt-4o-search-preview",
-                  messages: [
-                    {
-                      role: "user",
-                      content: `Search the web and summarize findings for: ${args.query}`
-                    }
-                  ],
-                  web_search_options: {
-                    search_context_size: "medium"
-                  }
-                });
-                toolResult = {
-                  results: searchResponse.choices[0].message.content,
-                  query: args.query
-                };
-              } catch (searchError: any) {
-                console.error('Web search error:', searchError);
-                toolResult = { error: "Web search failed", query: args.query };
-              }
-              break;
-
-            default:
-              toolResult = { error: `Unknown tool: ${toolCall.function.name}` };
-          }
-
-          allToolMessages.push({
-            role: "tool",
-            tool_call_id: toolCall.id,
-            content: JSON.stringify(toolResult)
-          });
-        }
-
-        maxIterations--;
-      }
+      maxIterations--;
     }
 
-    // Save assistant message to DB with all tool_calls that were made
-    await query(`
-      INSERT INTO chat_messages (session_id, role, content, tool_calls)
-      VALUES ($1, $2, $3, $4)
-    `, [
-      chatSession,
-      'assistant',
-      finalMessage.content || "",
-      allToolCalls.length > 0 ? JSON.stringify(allToolCalls) : null
-    ]);
-
-    return Response.json({
-      message: finalMessage,
-      sessionId: chatSession
+    // Stream the final response
+    const stream = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: apiMessages,
+      tools,
+      stream: true
     });
-  } catch (error: any) {
+
+    // Create a streaming response
+    const encoder = new TextEncoder();
+    let fullContent = "";
+
+    const readableStream = new ReadableStream({
+      async start(controller) {
+        try {
+          // Send session ID first
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "session", sessionId: chatSession })}\n\n`));
+
+          for await (const chunk of stream) {
+            const delta = chunk.choices[0]?.delta;
+
+            if (delta?.content) {
+              fullContent += delta.content;
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "content", content: delta.content })}\n\n`));
+            }
+
+            // Check for tool calls in stream (shouldn't happen after pre-processing, but handle it)
+            if (delta?.tool_calls) {
+              // If we get tool calls in stream, we need to handle them
+              // For now, just note it - the pre-processing should catch most cases
+              console.log("Unexpected tool call in stream");
+            }
+          }
+
+          // Send done signal
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "done" })}\n\n`));
+
+          // Save assistant message to DB
+          await query(`
+            INSERT INTO chat_messages (session_id, role, content, tool_calls)
+            VALUES ($1, $2, $3, $4)
+          `, [
+            chatSession,
+            'assistant',
+            fullContent,
+            allToolCalls.length > 0 ? JSON.stringify(allToolCalls) : null
+          ]);
+
+          controller.close();
+        } catch (error) {
+          console.error("Stream error:", error);
+          controller.error(error);
+        }
+      }
+    });
+
+    return new Response(readableStream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      }
+    });
+  } catch (error: unknown) {
     console.error("Chat API error:", error);
-    return Response.json({
-      error: error.message || "Failed to process chat"
-    }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Failed to process chat";
+    return Response.json({ error: message }, { status: 500 });
   }
 }
