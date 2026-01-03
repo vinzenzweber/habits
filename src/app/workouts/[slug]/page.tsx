@@ -14,7 +14,7 @@ type WorkoutPageProps = {
 
 export async function generateMetadata({ params }: WorkoutPageProps): Promise<Metadata> {
   const { slug } = await Promise.resolve(params);
-  const workout = getWorkoutBySlug(slug);
+  const workout = await getWorkoutBySlug(slug);
 
   if (!workout) {
     return {
@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: WorkoutPageProps): Promise<Me
 
 export default async function WorkoutPage({ params }: WorkoutPageProps) {
   const { slug } = await Promise.resolve(params);
-  const workout = getWorkoutBySlug(slug ?? "");
+  const workout = await getWorkoutBySlug(slug ?? "");
 
   if (!workout) {
     notFound();

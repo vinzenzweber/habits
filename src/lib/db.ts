@@ -43,3 +43,33 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
     client.release();
   }
 }
+
+/**
+ * Execute multiple queries in a transaction
+ */
+export async function transaction<T>(
+  callback: (client: {
+    query: <R extends QueryResultRow = QueryResultRow>(
+      text: string,
+      params?: Array<string | number | null>
+    ) => Promise<{ rows: R[]; rowCount: number | null }>;
+  }) => Promise<T>
+): Promise<T> {
+  const client = await getPool().connect();
+  try {
+    await client.query('BEGIN');
+    const result = await callback({
+      query: async (text, params = []) => {
+        const res = await client.query(text, params);
+        return res;
+      }
+    });
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
