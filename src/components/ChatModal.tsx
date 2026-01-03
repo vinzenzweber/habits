@@ -26,18 +26,23 @@ export function ChatModal({ isOpen, onClose }: ChatModalProps) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const streamReaderRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
 
   // Auto-scroll to bottom when messages change or streaming
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading, streamingContent]);
 
-  // Cleanup audio on unmount
+  // Cleanup audio and stream reader on unmount
   useEffect(() => {
     return () => {
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
+      }
+      if (streamReaderRef.current) {
+        streamReaderRef.current.cancel().catch(() => {});
+        streamReaderRef.current = null;
       }
     };
   }, []);
@@ -85,6 +90,12 @@ export function ChatModal({ isOpen, onClose }: ChatModalProps) {
     setLoading(true);
     setStreamingContent('');
 
+    // Cancel any existing stream before starting new one
+    if (streamReaderRef.current) {
+      streamReaderRef.current.cancel().catch(() => {});
+      streamReaderRef.current = null;
+    }
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -100,10 +111,11 @@ export function ChatModal({ isOpen, onClose }: ChatModalProps) {
       }
 
       // Handle streaming response
-      const reader = response.body?.getReader();
+      const reader = response.body?.getReader() || null;
       if (!reader) {
         throw new Error('No response body');
       }
+      streamReaderRef.current = reader;
 
       const decoder = new TextDecoder();
       let fullContent = '';
@@ -145,8 +157,15 @@ export function ChatModal({ isOpen, onClose }: ChatModalProps) {
           }
         }
       }
+      // Clear ref after successful completion
+      streamReaderRef.current = null;
     } catch (error) {
       console.error('Chat error:', error);
+      // Cancel reader to prevent resource leak
+      if (streamReaderRef.current) {
+        streamReaderRef.current.cancel().catch(() => {});
+        streamReaderRef.current = null;
+      }
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: 'Sorry, I encountered an error. Please try again.'

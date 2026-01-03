@@ -377,6 +377,15 @@ ${memoryContext}`;
       maxIterations--;
     }
 
+    // Check if tool call loop exhausted iterations without completing
+    if (maxIterations === 0) {
+      console.warn("Tool call iteration limit reached before model returned a final response");
+      return Response.json(
+        { error: "Tool execution limit reached. Please try again." },
+        { status: 500 }
+      );
+    }
+
     // Stream the final response
     const stream = await openai.chat.completions.create({
       model: "gpt-4o",
