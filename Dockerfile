@@ -21,6 +21,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/next.config.ts ./
+COPY --from=builder /app/scripts ./scripts
 COPY package.json package-lock.json ./
 EXPOSE 3000
-CMD ["npm", "run", "start"]
+CMD ["sh", "-c", "npm run db:migrate && npm run start"]
