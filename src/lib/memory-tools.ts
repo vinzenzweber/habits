@@ -64,7 +64,7 @@ export async function getMemories(
       FROM user_memories
       WHERE user_id = $1
     `;
-    const params: any[] = [userId];
+    const params: (string | MemoryCategory)[] = [userId];
 
     if (category) {
       sql += ` AND category = $2`;

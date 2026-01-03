@@ -22,5 +22,12 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api/auth|login|register|_next/static|_next/image|favicon.ico|.*\\.png$|.*\\.svg$|.*\\.webp$|.*\\.jpg$|.*\\.jpeg$|.*\\.mp3$).*)"]
+  // Only run middleware on app routes, excluding static files and auth
+  matcher: [
+    "/",
+    "/workouts/:path*",
+    "/api/chat/:path*",
+    "/api/speech/:path*",
+    "/api/workouts/:path*",
+  ]
 };

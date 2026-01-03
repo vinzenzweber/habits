@@ -41,9 +41,20 @@ export function ChatModal({ isOpen, onClose }: ChatModalProps) {
     };
   }, []);
 
-  // Simple markdown formatting
-  const formatMarkdown = (text: string) => {
+  // Sanitize HTML to prevent XSS
+  const sanitizeHtml = (text: string) => {
     return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  };
+
+  // Simple markdown formatting (sanitizes first to prevent XSS)
+  const formatMarkdown = (text: string) => {
+    // First sanitize to prevent XSS, then apply markdown formatting
+    return sanitizeHtml(text)
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.+?)\*/g, '<em>$1</em>')
       .replace(/^### (.+)$/gm, '<h3 class="text-base font-semibold mt-3 mb-1">$1</h3>')

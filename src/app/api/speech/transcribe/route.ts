@@ -26,10 +26,10 @@ export async function POST(request: Request) {
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-    // Use gpt-4o-mini-transcribe for best quality, fallback to whisper-1
+    // Use whisper-1 for transcription
     const transcription = await openai.audio.transcriptions.create({
       file: audioFile,
-      model: "gpt-4o-mini-transcribe",
+      model: "whisper-1",
       prompt: EXERCISE_PROMPT,
       language: "en",
     });
@@ -37,27 +37,6 @@ export async function POST(request: Request) {
     return Response.json({ text: transcription.text });
   } catch (error: any) {
     console.error("Transcription error:", error);
-
-    // Fallback to whisper-1 if gpt-4o model not available
-    if (error.message?.includes("model")) {
-      try {
-        const formData = await request.formData();
-        const audioFile = formData.get('audio') as File;
-        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-        const transcription = await openai.audio.transcriptions.create({
-          file: audioFile,
-          model: "whisper-1",
-          prompt: EXERCISE_PROMPT,
-          language: "en",
-        });
-
-        return Response.json({ text: transcription.text });
-      } catch (fallbackError: any) {
-        return Response.json({ error: fallbackError.message }, { status: 500 });
-      }
-    }
-
     return Response.json({ error: error.message || "Transcription failed" }, { status: 500 });
   }
 }
