@@ -59,12 +59,26 @@ export function GuidedRoutinePlayer({
   const [hasFinished, setHasFinished] = useState(false);
   const countdownAudioRef = useRef<HTMLAudioElement | null>(null);
   const segmentBeepPlayedRef = useRef(false);
+  const startTimeRef = useRef(Date.now());
 
   useEffect(() => {
     const audio = new Audio("/short-beep-countdown-81121.mp3");
     audio.preload = "auto";
     countdownAudioRef.current = audio;
   }, []);
+
+  // Track workout completion
+  useEffect(() => {
+    if (hasFinished && workout.slug) {
+      const actualDuration = Math.floor((Date.now() - startTimeRef.current) / 1000);
+
+      fetch(`/api/workouts/${workout.slug}/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ durationSeconds: actualDuration })
+      }).catch(console.error);
+    }
+  }, [hasFinished, workout.slug]);
 
   useEffect(() => {
     if (!hasRoutine || !isRunning || hasFinished) {

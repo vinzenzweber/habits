@@ -1,3 +1,6 @@
+import { auth } from "./auth";
+import { query } from "./db";
+
 export type DaySlug =
   | "monday"
   | "tuesday"
@@ -581,28 +584,55 @@ export function getStructuredWorkout(slug: DaySlug) {
   return structuredWorkouts[slug];
 }
 
-export function getWorkoutBySlug(slug: string | null | undefined): WorkoutDay | null {
+export async function getWorkoutBySlug(slug: string | null | undefined): Promise<WorkoutDay | null> {
   if (!slug) return null;
   const normalized = slug.toLowerCase();
   if (!isDaySlug(normalized)) return null;
-  const workout = structuredWorkouts[normalized];
-  if (!workout) return null;
+
+  const session = await auth();
+  if (!session?.user?.id) return null;
+
+  const result = await query(`
+    SELECT workout_json FROM workouts
+    WHERE user_id = $1 AND slug = $2 AND is_active = true
+  `, [session.user.id, normalized]);
+
+  if (result.rows.length === 0) return null;
+
+  const workout = result.rows[0].workout_json;
   return {
     ...workout,
     label: DAY_LABELS[normalized],
   };
 }
 
-export function getWorkoutForToday(now: Date = new Date()): WorkoutDay | null {
+export async function getWorkoutForToday(now: Date = new Date()): Promise<WorkoutDay | null> {
   const slug = DAY_ORDER[now.getDay()];
   return getWorkoutBySlug(slug);
 }
 
-export function getAllWorkouts(): WorkoutDay[] {
-  return DAY_ORDER.map((slug) => ({
-    ...structuredWorkouts[slug],
-    label: DAY_LABELS[slug],
-  }));
+export async function getAllWorkouts(): Promise<WorkoutDay[]> {
+  const session = await auth();
+  if (!session?.user?.id) return [];
+
+  const result = await query(`
+    SELECT workout_json FROM workouts
+    WHERE user_id = $1 AND is_active = true
+    ORDER BY CASE slug
+      WHEN 'monday' THEN 1 WHEN 'tuesday' THEN 2
+      WHEN 'wednesday' THEN 3 WHEN 'thursday' THEN 4
+      WHEN 'friday' THEN 5 WHEN 'saturday' THEN 6
+      WHEN 'sunday' THEN 7
+    END
+  `, [session.user.id]);
+
+  return result.rows.map(row => {
+    const workout = row.workout_json as StructuredWorkout;
+    return {
+      ...workout,
+      label: DAY_LABELS[workout.slug]
+    };
+  });
 }
 
 export { structuredWorkouts, DAY_ORDER, DAY_LABELS };

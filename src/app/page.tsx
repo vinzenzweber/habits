@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { LogoutButton } from "@/components/LogoutButton";
 import { getWorkoutForToday } from "@/lib/workoutPlan";
 
 const CTA_CLASSES =
@@ -40,7 +41,7 @@ function groupSegments<T extends { category: string }>(segments: T[]) {
 }
 
 export default async function Home() {
-  const workout = getWorkoutForToday();
+  const workout = await getWorkoutForToday();
   if (!workout) {
     throw new Error("Workout plan missing.");
   }
@@ -51,11 +52,14 @@ export default async function Home() {
     <main className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto flex max-w-3xl flex-col gap-8 px-5 pb-16 pt-12 sm:px-8">
         <header className="flex flex-col gap-6">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-[0.4em] text-emerald-400">
+              Habits
+            </p>
+            <LogoutButton />
+          </div>
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.4em] text-emerald-400">
-                Habits
-              </p>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">
                   Today · {workout.label}
