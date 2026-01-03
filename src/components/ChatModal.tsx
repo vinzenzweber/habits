@@ -16,6 +16,7 @@ export function ChatModal({ isOpen, onClose }: ChatModalProps) {
   const [input, setInput] = useState('');
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+  const [streamingContent, setStreamingContent] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -25,18 +26,23 @@ export function ChatModal({ isOpen, onClose }: ChatModalProps) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const streamReaderRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll to bottom when messages change or streaming
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, loading]);
+  }, [messages, loading, streamingContent]);
 
-  // Cleanup audio on unmount
+  // Cleanup audio and stream reader on unmount
   useEffect(() => {
     return () => {
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
+      }
+      if (streamReaderRef.current) {
+        streamReaderRef.current.cancel().catch(() => {});
+        streamReaderRef.current = null;
       }
     };
   }, []);
@@ -53,7 +59,6 @@ export function ChatModal({ isOpen, onClose }: ChatModalProps) {
 
   // Simple markdown formatting (sanitizes first to prevent XSS)
   const formatMarkdown = (text: string) => {
-    // First sanitize to prevent XSS, then apply markdown formatting
     return sanitizeHtml(text)
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.+?)\*/g, '<em>$1</em>')
@@ -83,6 +88,13 @@ export function ChatModal({ isOpen, onClose }: ChatModalProps) {
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setLoading(true);
+    setStreamingContent('');
+
+    // Cancel any existing stream before starting new one
+    if (streamReaderRef.current) {
+      streamReaderRef.current.cancel().catch(() => {});
+      streamReaderRef.current = null;
+    }
 
     try {
       const response = await fetch('/api/chat', {
@@ -98,24 +110,67 @@ export function ChatModal({ isOpen, onClose }: ChatModalProps) {
         throw new Error('Failed to send message');
       }
 
-      const data = await response.json();
-
-      if (data.message?.content) {
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: data.message.content
-        }]);
+      // Handle streaming response
+      const reader = response.body?.getReader() || null;
+      if (!reader) {
+        throw new Error('No response body');
       }
+      streamReaderRef.current = reader;
 
-      if (data.sessionId) {
-        setSessionId(data.sessionId);
+      const decoder = new TextDecoder();
+      let fullContent = '';
+      let buffer = ''; // Buffer for incomplete SSE lines
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+
+        // Keep the last potentially incomplete line in buffer
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+
+              if (data.type === 'session') {
+                setSessionId(data.sessionId);
+              } else if (data.type === 'content') {
+                fullContent += data.content;
+                setStreamingContent(fullContent);
+              } else if (data.type === 'done') {
+                // Finalize the message
+                if (fullContent) {
+                  setMessages(prev => [...prev, {
+                    role: 'assistant',
+                    content: fullContent
+                  }]);
+                }
+                setStreamingContent('');
+              }
+            } catch {
+              // Ignore parse errors for malformed data
+            }
+          }
+        }
       }
+      // Clear ref after successful completion
+      streamReaderRef.current = null;
     } catch (error) {
       console.error('Chat error:', error);
+      // Cancel reader to prevent resource leak
+      if (streamReaderRef.current) {
+        streamReaderRef.current.cancel().catch(() => {});
+        streamReaderRef.current = null;
+      }
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: 'Sorry, I encountered an error. Please try again.'
       }]);
+      setStreamingContent('');
     } finally {
       setLoading(false);
     }
@@ -191,13 +246,11 @@ export function ChatModal({ isOpen, onClose }: ChatModalProps) {
 
   // Text-to-Speech
   const speakMessage = useCallback(async (text: string, index: number) => {
-    // Stop any currently playing audio
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
     }
 
-    // If clicking the same message that's speaking, just stop
     if (speakingIndex === index && isSpeaking) {
       setIsSpeaking(false);
       setSpeakingIndex(null);
@@ -277,7 +330,7 @@ export function ChatModal({ isOpen, onClose }: ChatModalProps) {
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-          {messages.length === 0 && (
+          {messages.length === 0 && !streamingContent && (
             <div className="text-center text-slate-400 py-8">
               <p className="mb-2">Your personal fitness coach</p>
               <p className="text-sm">I can help with:</p>
@@ -330,7 +383,21 @@ export function ChatModal({ isOpen, onClose }: ChatModalProps) {
             </div>
           ))}
 
-          {loading && (
+          {/* Streaming message */}
+          {streamingContent && (
+            <div className="text-left">
+              <div className="inline-block rounded-lg px-4 py-2 max-w-[80%] bg-slate-800">
+                <div
+                  className="prose prose-invert prose-sm max-w-none"
+                  dangerouslySetInnerHTML={{ __html: formatMarkdown(streamingContent) }}
+                />
+                <span className="inline-block w-2 h-4 bg-emerald-400 animate-pulse ml-1" />
+              </div>
+            </div>
+          )}
+
+          {/* Loading indicator (shown before streaming starts) */}
+          {loading && !streamingContent && (
             <div className="text-left">
               <div className="inline-block rounded-lg px-4 py-2 bg-slate-800">
                 <div className="flex space-x-2">
@@ -353,7 +420,6 @@ export function ChatModal({ isOpen, onClose }: ChatModalProps) {
             placeholder={isRecording ? "Recording..." : isTranscribing ? "Transcribing..." : "Type a message..."}
             className="flex-1 p-3 rounded bg-slate-800 text-white border border-slate-700 focus:border-emerald-500 outline-none disabled:opacity-50"
           />
-          {/* Microphone Button */}
           <button
             onClick={isRecording ? stopRecording : startRecording}
             disabled={loading || isTranscribing}
