@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { query } from "./db";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  trustHost: true, // Required for Railway/reverse proxy deployments
   providers: [
     Credentials({
       credentials: {
