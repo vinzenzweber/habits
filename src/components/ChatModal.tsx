@@ -95,6 +95,7 @@ export function ChatModal({
   useEffect(() => {
     if (!isOpen) {
       hasAutoSentRef.current = false;
+      workoutUpdatedRef.current = false;
       setShowRatingButtons(false);
       setRatingSubmitted(false);
       setAwaitingRating(false);
@@ -103,12 +104,18 @@ export function ChatModal({
 
   // Auto-focus textarea when modal opens
   useEffect(() => {
-    if (isOpen && textareaRef.current) {
-      // Small delay to ensure modal is rendered
-      setTimeout(() => {
-        textareaRef.current?.focus();
-      }, 100);
+    if (!isOpen || !textareaRef.current) {
+      return;
     }
+
+    // Small delay to ensure modal is rendered
+    const timeoutId = setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
   }, [isOpen]);
 
   // Show rating buttons after AI responds to workout completion
