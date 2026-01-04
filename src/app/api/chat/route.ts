@@ -356,66 +356,84 @@ ${memoryContext}${instructionSection}`;
       ...messages
     ];
 
-    // Process tool calls first (non-streaming)
-    let allToolCalls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[] = [];
-    let maxIterations = 5;
-
-    while (maxIterations > 0) {
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: apiMessages,
-        tools
-      });
-
-      const message = response.choices[0].message;
-
-      // No tool calls - ready to stream final response
-      if (!message.tool_calls || message.tool_calls.length === 0) {
-        break;
-      }
-
-      // Execute tool calls
-      allToolCalls.push(...message.tool_calls);
-      apiMessages.push(message);
-
-      for (const toolCall of message.tool_calls) {
-        const result = await executeTool(openai, userId, toolCall);
-        apiMessages.push({
-          role: "tool",
-          tool_call_id: toolCall.id,
-          content: result
-        });
-      }
-
-      maxIterations--;
-    }
-
-    // Check if tool call loop exhausted iterations without completing
-    if (maxIterations === 0) {
-      console.warn("Tool call iteration limit reached before model returned a final response");
-      return Response.json(
-        { error: "Tool execution limit reached. Please try again." },
-        { status: 500 }
-      );
-    }
-
-    // Stream the final response
-    const stream = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: apiMessages,
-      tools,
-      stream: true
-    });
-
-    // Create a streaming response
+    // Create a streaming response that includes tool progress
     const encoder = new TextEncoder();
     let fullContent = "";
+    let allToolCalls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[] = [];
+
+    // Human-readable tool names for display
+    const TOOL_DISPLAY_NAMES: Record<string, string> = {
+      get_workout: "Fetching workout",
+      get_all_workouts: "Fetching all workouts",
+      update_workout: "Updating workout",
+      save_memory: "Saving to memory",
+      get_memories: "Retrieving memories",
+      delete_memory: "Deleting memory",
+      web_search: "Searching the web"
+    };
 
     const readableStream = new ReadableStream({
       async start(controller) {
         try {
           // Send session ID first
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "session", sessionId: chatSession })}\n\n`));
+
+          // Process tool calls with progress updates
+          let maxIterations = 5;
+
+          while (maxIterations > 0) {
+            const response = await openai.chat.completions.create({
+              model: "gpt-4o",
+              messages: apiMessages,
+              tools
+            });
+
+            const message = response.choices[0].message;
+
+            // No tool calls - ready to stream final response
+            if (!message.tool_calls || message.tool_calls.length === 0) {
+              break;
+            }
+
+            // Execute tool calls with progress updates
+            allToolCalls.push(...message.tool_calls);
+            apiMessages.push(message);
+
+            for (const toolCall of message.tool_calls) {
+              // Send tool progress event
+              const toolName = toolCall.function.name;
+              const displayName = TOOL_DISPLAY_NAMES[toolName] || toolName;
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "tool_start", tool: displayName })}\n\n`));
+
+              const result = await executeTool(openai, userId, toolCall);
+              apiMessages.push({
+                role: "tool",
+                tool_call_id: toolCall.id,
+                content: result
+              });
+
+              // Send tool complete event
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "tool_end", tool: displayName })}\n\n`));
+            }
+
+            maxIterations--;
+          }
+
+          // Check if tool call loop exhausted iterations without completing
+          if (maxIterations === 0) {
+            console.warn("Tool call iteration limit reached before model returned a final response");
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "error", message: "Tool execution limit reached" })}\n\n`));
+            controller.close();
+            return;
+          }
+
+          // Stream the final response
+          const stream = await openai.chat.completions.create({
+            model: "gpt-4o",
+            messages: apiMessages,
+            tools,
+            stream: true
+          });
 
           for await (const chunk of stream) {
             const delta = chunk.choices[0]?.delta;
@@ -427,8 +445,6 @@ ${memoryContext}${instructionSection}`;
 
             // Check for tool calls in stream (shouldn't happen after pre-processing, but handle it)
             if (delta?.tool_calls) {
-              // If we get tool calls in stream, we need to handle them
-              // For now, just note it - the pre-processing should catch most cases
               console.log("Unexpected tool call in stream");
             }
           }

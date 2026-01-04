@@ -35,6 +35,7 @@ export function ChatModal({
   const [showRatingButtons, setShowRatingButtons] = useState(false);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [awaitingRating, setAwaitingRating] = useState(false);
+  const [toolInProgress, setToolInProgress] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasAutoSentRef = useRef(false);
@@ -42,6 +43,7 @@ export function ChatModal({
   const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const streamReaderRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-scroll to bottom when messages change or streaming
   useEffect(() => {
@@ -222,6 +224,10 @@ export function ChatModal({
 
               if (data.type === 'session') {
                 setSessionId(data.sessionId);
+              } else if (data.type === 'tool_start') {
+                setToolInProgress(data.tool);
+              } else if (data.type === 'tool_end') {
+                setToolInProgress(null);
               } else if (data.type === 'content') {
                 fullContent += data.content;
                 setStreamingContent(fullContent);
@@ -233,6 +239,7 @@ export function ChatModal({
                   }]);
                 }
                 setStreamingContent('');
+                setToolInProgress(null);
               }
             } catch {
               // Ignore parse errors for malformed data
@@ -252,6 +259,7 @@ export function ChatModal({
         content: 'Sorry, I encountered an error. Please try again.'
       }]);
       setStreamingContent('');
+      setToolInProgress(null);
     } finally {
       setLoading(false);
     }
@@ -315,6 +323,10 @@ export function ChatModal({
 
               if (data.type === 'session') {
                 setSessionId(data.sessionId);
+              } else if (data.type === 'tool_start') {
+                setToolInProgress(data.tool);
+              } else if (data.type === 'tool_end') {
+                setToolInProgress(null);
               } else if (data.type === 'content') {
                 fullContent += data.content;
                 setStreamingContent(fullContent);
@@ -327,6 +339,7 @@ export function ChatModal({
                   }]);
                 }
                 setStreamingContent('');
+                setToolInProgress(null);
               }
             } catch {
               // Ignore parse errors for malformed data
@@ -348,6 +361,7 @@ export function ChatModal({
         content: 'Sorry, I encountered an error. Please try again.'
       }]);
       setStreamingContent('');
+      setToolInProgress(null);
     } finally {
       setLoading(false);
     }
@@ -359,6 +373,23 @@ export function ChatModal({
       handleSend();
     }
   };
+
+  // Auto-resize textarea
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+    // Reset height to auto to get the correct scrollHeight
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 150)}px`;
+    }
+  };
+
+  // Reset textarea height when input is cleared
+  useEffect(() => {
+    if (input === '' && textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
+  }, [input]);
 
   // Voice Recording
   const startRecording = useCallback(async () => {
@@ -573,8 +604,23 @@ export function ChatModal({
             </div>
           )}
 
-          {/* Loading indicator (shown before streaming starts) */}
-          {loading && !streamingContent && (
+          {/* Tool progress indicator */}
+          {toolInProgress && (
+            <div className="text-left">
+              <div className="inline-block rounded-lg px-4 py-2 bg-slate-800">
+                <div className="flex items-center gap-2 text-sm text-slate-300">
+                  <svg className="w-4 h-4 animate-spin text-emerald-400" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>{toolInProgress}...</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Loading indicator (shown before streaming starts, when no tool is running) */}
+          {loading && !streamingContent && !toolInProgress && (
             <div className="text-left">
               <div className="inline-block rounded-lg px-4 py-2 bg-slate-800">
                 <div className="flex space-x-2">
@@ -613,14 +659,17 @@ export function ChatModal({
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="p-4 border-t border-slate-700 flex gap-2">
-          <input
+        <div className="p-4 border-t border-slate-700 flex gap-2 items-end">
+          <textarea
+            ref={textareaRef}
             value={input}
-            onChange={e => setInput(e.target.value)}
+            onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             disabled={loading || isRecording || isTranscribing}
             placeholder={isRecording ? "Recording..." : isTranscribing ? "Transcribing..." : "Type a message..."}
-            className="flex-1 p-3 rounded bg-slate-800 text-white border border-slate-700 focus:border-emerald-500 outline-none disabled:opacity-50"
+            rows={1}
+            className="flex-1 p-3 rounded bg-slate-800 text-white border border-slate-700 focus:border-emerald-500 outline-none disabled:opacity-50 resize-none overflow-hidden"
+            style={{ minHeight: '48px', maxHeight: '150px' }}
           />
           <button
             onClick={isRecording ? stopRecording : startRecording}
