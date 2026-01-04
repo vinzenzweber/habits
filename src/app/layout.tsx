@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ChatButton } from "@/components/ChatButton";
+import { ChatProvider } from "@/contexts/ChatContext";
 import { auth } from "@/lib/auth";
 
 const geistSans = Geist({
@@ -47,8 +48,10 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-950 text-slate-100`}
       >
-        {children}
-        {session?.user && <ChatButton />}
+        <ChatProvider>
+          {children}
+          {session?.user && <ChatButton />}
+        </ChatProvider>
       </body>
     </html>
   );
