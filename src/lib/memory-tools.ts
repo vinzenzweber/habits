@@ -115,15 +115,19 @@ export async function deleteMemory(
 
 /**
  * Format memories as context string for the AI
+ * Excludes internal categories like 'feedback' which aren't user preferences
  */
 export function formatMemoriesAsContext(memories: UserMemory[]): string {
-  if (memories.length === 0) {
+  // Filter out non-preference categories
+  const preferenceMemories = memories.filter(m => m.category !== 'feedback');
+
+  if (preferenceMemories.length === 0) {
     return "No user information stored yet.";
   }
 
   const grouped: Record<string, string[]> = {};
 
-  for (const mem of memories) {
+  for (const mem of preferenceMemories) {
     if (!grouped[mem.category]) {
       grouped[mem.category] = [];
     }

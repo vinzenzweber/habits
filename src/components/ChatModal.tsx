@@ -55,6 +55,7 @@ export function ChatModal({
   const streamReaderRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const workoutUpdatedRef = useRef(false);
+  const pendingVoiceMessageRef = useRef<string | null>(null);
 
   // Auto-scroll to bottom when messages change or streaming
   useEffect(() => {
@@ -439,6 +440,17 @@ export function ChatModal({
     }
   }, [input]);
 
+  // Auto-send voice message after transcription completes
+  useEffect(() => {
+    if (!isTranscribing && pendingVoiceMessageRef.current && input === pendingVoiceMessageRef.current) {
+      const messageToSend = pendingVoiceMessageRef.current;
+      pendingVoiceMessageRef.current = null;
+      handleSend(messageToSend);
+    }
+    // Note: handleSend is intentionally excluded to prevent re-triggering on function recreation
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTranscribing, input]);
+
   // Voice Recording
   const startRecording = useCallback(async () => {
     try {
@@ -472,6 +484,8 @@ export function ChatModal({
             if (response.ok) {
               const data = await response.json();
               if (data.text) {
+                // Store text for auto-send after state updates
+                pendingVoiceMessageRef.current = data.text;
                 setInput(data.text);
               }
             } else {
@@ -722,7 +736,7 @@ export function ChatModal({
           <button
             onClick={isRecording ? stopRecording : startRecording}
             disabled={loading || isTranscribing}
-            className={`p-3 rounded transition ${
+            className={`px-4 py-3 rounded transition ${
               isRecording
                 ? 'bg-red-600 hover:bg-red-700 animate-pulse'
                 : isTranscribing
@@ -732,11 +746,11 @@ export function ChatModal({
             title={isRecording ? "Stop recording" : isTranscribing ? "Transcribing..." : "Voice input"}
           >
             {isTranscribing ? (
-              <span className="text-lg">⏳</span>
+              <span className="text-xl">⏳</span>
             ) : isRecording ? (
-              <span className="text-lg">⏹</span>
+              <span className="text-xl">⏹</span>
             ) : (
-              <span className="text-lg">🎤</span>
+              <span className="text-xl">🎤</span>
             )}
           </button>
           <button
