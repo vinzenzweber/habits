@@ -1,6 +1,6 @@
 # Pull Request Workflow
 
-Create a pull request with full review and testing cycle.
+Create a pull request with full review, testing, deployment, and verification cycle.
 
 ## Steps
 
@@ -43,9 +43,41 @@ For each issue found:
 ### 8. Iterate Until Complete
 - Repeat steps 5-7 until all review comments are resolved
 - Ensure all CI checks pass
-- Merge when approved
+
+### 9. Merge Pull Request
+Only merge when ALL conditions are met:
+- Local tests pass with Playwright
+- No unresolved review comments
+- No merge conflicts
+
+Merge command: `gh pr merge <pr-number> --squash --delete-branch`
+
+### 10. Wait for Railway Deployment
+- Railway auto-deploys on merge to main
+- Monitor deployment status: `railway logs --latest`
+- Wait for deployment to complete successfully
+
+### 11. Check Railway Logs
+- Check deploy logs for build errors: `railway logs`
+- Check application logs for runtime errors
+- Look for startup issues, database connection problems, etc.
+
+### 12. Fix Deployment Issues (if any)
+If deployment fails or logs show errors:
+1. Identify the root cause from logs
+2. Create a hotfix on a new branch
+3. Test the fix locally
+4. Fast-track PR and merge
+5. Re-verify deployment
+
+### 13. Verify Production with Playwright
+- Navigate to production URL with Playwright MCP
+- Test all affected user flows on live site
+- Verify the feature works as expected in production
+- Check for any console errors or visual regressions
 
 ## Notes
 - Always test locally before pushing fixes
 - Keep commits atomic and well-described
 - Respond to review comments with explanations when needed
+- Production URL: https://habits-production.up.railway.app (or configured domain)
