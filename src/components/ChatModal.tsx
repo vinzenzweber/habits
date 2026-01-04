@@ -6,6 +6,12 @@ interface Message {
   content: string;
 }
 
+interface PageContext {
+  page: string;
+  workoutSlug?: string;
+  workoutTitle?: string;
+}
+
 interface ChatModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -13,6 +19,7 @@ interface ChatModalProps {
   autoSend?: boolean;
   completionId?: number | null;
   onInitialStateConsumed?: () => void;
+  pageContext?: PageContext;
 }
 
 export function ChatModal({
@@ -21,7 +28,8 @@ export function ChatModal({
   initialMessage,
   autoSend,
   completionId,
-  onInitialStateConsumed
+  onInitialStateConsumed,
+  pageContext
 }: ChatModalProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -190,7 +198,8 @@ export function ChatModal({
         body: JSON.stringify({
           messages: [],
           sessionId,
-          systemInstruction: instruction
+          systemInstruction: instruction,
+          pageContext
         })
       });
 
@@ -287,7 +296,8 @@ export function ChatModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [...messages, userMessage],
-          sessionId
+          sessionId,
+          pageContext
         })
       });
 

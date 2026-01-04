@@ -360,7 +360,7 @@ export async function POST(request: Request) {
 
   try {
     const userId = session.user.id;
-    const { messages, sessionId, systemInstruction } = await request.json();
+    const { messages, sessionId, systemInstruction, pageContext } = await request.json();
 
     if (!messages || !Array.isArray(messages)) {
       return Response.json({ error: "Invalid messages" }, { status: 400 });
@@ -401,12 +401,24 @@ export async function POST(request: Request) {
       ? `\n\n**Current Task (hidden from user):**\n${systemInstruction}`
       : '';
 
+    // Add page context if provided
+    let pageContextSection = '';
+    if (pageContext) {
+      if (pageContext.page === 'workout' && pageContext.workoutSlug) {
+        pageContextSection = `\n\n**Current Screen:**\nThe user is viewing the ${pageContext.workoutTitle || pageContext.workoutSlug} workout page. When they reference "this workout" or specific exercises, they mean this workout. You can use get_workout with slug "${pageContext.workoutSlug}" to see the full details.`;
+      } else if (pageContext.page === 'home') {
+        pageContextSection = `\n\n**Current Screen:**\nThe user is on the home page viewing their weekly workout schedule.`;
+      } else if (pageContext.page === 'player' && pageContext.workoutSlug) {
+        pageContextSection = `\n\n**Current Screen:**\nThe user is currently doing the ${pageContext.workoutTitle || pageContext.workoutSlug} workout in the guided player.`;
+      }
+    }
+
     const systemPrompt = `${PERSONAL_TRAINER_PROMPT}
 
 **Current Date:** ${dateStr}
 
 **User Profile (from memory):**
-${memoryContext}${instructionSection}`;
+${memoryContext}${pageContextSection}${instructionSection}`;
 
     const apiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
       { role: "system", content: systemPrompt },

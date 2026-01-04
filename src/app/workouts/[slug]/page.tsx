@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { getWorkoutBySlug, getTodayCompletions, getTodaySlug } from "@/lib/workoutPlan";
+import { PageContextSetter } from "@/components/PageContextSetter";
 
 export const dynamic = "force-dynamic";
 
@@ -77,9 +78,15 @@ export default async function WorkoutDetailPage({ params }: WorkoutPageProps) {
   const groupedSegments = groupSegments(workout.segments);
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="mx-auto flex max-w-3xl flex-col gap-8 px-5 pb-16 pt-12 sm:px-8">
-        <header className="flex flex-col gap-6">
+    <>
+      <PageContextSetter
+        page="workout"
+        workoutSlug={workout.slug}
+        workoutTitle={`${workout.label} - ${workout.title}`}
+      />
+      <main className="min-h-screen bg-slate-950 text-slate-100">
+        <div className="mx-auto flex max-w-3xl flex-col gap-8 px-5 pb-16 pt-12 sm:px-8">
+          <header className="flex flex-col gap-6">
           <div className="flex items-center justify-between">
             <Link
               href="/"
@@ -168,7 +175,8 @@ export default async function WorkoutDetailPage({ params }: WorkoutPageProps) {
             ))}
           </div>
         </section>
-      </div>
-    </main>
+        </div>
+      </main>
+    </>
   );
 }

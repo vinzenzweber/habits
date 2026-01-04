@@ -11,7 +11,8 @@ export function ChatButton() {
     initialMessage,
     autoSend,
     completionId,
-    clearMessageState
+    clearMessageState,
+    pageContext
   } = useChat();
 
   return (
@@ -30,6 +31,7 @@ export function ChatButton() {
         autoSend={autoSend}
         completionId={completionId}
         onInitialStateConsumed={clearMessageState}
+        pageContext={pageContext ?? undefined}
       />
     </>
   );

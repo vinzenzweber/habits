@@ -8,6 +8,12 @@ interface ChatOpenOptions {
   completionId?: number;
 }
 
+interface PageContext {
+  page: string;
+  workoutSlug?: string;
+  workoutTitle?: string;
+}
+
 interface ChatContextType {
   isOpen: boolean;
   openChat: (options?: ChatOpenOptions) => void;
@@ -16,6 +22,8 @@ interface ChatContextType {
   autoSend: boolean;
   completionId: number | null;
   clearMessageState: () => void;
+  pageContext: PageContext | null;
+  setPageContext: (context: PageContext | null) => void;
 }
 
 const ChatContext = createContext<ChatContextType | null>(null);
@@ -25,6 +33,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [initialMessage, setInitialMessage] = useState<string | null>(null);
   const [autoSend, setAutoSend] = useState(false);
   const [completionId, setCompletionId] = useState<number | null>(null);
+  const [pageContext, setPageContext] = useState<PageContext | null>(null);
 
   const openChat = useCallback((options?: ChatOpenOptions) => {
     setInitialMessage(options?.initialMessage ?? null);
@@ -53,7 +62,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       initialMessage,
       autoSend,
       completionId,
-      clearMessageState
+      clearMessageState,
+      pageContext,
+      setPageContext
     }}>
       {children}
     </ChatContext.Provider>
