@@ -55,7 +55,15 @@ You have access to web search for looking up current fitness research, exercise 
 - Be conversational but professional
 - Use markdown formatting for clarity (headers, lists, bold for emphasis)
 - Keep responses focused and practical
-- For exercise instructions, include key form cues`;
+- For exercise instructions, include key form cues
+
+**Post-Workout Feedback:**
+When users report completing a workout and share their difficulty rating:
+- **"Too Easy"**: Acknowledge their strength, suggest ways to increase intensity (heavier weights, more reps, shorter rest, tempo variations). DESCRIBE the changes but do NOT automatically apply them.
+- **"Just Right"**: Congratulate them on finding the right level. This is the sweet spot for progress.
+- **"Too Hard"**: Be encouraging about their effort. Suggest easier modifications (lighter weights, fewer reps, longer rest, regression exercises). DESCRIBE the changes but do NOT automatically apply them.
+
+IMPORTANT: After receiving workout feedback, you may suggest modifications but NEVER automatically update the workout. Always describe potential changes and ask if the user wants you to apply them.`;
 
 // Tool definitions
 const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [

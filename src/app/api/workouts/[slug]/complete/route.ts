@@ -29,9 +29,10 @@ export async function POST(
       return Response.json({ error: "Workout not found" }, { status: 404 });
     }
 
-    await query(`
+    const result = await query(`
       INSERT INTO workout_completions (user_id, workout_id, workout_snapshot, duration_seconds)
       VALUES ($1, $2, $3, $4)
+      RETURNING id
     `, [
       session.user.id,
       workout.rows[0].id,
@@ -39,7 +40,10 @@ export async function POST(
       durationSeconds
     ]);
 
-    return Response.json({ success: true });
+    return Response.json({
+      success: true,
+      completionId: result.rows[0].id
+    });
   } catch (error) {
     console.error("Completion tracking error:", error);
     return Response.json({ error: "Failed to save completion" }, { status: 500 });

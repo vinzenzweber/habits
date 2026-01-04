@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+
+import { useChat } from "@/contexts/ChatContext";
+import { Confetti } from "./Confetti";
 
 import type {
   RoutineSegment,
@@ -45,6 +48,7 @@ function sumDuration(segments: RoutineSegment[], endIndex: number) {
 export function GuidedRoutinePlayer({
   workout,
 }: GuidedRoutinePlayerProps) {
+  const { openChat } = useChat();
   const segments = useMemo(() => workout.segments ?? [], [workout.segments]);
   const totalSeconds = useMemo(() => workout.totalSeconds ?? 0, [workout.totalSeconds]);
   const routineTitle = workout.title;
@@ -57,9 +61,12 @@ export function GuidedRoutinePlayer({
   );
   const [isRunning, setIsRunning] = useState(true);
   const [hasFinished, setHasFinished] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [completionId, setCompletionId] = useState<number | null>(null);
   const countdownAudioRef = useRef<HTMLAudioElement | null>(null);
   const segmentBeepPlayedRef = useRef(false);
   const startTimeRef = useRef(Date.now());
+  const hasTrackedCompletionRef = useRef(false);
 
   useEffect(() => {
     const audio = new Audio("/short-beep-countdown-81121.mp3");
@@ -67,18 +74,38 @@ export function GuidedRoutinePlayer({
     countdownAudioRef.current = audio;
   }, []);
 
-  // Track workout completion
+  // Track workout completion and trigger confetti
   useEffect(() => {
-    if (hasFinished && workout.slug) {
+    if (hasFinished && workout.slug && !hasTrackedCompletionRef.current) {
+      hasTrackedCompletionRef.current = true;
       const actualDuration = Math.floor((Date.now() - startTimeRef.current) / 1000);
 
       fetch(`/api/workouts/${workout.slug}/complete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ durationSeconds: actualDuration })
-      }).catch(console.error);
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.completionId) {
+            setCompletionId(data.completionId);
+          }
+          // Trigger confetti animation
+          setShowConfetti(true);
+        })
+        .catch(console.error);
     }
   }, [hasFinished, workout.slug]);
+
+  // Handle confetti completion - open chat modal
+  const handleConfettiComplete = useCallback(() => {
+    setShowConfetti(false);
+    openChat({
+      initialMessage: `I just completed the ${workout.title} workout! Congratulate me briefly and ask how the difficulty felt. After I respond, you may suggest modifications if appropriate but do NOT automatically apply any changes.`,
+      autoSend: true,
+      completionId: completionId ?? undefined
+    });
+  }, [openChat, workout.title, completionId]);
 
   useEffect(() => {
     if (!hasRoutine || !isRunning || hasFinished) {
@@ -211,7 +238,11 @@ export function GuidedRoutinePlayer({
     setCurrentIndex(0);
     setRemainingSeconds(segments[0]?.durationSeconds ?? 0);
     setHasFinished(false);
+    setShowConfetti(false);
+    setCompletionId(null);
     segmentBeepPlayedRef.current = false;
+    hasTrackedCompletionRef.current = false;
+    startTimeRef.current = Date.now();
     setIsRunning(true);
   };
 
@@ -389,5 +420,10 @@ export function GuidedRoutinePlayer({
     </div>
   );
 
-  return content;
+  return (
+    <>
+      {content}
+      <Confetti trigger={showConfetti} onComplete={handleConfettiComplete} />
+    </>
+  );
 }

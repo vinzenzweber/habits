@@ -1,20 +1,36 @@
 'use client';
-import { useState } from 'react';
+
+import { useChat } from '@/contexts/ChatContext';
 import { ChatModal } from './ChatModal';
 
 export function ChatButton() {
-  const [isOpen, setIsOpen] = useState(false);
+  const {
+    isOpen,
+    openChat,
+    closeChat,
+    initialMessage,
+    autoSend,
+    completionId,
+    clearInitialState
+  } = useChat();
 
   return (
     <>
       <button
-        onClick={() => setIsOpen(true)}
+        onClick={() => openChat()}
         className="fixed bottom-6 right-6 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full w-14 h-14 shadow-lg flex items-center justify-center z-40 transition"
         aria-label="Personal Trainer"
       >
         <span className="text-2xl">💬</span>
       </button>
-      <ChatModal isOpen={isOpen} onClose={() => setIsOpen(false)} />
+      <ChatModal
+        isOpen={isOpen}
+        onClose={closeChat}
+        initialMessage={initialMessage}
+        autoSend={autoSend}
+        completionId={completionId}
+        onInitialStateConsumed={clearInitialState}
+      />
     </>
   );
 }

@@ -9,9 +9,20 @@ interface Message {
 interface ChatModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialMessage?: string | null;
+  autoSend?: boolean;
+  completionId?: number | null;
+  onInitialStateConsumed?: () => void;
 }
 
-export function ChatModal({ isOpen, onClose }: ChatModalProps) {
+export function ChatModal({
+  isOpen,
+  onClose,
+  initialMessage,
+  autoSend,
+  completionId,
+  onInitialStateConsumed
+}: ChatModalProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [sessionId, setSessionId] = useState<number | null>(null);
@@ -21,8 +32,11 @@ export function ChatModal({ isOpen, onClose }: ChatModalProps) {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
+  const [showRatingButtons, setShowRatingButtons] = useState(false);
+  const [ratingSubmitted, setRatingSubmitted] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const hasAutoSentRef = useRef(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -46,6 +60,62 @@ export function ChatModal({ isOpen, onClose }: ChatModalProps) {
       }
     };
   }, []);
+
+  // Auto-send initial message when modal opens with autoSend
+  useEffect(() => {
+    if (isOpen && initialMessage && autoSend && !hasAutoSentRef.current && messages.length === 0) {
+      hasAutoSentRef.current = true;
+      handleSend(initialMessage);
+      onInitialStateConsumed?.();
+    }
+  }, [isOpen, initialMessage, autoSend, messages.length, onInitialStateConsumed]);
+
+  // Reset auto-send tracking when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      hasAutoSentRef.current = false;
+      setShowRatingButtons(false);
+      setRatingSubmitted(false);
+    }
+  }, [isOpen]);
+
+  // Show rating buttons after AI responds to workout completion
+  useEffect(() => {
+    if (completionId && messages.length >= 2 && !ratingSubmitted && !showRatingButtons && !loading) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.role === 'assistant') {
+        setShowRatingButtons(true);
+      }
+    }
+  }, [messages, completionId, ratingSubmitted, showRatingButtons, loading]);
+
+  // Handle rating button click
+  const handleRatingClick = async (rating: 'too_easy' | 'just_right' | 'too_hard') => {
+    setShowRatingButtons(false);
+    setRatingSubmitted(true);
+
+    // Save rating to database
+    if (completionId) {
+      try {
+        await fetch(`/api/completions/${completionId}/feedback`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ difficulty_rating: rating })
+        });
+      } catch (error) {
+        console.error('Failed to save rating:', error);
+      }
+    }
+
+    // Send rating as chat message
+    const ratingText = {
+      too_easy: "That workout felt too easy for me.",
+      just_right: "That workout was just right - good challenge!",
+      too_hard: "That workout was too hard for me."
+    };
+
+    handleSend(ratingText[rating]);
+  };
 
   // Sanitize HTML to prevent XSS
   const sanitizeHtml = (text: string) => {
@@ -408,6 +478,31 @@ export function ChatModal({ isOpen, onClose }: ChatModalProps) {
               </div>
             </div>
           )}
+
+          {/* Rating buttons for workout completion feedback */}
+          {showRatingButtons && !ratingSubmitted && (
+            <div className="flex justify-center gap-2 py-4">
+              <button
+                onClick={() => handleRatingClick('too_easy')}
+                className="px-4 py-2 bg-sky-600 hover:bg-sky-700 rounded-lg text-sm font-medium transition"
+              >
+                Too Easy
+              </button>
+              <button
+                onClick={() => handleRatingClick('just_right')}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-medium transition"
+              >
+                Just Right
+              </button>
+              <button
+                onClick={() => handleRatingClick('too_hard')}
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 rounded-lg text-sm font-medium transition"
+              >
+                Too Hard
+              </button>
+            </div>
+          )}
+
           <div ref={messagesEndRef} />
         </div>
 
