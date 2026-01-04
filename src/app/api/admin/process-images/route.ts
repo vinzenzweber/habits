@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { processImageGenerationJob, processBatchJobs } from '@/lib/image-generation';
+import { processBatchJobs } from '@/lib/image-generation';
 import { getJobStats, retryFailedJobs, resetStuckJobs } from '@/lib/job-queue';
 
 export const runtime = 'nodejs';

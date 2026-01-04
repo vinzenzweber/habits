@@ -42,16 +42,38 @@ export interface ExerciseSearchResult {
 
 export type ExerciseCategory = 'warmup' | 'main' | 'hiit' | 'recovery';
 
+const MAX_EXERCISE_NAME_LENGTH = 255;
+
 /**
  * Normalize exercise name for consistent lookup
  * Converts to lowercase, removes special chars, replaces spaces with hyphens
  */
 export function normalizeExerciseName(name: string): string {
-  return name
+  const normalized = name
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, '')
     .replace(/\s+/g, '-')
     .trim();
+
+  // Enforce database VARCHAR(255) limit
+  if (normalized.length > MAX_EXERCISE_NAME_LENGTH) {
+    return normalized.substring(0, MAX_EXERCISE_NAME_LENGTH);
+  }
+
+  return normalized;
+}
+
+/**
+ * Validate exercise name length
+ */
+export function validateExerciseName(name: string): { valid: boolean; error?: string } {
+  if (!name || name.trim().length === 0) {
+    return { valid: false, error: 'Exercise name is required' };
+  }
+  if (name.length > MAX_EXERCISE_NAME_LENGTH) {
+    return { valid: false, error: `Exercise name must be ${MAX_EXERCISE_NAME_LENGTH} characters or less` };
+  }
+  return { valid: true };
 }
 
 /**

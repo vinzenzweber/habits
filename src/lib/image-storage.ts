@@ -30,6 +30,16 @@ export async function saveExerciseImage(
   imageIndex: 1 | 2,
   imageBuffer: Buffer
 ): Promise<ImageStorageResult> {
+  // Runtime validation to ensure imageIndex is strictly 1 or 2
+  if (imageIndex !== 1 && imageIndex !== 2) {
+    throw new Error(`Invalid imageIndex "${imageIndex}". Expected 1 or 2.`);
+  }
+
+  // Validate normalizedName doesn't contain path traversal
+  if (normalizedName.includes('..') || path.isAbsolute(normalizedName)) {
+    throw new Error('Invalid normalizedName: path traversal detected');
+  }
+
   const dir = path.join(STORAGE_BASE, normalizedName);
   await ensureStorageDir(dir);
 
@@ -56,6 +66,11 @@ export function getImagePath(storagePath: string): string {
  * Read an exercise image from storage
  */
 export async function readExerciseImage(storagePath: string): Promise<Buffer> {
+  // Validate storagePath doesn't contain path traversal
+  if (storagePath.includes('..') || path.isAbsolute(storagePath)) {
+    throw new Error('Invalid storagePath: path traversal detected');
+  }
+
   const fullPath = getImagePath(storagePath);
   return fs.readFile(fullPath);
 }

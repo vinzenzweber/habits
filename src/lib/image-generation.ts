@@ -138,24 +138,31 @@ export async function processImageGenerationJob(): Promise<boolean> {
 
     // Step 2: Generate and save both images
     for (const imageIndex of [1, 2] as const) {
-      // Check if image already exists and is complete
-      const existing = await query(
-        `SELECT id FROM exercise_images
-         WHERE exercise_id = $1 AND image_index = $2 AND generation_status = 'complete'`,
-        [job.exerciseId, imageIndex]
+      // Atomically claim this image index for generation.
+      // If a row already exists (either complete or in-progress), this will do nothing.
+      const claimResult = await query(
+        `INSERT INTO exercise_images (exercise_id, image_index, storage_path, generation_status, style_prompt)
+         VALUES ($1, $2, '', 'generating', $3)
+         ON CONFLICT (exercise_id, image_index) DO NOTHING
+         RETURNING id`,
+        [job.exerciseId, imageIndex, STYLE_PROMPT]
       );
 
-      if (existing.rows.length > 0) {
-        console.log(`Image ${imageIndex} already exists for ${exercise.name}, skipping`);
+      if (claimResult.rows.length === 0) {
+        // Row already exists - check if it's complete or still in progress
+        const existing = await query(
+          `SELECT generation_status FROM exercise_images
+           WHERE exercise_id = $1 AND image_index = $2`,
+          [job.exerciseId, imageIndex]
+        );
+
+        if (existing.rows[0]?.generation_status === 'complete') {
+          console.log(`Image ${imageIndex} already complete for ${exercise.name}, skipping`);
+        } else {
+          console.log(`Image ${imageIndex} already being handled for ${exercise.name}, skipping`);
+        }
         continue;
       }
-
-      // Mark as generating
-      await upsertExerciseImage(job.exerciseId, imageIndex, {
-        storagePath: '',
-        generationStatus: 'generating',
-        stylePrompt: STYLE_PROMPT
-      });
 
       console.log(`Generating image ${imageIndex} for ${exercise.name}...`);
 

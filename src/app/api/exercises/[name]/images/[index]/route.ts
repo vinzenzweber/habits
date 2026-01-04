@@ -41,8 +41,41 @@ export async function GET(
     return new Response('Image not found', { status: 404 });
   }
 
+  // Image exists but generation is not complete; return appropriate status
   if (image.generationStatus !== 'complete') {
-    return new Response(`Image generation ${image.generationStatus}`, { status: 404 });
+    const status = image.generationStatus;
+
+    if (status === 'pending' || status === 'generating') {
+      // Indicate that the image is not yet ready and suggest when to retry
+      return new Response(
+        JSON.stringify({
+          error: 'Image generation in progress',
+          status,
+        }),
+        {
+          status: 503,
+          headers: {
+            'Content-Type': 'application/json',
+            // Hint client to retry after a short delay
+            'Retry-After': '10',
+          },
+        }
+      );
+    }
+
+    // For failed or unknown non-complete states, surface as a server error
+    return new Response(
+      JSON.stringify({
+        error: 'Image generation failed',
+        status,
+      }),
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
   }
 
   try {
