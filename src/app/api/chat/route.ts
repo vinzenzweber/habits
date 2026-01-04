@@ -488,11 +488,10 @@ ${memoryContext}${instructionSection}`;
             return;
           }
 
-          // Stream the final response
+          // Stream the final response (without tools - all tool calls already processed)
           const stream = await openai.chat.completions.create({
             model: "gpt-4o",
             messages: apiMessages,
-            tools,
             stream: true
           });
 
@@ -502,11 +501,6 @@ ${memoryContext}${instructionSection}`;
             if (delta?.content) {
               fullContent += delta.content;
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "content", content: delta.content })}\n\n`));
-            }
-
-            // Check for tool calls in stream (shouldn't happen after pre-processing, but handle it)
-            if (delta?.tool_calls) {
-              console.log("Unexpected tool call in stream");
             }
           }
 
