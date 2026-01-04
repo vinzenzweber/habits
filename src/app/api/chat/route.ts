@@ -303,7 +303,7 @@ export async function POST(request: Request) {
 
   try {
     const userId = session.user.id;
-    const { messages, sessionId } = await request.json();
+    const { messages, sessionId, systemInstruction } = await request.json();
 
     if (!messages || !Array.isArray(messages)) {
       return Response.json({ error: "Invalid messages" }, { status: 400 });
@@ -320,9 +320,9 @@ export async function POST(request: Request) {
       chatSession = result.rows[0].id;
     }
 
-    // Save user message
+    // Save user message (skip if this is a hidden system instruction)
     const latestUserMessage = messages[messages.length - 1];
-    if (latestUserMessage && latestUserMessage.role === 'user') {
+    if (latestUserMessage && latestUserMessage.role === 'user' && !systemInstruction) {
       await query(`
         INSERT INTO chat_messages (session_id, role, content, tool_calls)
         VALUES ($1, $2, $3, NULL)
@@ -339,12 +339,17 @@ export async function POST(request: Request) {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
     });
 
+    // Add hidden system instruction if provided (e.g., post-workout congratulations)
+    const instructionSection = systemInstruction
+      ? `\n\n**Current Task (hidden from user):**\n${systemInstruction}`
+      : '';
+
     const systemPrompt = `${PERSONAL_TRAINER_PROMPT}
 
 **Current Date:** ${dateStr}
 
 **User Profile (from memory):**
-${memoryContext}`;
+${memoryContext}${instructionSection}`;
 
     const apiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
       { role: "system", content: systemPrompt },

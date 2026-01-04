@@ -269,10 +269,10 @@ export function GuidedRoutinePlayer({
       <div className="absolute inset-x-0 top-0 z-10 h-44 bg-gradient-to-b from-slate-950 via-slate-950/90 to-transparent" />
       <header className="relative z-20 flex items-center justify-between gap-3 px-5 pt-6">
         <Link
-          href="/"
+          href={`/workouts/${workout.slug}`}
           className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white transition hover:border-emerald-300 hover:text-emerald-200"
         >
-          Home
+          ← Back
         </Link>
         <div className="text-center text-[11px] font-semibold uppercase tracking-[0.35em] text-emerald-200">
           {workout.label} · Guided Timer
