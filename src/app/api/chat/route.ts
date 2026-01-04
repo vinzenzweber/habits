@@ -10,6 +10,7 @@ import {
   MEMORY_CATEGORIES,
   type MemoryCategory
 } from "@/lib/memory-tools";
+import { createFeedbackIssue } from "@/lib/github-tools";
 
 export const runtime = 'nodejs';
 
@@ -63,7 +64,28 @@ When users report completing a workout and share their difficulty rating:
 - **"Just Right"**: Congratulate them on finding the right level. This is the sweet spot for progress.
 - **"Too Hard"**: Be encouraging about their effort. Suggest easier modifications (lighter weights, fewer reps, longer rest, regression exercises). DESCRIBE the changes but do NOT automatically apply them.
 
-IMPORTANT: After receiving workout feedback, you may suggest modifications but NEVER automatically update the workout. Always describe potential changes and ask if the user wants you to apply them.`;
+IMPORTANT: After receiving workout feedback, you may suggest modifications but NEVER automatically update the workout. Always describe potential changes and ask if the user wants you to apply them.
+
+**App Feedback Detection:**
+When users mention issues, suggestions, or feedback about THE APP ITSELF (not fitness-related):
+1. Recognize this as product feedback (bugs, feature requests, UI issues, etc.)
+2. Ask 1-2 clarifying questions to understand what happened and what they expected
+3. Once you have enough context, save a summary to memory using save_memory with category "feedback"
+4. Use create_feedback_issue tool to record the feedback (don't mention GitHub to the user)
+5. Simply confirm: "Thanks for the feedback! I've recorded it."
+
+**APP feedback examples (trigger this flow):**
+- "The timer keeps resetting when I switch apps"
+- "Can you add Apple Watch support?"
+- "The workout player is hard to read in sunlight"
+- "I wish I could reorder the exercises"
+
+**FITNESS feedback examples (do NOT trigger - handle normally):**
+- "This workout was too hard"
+- "I didn't like the goblet squats"
+- "The rest periods feel too short"
+- "Can we do more upper body work?"`;
+
 
 // Tool definitions
 const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
@@ -224,6 +246,32 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         required: ["query"]
       }
     }
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_feedback_issue",
+      description: "Create a GitHub issue for app/product feedback. Use this ONLY for feedback about the app itself (bugs, feature requests, UI issues), NOT for fitness-related feedback.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: {
+            type: "string",
+            description: "Brief title summarizing the feedback"
+          },
+          description: {
+            type: "string",
+            description: "Detailed description of the feedback, including context gathered from the user"
+          },
+          feedbackType: {
+            type: "string",
+            enum: ["bug", "feature", "improvement", "question"],
+            description: "Type of feedback: bug (something broken), feature (new capability), improvement (enhance existing), question (need clarification)"
+          }
+        },
+        required: ["title", "description", "feedbackType"]
+      }
+    }
   }
 ];
 
@@ -286,6 +334,15 @@ async function executeTool(
       } catch {
         result = { error: "Web search failed", query: args.query };
       }
+      break;
+
+    case "create_feedback_issue":
+      result = await createFeedbackIssue(
+        userId,
+        args.title,
+        args.description,
+        args.feedbackType
+      );
       break;
 
     default:
@@ -369,7 +426,8 @@ ${memoryContext}${instructionSection}`;
       save_memory: "Saving to memory",
       get_memories: "Retrieving memories",
       delete_memory: "Deleting memory",
-      web_search: "Searching the web"
+      web_search: "Searching the web",
+      create_feedback_issue: "Recording feedback"
     };
 
     const readableStream = new ReadableStream({
@@ -400,6 +458,9 @@ ${memoryContext}${instructionSection}`;
             apiMessages.push(message);
 
             for (const toolCall of message.tool_calls) {
+              // Only handle function tool calls
+              if (toolCall.type !== 'function') continue;
+
               // Send tool progress event
               const toolName = toolCall.function.name;
               const displayName = TOOL_DISPLAY_NAMES[toolName] || toolName;

@@ -9,6 +9,7 @@ export const MEMORY_CATEGORIES = [
   'experience',   // Training experience level, sports background
   'schedule',     // Available training days/times, constraints
   'measurements', // Body measurements, weight, PRs
+  'feedback',     // App feedback and feature requests
 ] as const;
 
 export type MemoryCategory = typeof MEMORY_CATEGORIES[number];
