@@ -569,7 +569,7 @@ export function ChatModal({
 
           {messages.map((msg, i) => (
             <div key={i} className={msg.role === 'user' ? 'text-right' : 'text-left'}>
-              <div className={`inline-block rounded-lg px-4 py-2 max-w-[80%] ${
+              <div className={`inline-block rounded-lg px-4 py-2 max-w-[80%] text-left ${
                 msg.role === 'user' ? 'bg-emerald-600' : 'bg-slate-800'
               }`}>
                 {msg.role === 'user' ? (
