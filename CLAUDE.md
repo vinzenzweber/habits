@@ -145,9 +145,13 @@ Uses PostgreSQL with the following tables:
 - `chat_sessions` - AI chat sessions
 - `chat_messages` - Chat message history
 - `user_memories` - Personal trainer memory (equipment, goals, medical, preferences)
+- `exercises` - Global exercise library with metadata
+- `exercise_images` - AI-generated exercise illustrations (2 per exercise)
+- `image_generation_jobs` - Background job queue for image generation
 - `_migrations` - Migration tracking
 
 All workout and chat data is scoped per user (user_id foreign key).
+Exercise library is global (shared across all users).
 
 ## Environment Variables
 
@@ -157,6 +161,12 @@ DATABASE_URL=postgresql://user:pass@localhost:5432/habits
 OPENAI_API_KEY=sk-...
 NEXTAUTH_SECRET=generate-with-openssl-rand-base64-32
 NEXTAUTH_URL=http://localhost:3000
+```
+
+For exercise image generation:
+```bash
+IMAGE_STORAGE_PATH=/data/images          # Railway volume mount path
+ADMIN_API_TOKEN=generate-with-openssl-rand-base64-32  # Protects admin endpoints
 ```
 
 ## AI Personal Trainer
@@ -173,6 +183,9 @@ The chat functions as a personal fitness trainer with:
 - `get_workout` / `update_workout` - View and modify workout plans
 - `save_memory` / `get_memories` / `delete_memory` - Remember user info
 - `web_search` - Search for current fitness research
+- `search_exercises` - Find exercises in library (prefer ones with images ready)
+- `create_exercise` - Add new exercise (auto-queues image generation)
+- `get_exercise_images` - Check image generation status
 
 **Voice Features:**
 - Speech-to-text input via `gpt-4o-mini-transcribe` with fitness terminology prompt
@@ -182,3 +195,83 @@ The chat functions as a personal fitness trainer with:
 - OpenAI GPT-4o with function calling (SDK v6.15.0)
 - Chat UI accessible via floating button (💬) on all pages
 - Workout modifications are versioned in database
+
+## Exercise Images
+
+Each exercise has 2 AI-generated illustration images (start position and end position) stored in a global library shared across all users.
+
+### Architecture
+
+```
+exercises table → exercise_images table → Railway volume (/data/images)
+                         ↑
+              image_generation_jobs (background queue)
+```
+
+### Image Generation Pipeline
+
+1. Exercise added to library (via seed script or AI chat)
+2. Job queued in `image_generation_jobs` table
+3. Worker processes job: web search → gpt-image-1 generation → save to volume
+4. Images served via `/api/exercises/[name]/images/[1|2]`
+
+### Commands
+
+```bash
+npm run db:seed-exercises  # Seed 50 exercises from EXERCISE_DESCRIPTIONS
+```
+
+### Processing Pending Images
+
+#### Option 1: Railway Cron Service
+
+Create a separate Railway service that runs on a schedule:
+
+1. In Railway dashboard, create a new service in your project
+2. Use the same Docker image but with a different start command:
+   ```bash
+   while true; do
+     curl -X POST http://localhost:3000/api/admin/process-images \
+       -H "Authorization: Bearer $ADMIN_API_TOKEN" \
+       -H "Content-Type: application/json" \
+       -d '{"maxJobs": 1}';
+     sleep 30;
+   done
+   ```
+3. Or use Railway's cron feature (if available) to hit the endpoint every minute
+
+#### Option 2: Manual Processing (Local Development)
+
+Process images on-demand using curl:
+
+```bash
+# Process 1 image
+curl -X POST http://localhost:3000/api/admin/process-images \
+  -H "Authorization: Bearer YOUR_ADMIN_API_TOKEN" \
+  -H "Content-Type: application/json"
+
+# Process up to 5 images at once
+curl -X POST http://localhost:3000/api/admin/process-images \
+  -H "Authorization: Bearer YOUR_ADMIN_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"maxJobs": 5}'
+
+# Check queue status
+curl http://localhost:3000/api/admin/process-images \
+  -H "Authorization: Bearer YOUR_ADMIN_API_TOKEN"
+
+# Retry failed jobs and reset stuck jobs
+curl -X POST http://localhost:3000/api/admin/process-images \
+  -H "Authorization: Bearer YOUR_ADMIN_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"maxJobs": 5, "retryFailed": true, "resetStuck": true}'
+```
+
+Each image takes ~30 seconds to generate. For 50 exercises (100 images), expect ~50 minutes total processing time.
+
+### UI Integration
+
+- `ExerciseImages` component displays images with position toggle (1/2)
+- Integrated in workout detail page and guided player
+- Images hidden for `prep` and `rest` segments
+- Gracefully handles missing images (no broken UI)

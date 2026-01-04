@@ -8,3 +8,8 @@ builder = "DOCKERFILE"
 startCommand = "npm run start"
 healthcheckPath = "/"
 healthcheckTimeout = 30
+
+# Volume for storing exercise images
+[[volumes]]
+name = "exercise-images"
+mount = "/data/images"

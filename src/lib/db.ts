@@ -31,9 +31,12 @@ function getPool() {
   return pool;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type QueryParam = string | number | boolean | null | string[] | number[] | any;
+
 export async function query<T extends QueryResultRow = QueryResultRow>(
   text: string,
-  params: Array<string | number | null> = []
+  params: QueryParam[] = []
 ) {
   const client = await getPool().connect();
   try {
