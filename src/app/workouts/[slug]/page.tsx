@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { getWorkoutBySlug, getTodayCompletions, getTodaySlug } from "@/lib/workoutPlan";
 import { PageContextSetter } from "@/components/PageContextSetter";
+import { ExerciseImages } from "@/components/ExerciseImages";
 
 export const dynamic = "force-dynamic";
 
@@ -148,28 +149,39 @@ export default async function WorkoutDetailPage({ params }: WorkoutPageProps) {
                   </p>
                 </div>
                 <ol className="divide-y divide-slate-800">
-                  {group.items.map((segment, index) => (
-                    <li
-                      key={segment.id}
-                      className="flex flex-col gap-3 px-5 py-4 sm:px-6"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <h3 className="text-lg font-semibold text-white">
-                            {group.startIndex + index + 1}. {segment.title}
-                          </h3>
+                  {group.items.map((segment, index) => {
+                    const showImage = segment.category !== 'prep' && segment.category !== 'rest';
+                    return (
+                      <li
+                        key={segment.id}
+                        className="flex gap-4 px-5 py-4 sm:px-6"
+                      >
+                        {/* Exercise image - left aligned */}
+                        {showImage && (
+                          <ExerciseImages
+                            exerciseName={segment.title}
+                            size="md"
+                            className="hidden sm:block"
+                          />
+                        )}
+                        <div className="flex flex-1 flex-col gap-2">
+                          <div className="flex items-start justify-between gap-4">
+                            <h3 className="text-lg font-semibold text-white">
+                              {group.startIndex + index + 1}. {segment.title}
+                            </h3>
+                            <span className="text-sm font-semibold text-emerald-200">
+                              {formatDuration(segment.durationSeconds)}
+                            </span>
+                          </div>
+                          {segment.detail ? (
+                            <p className="text-sm text-slate-300">
+                              {segment.detail}
+                            </p>
+                          ) : null}
                         </div>
-                        <span className="text-sm font-semibold text-emerald-200">
-                          {formatDuration(segment.durationSeconds)}
-                        </span>
-                      </div>
-                      {segment.detail ? (
-                        <p className="text-sm text-slate-300">
-                          {segment.detail}
-                        </p>
-                      ) : null}
-                    </li>
-                  ))}
+                      </li>
+                    );
+                  })}
                 </ol>
               </section>
             ))}

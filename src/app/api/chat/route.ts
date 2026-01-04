@@ -11,6 +11,14 @@ import {
   type MemoryCategory
 } from "@/lib/memory-tools";
 import { createFeedbackIssue } from "@/lib/github-tools";
+import {
+  searchExercises,
+  getOrCreateExercise,
+  getExerciseImageStatuses,
+  hasCompleteImages,
+  type ExerciseCategory
+} from "@/lib/exercise-library";
+import { queueImageGeneration } from "@/lib/job-queue";
 
 export const runtime = 'nodejs';
 
@@ -48,6 +56,13 @@ Always check memories at the start of conversations to personalize advice.
 
 **Workout Modifications:**
 You can view and modify the user's weekly workout plans using get_workout and update_workout tools.
+
+**Exercise Library:**
+You have access to a global exercise library with AI-generated illustrations. When creating or modifying workouts:
+1. Use search_exercises to find existing exercises (prefer these - they have images ready)
+2. Use create_exercise only when no suitable existing exercise is found
+3. New exercises automatically queue for image generation (~30 seconds)
+Use get_exercise_images to check if images are ready for exercises in a workout.
 
 **Web Search:**
 You have access to web search for looking up current fitness research, exercise variations, or answering questions that benefit from up-to-date information.
@@ -272,6 +287,86 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         required: ["title", "description", "feedbackType"]
       }
     }
+  },
+  {
+    type: "function",
+    function: {
+      name: "search_exercises",
+      description: "Search the exercise library for existing exercises. Use this to find exercises with images already available when building or modifying workout plans.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "Search term (e.g., 'squat', 'push', 'kettlebell', 'chest')"
+          },
+          category: {
+            type: "string",
+            enum: ["warmup", "main", "hiit", "recovery"],
+            description: "Optional filter by exercise category"
+          },
+          limit: {
+            type: "number",
+            description: "Max results to return (default 10)"
+          }
+        },
+        required: ["query"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_exercise",
+      description: "Create a new exercise in the library. Use when no suitable existing exercise is found via search. Automatically queues image generation.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: {
+            type: "string",
+            description: "Exercise name (e.g., 'Goblet Squat', 'Push-ups')"
+          },
+          formCues: {
+            type: "string",
+            description: "Brief form instructions and key cues"
+          },
+          muscleGroups: {
+            type: "array",
+            items: { type: "string" },
+            description: "Target muscle groups (e.g., ['chest', 'shoulders', 'triceps'])"
+          },
+          equipment: {
+            type: "array",
+            items: { type: "string" },
+            description: "Required equipment (e.g., ['kettlebell'], ['bodyweight'])"
+          },
+          category: {
+            type: "string",
+            enum: ["warmup", "main", "hiit", "recovery"],
+            description: "Exercise category"
+          }
+        },
+        required: ["name"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_exercise_images",
+      description: "Get image URLs and generation status for exercises. Use to check if images are ready for exercises in a workout.",
+      parameters: {
+        type: "object",
+        properties: {
+          exerciseNames: {
+            type: "array",
+            items: { type: "string" },
+            description: "List of exercise names to check"
+          }
+        },
+        required: ["exerciseNames"]
+      }
+    }
   }
 ];
 
@@ -343,6 +438,81 @@ async function executeTool(
         args.description,
         args.feedbackType
       );
+      break;
+
+    case "search_exercises":
+      try {
+        const exercises = await searchExercises(
+          args.query,
+          args.category as ExerciseCategory | undefined,
+          args.limit ?? 10
+        );
+        result = {
+          exercises: exercises.map(ex => ({
+            name: ex.name,
+            formCues: ex.formCues,
+            muscleGroups: ex.muscleGroups,
+            equipment: ex.equipment,
+            category: ex.category,
+            imageStatus: ex.imageStatus,
+            imagesReady: ex.imageStatus === 'complete'
+          })),
+          count: exercises.length
+        };
+      } catch (error) {
+        result = { error: "Search failed", message: error instanceof Error ? error.message : "Unknown error" };
+      }
+      break;
+
+    case "create_exercise":
+      try {
+        const exercise = await getOrCreateExercise(
+          args.name,
+          args.formCues,
+          args.muscleGroups,
+          args.equipment,
+          args.category as ExerciseCategory | undefined
+        );
+        // Queue image generation
+        const hasImages = await hasCompleteImages(exercise.id);
+        if (!hasImages) {
+          await queueImageGeneration(exercise.id, 1); // priority 1 for user-triggered
+        }
+        result = {
+          success: true,
+          exercise: {
+            id: exercise.id,
+            name: exercise.name,
+            formCues: exercise.formCues,
+            muscleGroups: exercise.muscleGroups,
+            equipment: exercise.equipment,
+            category: exercise.category
+          },
+          imageStatus: hasImages ? 'complete' : 'queued',
+          message: hasImages
+            ? 'Exercise found with images ready'
+            : 'Exercise created, image generation queued (~30 seconds)'
+        };
+      } catch (error) {
+        result = { error: "Failed to create exercise", message: error instanceof Error ? error.message : "Unknown error" };
+      }
+      break;
+
+    case "get_exercise_images":
+      try {
+        const statuses = await getExerciseImageStatuses(args.exerciseNames);
+        const results: Record<string, { status: string; imageUrl1?: string; imageUrl2?: string }> = {};
+        for (const [name, data] of statuses) {
+          results[name] = {
+            status: data.status,
+            imageUrl1: data.imageUrl1,
+            imageUrl2: data.imageUrl2
+          };
+        }
+        result = { exercises: results };
+      } catch (error) {
+        result = { error: "Failed to get image statuses", message: error instanceof Error ? error.message : "Unknown error" };
+      }
       break;
 
     default:
@@ -439,7 +609,10 @@ ${memoryContext}${pageContextSection}${instructionSection}`;
       get_memories: "Retrieving memories",
       delete_memory: "Deleting memory",
       web_search: "Searching the web",
-      create_feedback_issue: "Recording feedback"
+      create_feedback_issue: "Recording feedback",
+      search_exercises: "Searching exercises",
+      create_exercise: "Creating exercise",
+      get_exercise_images: "Checking exercise images"
     };
 
     const readableStream = new ReadableStream({

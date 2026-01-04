@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import { useChat } from "@/contexts/ChatContext";
 import { Confetti } from "./Confetti";
+import { ExerciseImages, ExerciseImageThumbnail } from "./ExerciseImages";
 
 import type {
   RoutineSegment,
@@ -305,15 +306,24 @@ export function GuidedRoutinePlayer({
               </span>
             ) : null}
           </div>
-          <div className="mt-4 space-y-3">
-          <h1 className="text-3xl font-semibold leading-tight sm:text-4xl">
-              {hasFinished ? "Workout complete" : currentSegment?.title}
-            </h1>
-            {!hasFinished && currentSegment?.detail ? (
-              <p className="text-sm text-slate-200 sm:text-base">
-                {currentSegment.detail}
-              </p>
-            ) : null}
+          <div className="mt-4 flex gap-4">
+            {/* Exercise image for current segment */}
+            {!hasFinished && currentSegment && currentSegment.category !== 'prep' && currentSegment.category !== 'rest' && (
+              <ExerciseImages
+                exerciseName={currentSegment.title}
+                size="lg"
+              />
+            )}
+            <div className="flex-1 space-y-3">
+              <h1 className="text-3xl font-semibold leading-tight sm:text-4xl">
+                {hasFinished ? "Workout complete" : currentSegment?.title}
+              </h1>
+              {!hasFinished && currentSegment?.detail ? (
+                <p className="text-sm text-slate-200 sm:text-base">
+                  {currentSegment.detail}
+                </p>
+              ) : null}
+            </div>
           </div>
 
           <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -391,24 +401,32 @@ export function GuidedRoutinePlayer({
                               : ""
                           }`}
                         >
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="flex flex-col gap-1">
-                              <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-300">
-                                {segment.round ? (
-                                  <span className="text-[11px] text-slate-400">
-                                    {segment.round}
-                                  </span>
+                          <div className="flex items-center gap-3">
+                            {/* Timeline thumbnail */}
+                            {segment.category !== 'prep' && segment.category !== 'rest' && (
+                              <ExerciseImageThumbnail
+                                exerciseName={segment.title}
+                              />
+                            )}
+                            <div className="flex flex-1 items-center justify-between gap-3">
+                              <div className="flex flex-col gap-1">
+                                <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-300">
+                                  {segment.round ? (
+                                    <span className="text-[11px] text-slate-400">
+                                      {segment.round}
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <p className="text-base font-semibold text-white">
+                                  {segment.title}
+                                </p>
+                                {segment.detail ? (
+                                  <p className="text-xs text-slate-400">{segment.detail}</p>
                                 ) : null}
                               </div>
-                              <p className="text-base font-semibold text-white">
-                                {segment.title}
-                              </p>
-                              {segment.detail ? (
-                                <p className="text-xs text-slate-400">{segment.detail}</p>
-                              ) : null}
-                            </div>
-                            <div className="text-sm font-semibold text-emerald-200">
-                              {formatTime(segment.durationSeconds)}
+                              <div className="text-sm font-semibold text-emerald-200">
+                                {formatTime(segment.durationSeconds)}
+                              </div>
                             </div>
                           </div>
                           <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/10">

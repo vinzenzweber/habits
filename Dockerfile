@@ -23,5 +23,9 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/next.config.ts ./
 COPY --from=builder /app/scripts ./scripts
 COPY package.json package-lock.json ./
+
+# Create directory for exercise image storage (Railway volume mount point)
+RUN mkdir -p /data/images
+
 EXPOSE 3000
 CMD ["sh", "-c", "npm run db:migrate && npm run start"]
