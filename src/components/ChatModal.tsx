@@ -1,5 +1,6 @@
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface Message {
   role: string;
@@ -31,6 +32,7 @@ export function ChatModal({
   onInitialStateConsumed,
   pageContext
 }: ChatModalProps) {
+  const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [sessionId, setSessionId] = useState<number | null>(null);
@@ -52,6 +54,7 @@ export function ChatModal({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const streamReaderRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const workoutUpdatedRef = useRef(false);
 
   // Auto-scroll to bottom when messages change or streaming
   useEffect(() => {
@@ -92,10 +95,27 @@ export function ChatModal({
   useEffect(() => {
     if (!isOpen) {
       hasAutoSentRef.current = false;
+      workoutUpdatedRef.current = false;
       setShowRatingButtons(false);
       setRatingSubmitted(false);
       setAwaitingRating(false);
     }
+  }, [isOpen]);
+
+  // Auto-focus textarea when modal opens
+  useEffect(() => {
+    if (!isOpen || !textareaRef.current) {
+      return;
+    }
+
+    // Small delay to ensure modal is rendered
+    const timeoutId = setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
   }, [isOpen]);
 
   // Show rating buttons after AI responds to workout completion
@@ -237,6 +257,10 @@ export function ChatModal({
                 setToolInProgress(data.tool);
               } else if (data.type === 'tool_end') {
                 setToolInProgress(null);
+                // Track if workout was updated to refresh UI later
+                if (data.tool === 'Updating workout') {
+                  workoutUpdatedRef.current = true;
+                }
               } else if (data.type === 'content') {
                 fullContent += data.content;
                 setStreamingContent(fullContent);
@@ -249,6 +273,11 @@ export function ChatModal({
                 }
                 setStreamingContent('');
                 setToolInProgress(null);
+                // Refresh page if workout was updated
+                if (workoutUpdatedRef.current) {
+                  workoutUpdatedRef.current = false;
+                  router.refresh();
+                }
               }
             } catch {
               // Ignore parse errors for malformed data
@@ -337,6 +366,10 @@ export function ChatModal({
                 setToolInProgress(data.tool);
               } else if (data.type === 'tool_end') {
                 setToolInProgress(null);
+                // Track if workout was updated to refresh UI later
+                if (data.tool === 'Updating workout') {
+                  workoutUpdatedRef.current = true;
+                }
               } else if (data.type === 'content') {
                 fullContent += data.content;
                 setStreamingContent(fullContent);
@@ -350,6 +383,11 @@ export function ChatModal({
                 }
                 setStreamingContent('');
                 setToolInProgress(null);
+                // Refresh page if workout was updated
+                if (workoutUpdatedRef.current) {
+                  workoutUpdatedRef.current = false;
+                  router.refresh();
+                }
               }
             } catch {
               // Ignore parse errors for malformed data
