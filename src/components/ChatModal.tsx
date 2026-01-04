@@ -62,7 +62,7 @@ export function ChatModal({
     };
   }, []);
 
-  // Auto-send initial message when modal opens with autoSend
+  // Auto-send initial message when modal opens with autoSend (hidden from user)
   useEffect(() => {
     if (isOpen && initialMessage && autoSend && !hasAutoSentRef.current && messages.length === 0) {
       hasAutoSentRef.current = true;
@@ -70,10 +70,11 @@ export function ChatModal({
       if (completionId) {
         setAwaitingRating(true);
       }
-      handleSend(initialMessage);
+      // Send as hidden system instruction (not visible to user)
+      handleSendHidden(initialMessage);
       onInitialStateConsumed?.();
     }
-    // Note: handleSend is intentionally excluded to prevent re-triggering on function recreation
+    // Note: handleSendHidden is intentionally excluded to prevent re-triggering on function recreation
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, initialMessage, autoSend, messages.length, onInitialStateConsumed, completionId]);
 
@@ -165,6 +166,95 @@ export function ChatModal({
       .replace(/^#{1,3} (.+)$/gm, '$1')
       .replace(/^- /gm, '')
       .replace(/^\d+\. /gm, '');
+  };
+
+  // Send a hidden system instruction (not visible to user, but AI responds)
+  const handleSendHidden = async (instruction: string) => {
+    if (!instruction.trim() || loading) return;
+
+    setLoading(true);
+    setStreamingContent('');
+
+    // Cancel any existing stream before starting new one
+    if (streamReaderRef.current) {
+      streamReaderRef.current.cancel().catch(() => {});
+      streamReaderRef.current = null;
+    }
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [],
+          sessionId,
+          systemInstruction: instruction
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send message');
+      }
+
+      // Handle streaming response
+      const reader = response.body?.getReader() || null;
+      if (!reader) {
+        throw new Error('No response body');
+      }
+      streamReaderRef.current = reader;
+
+      const decoder = new TextDecoder();
+      let fullContent = '';
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+
+              if (data.type === 'session') {
+                setSessionId(data.sessionId);
+              } else if (data.type === 'content') {
+                fullContent += data.content;
+                setStreamingContent(fullContent);
+              } else if (data.type === 'done') {
+                if (fullContent) {
+                  setMessages(prev => [...prev, {
+                    role: 'assistant',
+                    content: fullContent
+                  }]);
+                }
+                setStreamingContent('');
+              }
+            } catch {
+              // Ignore parse errors for malformed data
+            }
+          }
+        }
+      }
+      streamReaderRef.current = null;
+    } catch (error) {
+      console.error('Chat error:', error);
+      if (streamReaderRef.current) {
+        streamReaderRef.current.cancel().catch(() => {});
+        streamReaderRef.current = null;
+      }
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Sorry, I encountered an error. Please try again.'
+      }]);
+      setStreamingContent('');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSend = async (messageText?: string) => {

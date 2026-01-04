@@ -635,4 +635,60 @@ export async function getAllWorkouts(): Promise<WorkoutDay[]> {
   });
 }
 
+/**
+ * Get completion status for all workouts today
+ * Returns a record of slug -> boolean indicating if completed today
+ */
+export async function getTodayCompletions(): Promise<Record<DaySlug, boolean>> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return {} as Record<DaySlug, boolean>;
+  }
+
+  const result = await query(`
+    SELECT w.slug
+    FROM workout_completions wc
+    JOIN workouts w ON wc.workout_id = w.id
+    WHERE wc.user_id = $1
+      AND wc.completed_at >= CURRENT_DATE
+      AND wc.completed_at < CURRENT_DATE + INTERVAL '1 day'
+  `, [session.user.id]);
+
+  const completions: Record<string, boolean> = {};
+  for (const slug of DAY_ORDER) {
+    completions[slug] = false;
+  }
+  for (const row of result.rows) {
+    completions[row.slug] = true;
+  }
+
+  return completions as Record<DaySlug, boolean>;
+}
+
+/**
+ * Get the next uncompleted workout
+ * Returns today's workout if not completed, otherwise returns tomorrow's
+ */
+export async function getNextUncompletedWorkout(now: Date = new Date()): Promise<WorkoutDay | null> {
+  const todaySlug = DAY_ORDER[now.getDay()];
+  const completions = await getTodayCompletions();
+
+  // If today's workout is not completed, return it
+  if (!completions[todaySlug]) {
+    return getWorkoutBySlug(todaySlug);
+  }
+
+  // Otherwise, return tomorrow's workout
+  const tomorrowIndex = (now.getDay() + 1) % 7;
+  const tomorrowSlug = DAY_ORDER[tomorrowIndex];
+  return getWorkoutBySlug(tomorrowSlug);
+}
+
+/**
+ * Get the slug of today's day
+ */
+export function getTodaySlug(now: Date = new Date()): DaySlug {
+  return DAY_ORDER[now.getDay()];
+}
+
 export { structuredWorkouts, DAY_ORDER, DAY_LABELS };

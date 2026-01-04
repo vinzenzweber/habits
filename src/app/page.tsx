@@ -2,10 +2,12 @@ import Link from "next/link";
 
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { LogoutButton } from "@/components/LogoutButton";
-import { getWorkoutForToday } from "@/lib/workoutPlan";
-
-const CTA_CLASSES =
-  "inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2";
+import {
+  getAllWorkouts,
+  getNextUncompletedWorkout,
+  getTodayCompletions,
+  getTodaySlug,
+} from "@/lib/workoutPlan";
 
 export const dynamic = "force-dynamic";
 
@@ -15,121 +17,132 @@ function formatDuration(seconds: number) {
   return `${minutes}:${remaining.toString().padStart(2, "0")}`;
 }
 
-function groupSegments<T extends { category: string }>(segments: T[]) {
-  const groups: Array<{
-    category: string;
-    items: T[];
-    startIndex: number;
-  }> = [];
-  let indexOffset = 0;
-
-  for (const segment of segments) {
-    const last = groups[groups.length - 1];
-    if (!last || last.category !== segment.category) {
-      groups.push({
-        category: segment.category,
-        items: [segment],
-        startIndex: indexOffset,
-      });
-    } else {
-      last.items.push(segment);
-    }
-    indexOffset += 1;
-  }
-
-  return groups;
-}
-
 export default async function Home() {
-  const workout = await getWorkoutForToday();
-  if (!workout) {
+  const [nextWorkout, allWorkouts, completions] = await Promise.all([
+    getNextUncompletedWorkout(),
+    getAllWorkouts(),
+    getTodayCompletions(),
+  ]);
+  const todaySlug = getTodaySlug();
+
+  if (!nextWorkout || allWorkouts.length === 0) {
     throw new Error("Workout plan missing.");
   }
-
-  const groupedSegments = groupSegments(workout.segments);
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto flex max-w-3xl flex-col gap-8 px-5 pb-16 pt-12 sm:px-8">
-        <header className="flex flex-col gap-6">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-[0.4em] text-emerald-400">
-              Habits
-            </p>
-            <LogoutButton />
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="space-y-2">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">
-                  Today · {workout.label}
-                </p>
-                <h1 className="mt-2 text-3xl font-semibold text-white sm:text-4xl">
-                  {workout.title}
-                </h1>
-              </div>
-              <p className="text-sm text-slate-300 sm:text-base">
-                {workout.focus}
-              </p>
-            </div>
-            <Link
-              href={`/workouts/${workout.slug}`}
-              className={`${CTA_CLASSES} bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/30 hover:bg-emerald-300`}
-            >
-              Start
-            </Link>
-          </div>
-          <p className="text-sm text-slate-300 sm:text-base">
-            {workout.description}
+        {/* Header */}
+        <header className="flex items-center justify-between">
+          <p className="text-xs font-semibold uppercase tracking-[0.4em] text-emerald-400">
+            Habits
           </p>
+          <LogoutButton />
         </header>
+
+        {/* Featured: Next uncompleted workout */}
+        <section className="space-y-4">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">
+            Continue Your Week
+          </h2>
+          <Link
+            href={`/workouts/${nextWorkout.slug}`}
+            className="block rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/30 p-6 transition hover:border-emerald-500/50 hover:shadow-lg hover:shadow-emerald-500/10"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-400">
+                  {nextWorkout.slug === todaySlug ? "Today" : "Up Next"} · {nextWorkout.label}
+                </p>
+                <h3 className="text-2xl font-semibold text-white sm:text-3xl">
+                  {nextWorkout.title}
+                </h3>
+                <p className="text-sm text-slate-300">
+                  {nextWorkout.focus}
+                </p>
+              </div>
+              <div className="flex flex-col items-end gap-2">
+                <span className="inline-flex items-center justify-center rounded-full bg-emerald-400 px-4 py-2 text-sm font-medium text-slate-950">
+                  View
+                </span>
+                <span className="text-xs text-slate-400">
+                  {nextWorkout.segments.length} exercises · {formatDuration(nextWorkout.totalSeconds)}
+                </span>
+              </div>
+            </div>
+          </Link>
+        </section>
 
         <InstallPrompt />
 
-        <section
-          className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/50 backdrop-blur"
-          aria-label="Today workout plan"
-        >
-          <div className="border-b border-slate-800 px-5 py-4 sm:px-6">
-            <h2 className="text-lg font-semibold text-white">Workout plan</h2>
-            <p className="mt-1 text-sm text-slate-300">
-              {workout.segments.length} exercises · {formatDuration(workout.totalSeconds)} total
-            </p>
-          </div>
-          <div className="divide-y divide-slate-800">
-            {groupedSegments.map((group, groupIndex) => (
-              <section key={`${group.category}-${groupIndex}`}>
-                <div className="px-5 pb-2 pt-5 sm:px-6">
-                  <p className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-300">
-                    {group.category.toUpperCase()}
-                  </p>
-                </div>
-                <ol className="divide-y divide-slate-800">
-                  {group.items.map((segment, index) => (
-                    <li
-                      key={segment.id}
-                      className="flex flex-col gap-3 px-5 py-4 sm:px-6"
+        {/* Weekly Schedule */}
+        <section className="space-y-4">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">
+            Weekly Schedule
+          </h2>
+          <div className="grid gap-3">
+            {allWorkouts.map((workout) => {
+              const isToday = workout.slug === todaySlug;
+              const isCompleted = completions[workout.slug] ?? false;
+              const isFeatured = workout.slug === nextWorkout.slug;
+
+              return (
+                <Link
+                  key={workout.slug}
+                  href={`/workouts/${workout.slug}`}
+                  className={`flex items-center justify-between gap-4 rounded-2xl border px-5 py-4 transition hover:bg-slate-800/50 ${
+                    isFeatured
+                      ? "border-emerald-500/50 bg-emerald-950/20"
+                      : "border-slate-800 bg-slate-900/50"
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    {/* Completion indicator */}
+                    <div
+                      className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                        isCompleted
+                          ? "bg-emerald-500/20 text-emerald-400"
+                          : isToday
+                            ? "bg-slate-700 text-slate-300"
+                            : "bg-slate-800 text-slate-500"
+                      }`}
                     >
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <h3 className="text-lg font-semibold text-white">
-                            {group.startIndex + index + 1}. {segment.title}
-                          </h3>
-                        </div>
-                        <span className="text-sm font-semibold text-emerald-200">
-                          {formatDuration(segment.durationSeconds)}
+                      {isCompleted ? (
+                        <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      ) : (
+                        <span className="text-xs font-medium">
+                          {(workout.label ?? workout.slug).slice(0, 2).toUpperCase()}
                         </span>
+                      )}
+                    </div>
+
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-white">
+                          {workout.label ?? workout.slug}
+                        </h3>
+                        {isToday && !isCompleted && (
+                          <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-400">
+                            Today
+                          </span>
+                        )}
                       </div>
-                      {segment.detail ? (
-                        <p className="text-sm text-slate-300">
-                          {segment.detail}
-                        </p>
-                      ) : null}
-                    </li>
-                  ))}
-                </ol>
-              </section>
-            ))}
+                      <p className="text-sm text-slate-400">
+                        {workout.title}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <span className="text-sm font-medium text-slate-300">
+                      {formatDuration(workout.totalSeconds)}
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </section>
       </div>
