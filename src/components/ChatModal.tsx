@@ -34,6 +34,7 @@ export function ChatModal({
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const [showRatingButtons, setShowRatingButtons] = useState(false);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
+  const [awaitingRating, setAwaitingRating] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasAutoSentRef = useRef(false);
@@ -65,10 +66,16 @@ export function ChatModal({
   useEffect(() => {
     if (isOpen && initialMessage && autoSend && !hasAutoSentRef.current && messages.length === 0) {
       hasAutoSentRef.current = true;
+      // Track that we're in the completion workflow awaiting rating
+      if (completionId) {
+        setAwaitingRating(true);
+      }
       handleSend(initialMessage);
       onInitialStateConsumed?.();
     }
-  }, [isOpen, initialMessage, autoSend, messages.length, onInitialStateConsumed]);
+    // Note: handleSend is intentionally excluded to prevent re-triggering on function recreation
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, initialMessage, autoSend, messages.length, onInitialStateConsumed, completionId]);
 
   // Reset auto-send tracking when modal closes
   useEffect(() => {
@@ -76,34 +83,44 @@ export function ChatModal({
       hasAutoSentRef.current = false;
       setShowRatingButtons(false);
       setRatingSubmitted(false);
+      setAwaitingRating(false);
     }
   }, [isOpen]);
 
   // Show rating buttons after AI responds to workout completion
   useEffect(() => {
-    if (completionId && messages.length >= 2 && !ratingSubmitted && !showRatingButtons && !loading) {
+    if (awaitingRating && !ratingSubmitted && !showRatingButtons && !loading && messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
       if (lastMessage.role === 'assistant') {
         setShowRatingButtons(true);
       }
     }
-  }, [messages, completionId, ratingSubmitted, showRatingButtons, loading]);
+  }, [messages, awaitingRating, ratingSubmitted, showRatingButtons, loading]);
 
   // Handle rating button click
   const handleRatingClick = async (rating: 'too_easy' | 'just_right' | 'too_hard') => {
     setShowRatingButtons(false);
     setRatingSubmitted(true);
+    setAwaitingRating(false);
 
     // Save rating to database
     if (completionId) {
       try {
-        await fetch(`/api/completions/${completionId}/feedback`, {
+        const response = await fetch(`/api/completions/${completionId}/feedback`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ difficulty_rating: rating })
         });
+        if (!response.ok) {
+          throw new Error('Failed to save rating');
+        }
       } catch (error) {
         console.error('Failed to save rating:', error);
+        // Provide user feedback and allow retry
+        alert('Could not save your rating. Please try again.');
+        setRatingSubmitted(false);
+        setShowRatingButtons(true);
+        return;
       }
     }
 

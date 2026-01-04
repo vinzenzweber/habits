@@ -32,6 +32,10 @@ const CATEGORY_STYLES: Record<RoutineSegmentCategory, CategoryStyles> = {
 
 const BEEP_TRIGGER_SECONDS = 4;
 
+// Message sent to AI after workout completion
+const WORKOUT_COMPLETION_MESSAGE = (title: string) =>
+  `I just completed the ${title} workout! Congratulate me briefly and ask how the difficulty felt. After I respond, you may suggest modifications if appropriate but do NOT automatically apply any changes.`;
+
 function formatTime(seconds: number) {
   const clamped = Math.max(0, Math.ceil(seconds));
   const minutes = Math.floor(clamped / 60);
@@ -63,6 +67,7 @@ export function GuidedRoutinePlayer({
   const [hasFinished, setHasFinished] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [completionId, setCompletionId] = useState<number | null>(null);
+  const [isTrackingCompletion, setIsTrackingCompletion] = useState(false);
   const countdownAudioRef = useRef<HTMLAudioElement | null>(null);
   const segmentBeepPlayedRef = useRef(false);
   const startTimeRef = useRef(Date.now());
@@ -78,6 +83,7 @@ export function GuidedRoutinePlayer({
   useEffect(() => {
     if (hasFinished && workout.slug && !hasTrackedCompletionRef.current) {
       hasTrackedCompletionRef.current = true;
+      setIsTrackingCompletion(true);
       const actualDuration = Math.floor((Date.now() - startTimeRef.current) / 1000);
 
       fetch(`/api/workouts/${workout.slug}/complete`, {
@@ -85,7 +91,12 @@ export function GuidedRoutinePlayer({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ durationSeconds: actualDuration })
       })
-        .then((res) => res.json())
+        .then((res) => {
+          if (!res.ok) {
+            throw new Error('Failed to save workout completion');
+          }
+          return res.json();
+        })
         .then((data) => {
           if (data.completionId) {
             setCompletionId(data.completionId);
@@ -93,7 +104,14 @@ export function GuidedRoutinePlayer({
           // Trigger confetti animation
           setShowConfetti(true);
         })
-        .catch(console.error);
+        .catch((error) => {
+          console.error('Completion tracking error:', error);
+          // Still show confetti even if tracking failed
+          setShowConfetti(true);
+        })
+        .finally(() => {
+          setIsTrackingCompletion(false);
+        });
     }
   }, [hasFinished, workout.slug]);
 
@@ -101,7 +119,7 @@ export function GuidedRoutinePlayer({
   const handleConfettiComplete = useCallback(() => {
     setShowConfetti(false);
     openChat({
-      initialMessage: `I just completed the ${workout.title} workout! Congratulate me briefly and ask how the difficulty felt. After I respond, you may suggest modifications if appropriate but do NOT automatically apply any changes.`,
+      initialMessage: WORKOUT_COMPLETION_MESSAGE(workout.title),
       autoSend: true,
       completionId: completionId ?? undefined
     });
@@ -315,7 +333,8 @@ export function GuidedRoutinePlayer({
               <button
                 type="button"
                 onClick={handleRestart}
-                className="rounded-full border border-white/20 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white transition hover:border-emerald-300 hover:text-emerald-200"
+                disabled={isTrackingCompletion}
+                className="rounded-full border border-white/20 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white transition hover:border-emerald-300 hover:text-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Restart
               </button>

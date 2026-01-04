@@ -15,7 +15,7 @@ interface ChatContextType {
   initialMessage: string | null;
   autoSend: boolean;
   completionId: number | null;
-  clearInitialState: () => void;
+  clearMessageState: () => void;
 }
 
 const ChatContext = createContext<ChatContextType | null>(null);
@@ -35,12 +35,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const closeChat = useCallback(() => {
     setIsOpen(false);
+    // Clear completionId when chat closes to ensure clean state
+    setCompletionId(null);
   }, []);
 
-  const clearInitialState = useCallback(() => {
+  const clearMessageState = useCallback(() => {
     setInitialMessage(null);
     setAutoSend(false);
-    // Keep completionId until chat closes for rating buttons
+    // Keep completionId for rating buttons until chat closes
   }, []);
 
   return (
@@ -51,7 +53,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       initialMessage,
       autoSend,
       completionId,
-      clearInitialState
+      clearMessageState
     }}>
       {children}
     </ChatContext.Provider>

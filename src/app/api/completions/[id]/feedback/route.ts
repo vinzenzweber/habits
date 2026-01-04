@@ -21,20 +21,34 @@ export async function PATCH(
 
     // Validate rating if provided
     if (difficulty_rating && !VALID_RATINGS.includes(difficulty_rating as DifficultyRating)) {
-      return Response.json({ error: "Invalid rating" }, { status: 400 });
+      return Response.json({ error: "Invalid rating. Must be one of: too_easy, just_right, too_hard" }, { status: 400 });
     }
 
-    // Update completion (only if owned by user)
+    // First, verify that the completion exists
+    const completionResult = await query(`
+      SELECT user_id FROM workout_completions WHERE id = $1
+    `, [id]);
+
+    if (!completionResult.rows[0]) {
+      return Response.json({ error: "Completion not found" }, { status: 404 });
+    }
+
+    // Check ownership (compare as strings to handle type differences)
+    if (String(completionResult.rows[0].user_id) !== String(session.user.id)) {
+      return Response.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Update completion
     const result = await query(`
       UPDATE workout_completions
       SET difficulty_rating = COALESCE($1, difficulty_rating),
           feedback = COALESCE($2, feedback)
-      WHERE id = $3 AND user_id = $4
+      WHERE id = $3
       RETURNING id
-    `, [difficulty_rating || null, feedback || null, id, session.user.id]);
+    `, [difficulty_rating || null, feedback || null, id]);
 
     if (!result.rows[0]) {
-      return Response.json({ error: "Completion not found" }, { status: 404 });
+      return Response.json({ error: "Failed to update completion" }, { status: 500 });
     }
 
     return Response.json({ success: true });
