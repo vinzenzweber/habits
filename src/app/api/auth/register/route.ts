@@ -30,11 +30,19 @@ export async function POST(request: Request) {
     const passwordHash = await bcrypt.hash(password, 10);
 
     // Create user (workouts will be generated during onboarding)
+    // Note: onboarding_started_at is set separately if the column exists
     const result = await query<{ id: number }>(`
-      INSERT INTO users (email, name, password_hash, onboarding_started_at)
-      VALUES ($1, $2, $3, NOW())
+      INSERT INTO users (email, name, password_hash)
+      VALUES ($1, $2, $3)
       RETURNING id
     `, [email, name || email.split('@')[0], passwordHash]);
+
+    // Try to set onboarding_started_at if column exists (gracefully handle if not)
+    try {
+      await query(`UPDATE users SET onboarding_started_at = NOW() WHERE id = $1`, [result.rows[0].id]);
+    } catch {
+      // Column may not exist yet - that's ok
+    }
 
     const userId = result.rows[0].id;
 
