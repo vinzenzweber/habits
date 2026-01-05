@@ -41,6 +41,8 @@ export async function POST(request: Request) {
     return Response.json({ success: true, userId });
   } catch (error) {
     console.error('Registration error:', error);
-    return Response.json({ error: "Registration failed" }, { status: 500 });
+    // Return more detail for debugging (safe since no sensitive info)
+    const message = error instanceof Error ? error.message : "Registration failed";
+    return Response.json({ error: message }, { status: 500 });
   }
 }
