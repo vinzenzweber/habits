@@ -4,7 +4,14 @@ import { saveExerciseImage } from './image-storage';
 import { claimNextJob, completeJob, failJob } from './job-queue';
 import { getExerciseById, upsertExerciseImage } from './exercise-library';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// Lazy initialization to avoid requiring OPENAI_API_KEY at build time
+let _openai: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return _openai;
+}
 
 // Consistent style prompt for all exercise illustrations
 const STYLE_PROMPT = `Create a clean, modern fitness illustration with these exact specifications:
@@ -24,7 +31,7 @@ const STYLE_PROMPT = `Create a clean, modern fitness illustration with these exa
  */
 async function getExerciseInfo(exerciseName: string, formCues?: string): Promise<string> {
   try {
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: 'gpt-4o-search-preview',
       messages: [{
         role: 'user',
@@ -67,7 +74,7 @@ Create a single, clear illustration showing this exact phase of the exercise.
 The figure should demonstrate perfect form for this position.`;
 
   try {
-    const response = await openai.images.generate({
+    const response = await getOpenAI().images.generate({
       model: 'gpt-image-1',
       prompt,
       n: 1,
@@ -93,7 +100,7 @@ The figure should demonstrate perfect form for this position.`;
   } catch (error) {
     // If gpt-image-1 fails, try with dall-e-3 as fallback
     console.log('Trying DALL-E 3 as fallback...');
-    const response = await openai.images.generate({
+    const response = await getOpenAI().images.generate({
       model: 'dall-e-3',
       prompt,
       n: 1,
