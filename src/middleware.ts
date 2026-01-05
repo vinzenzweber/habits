@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth } from "@/lib/auth";
+import { getToken } from "next-auth/jwt";
 
 export async function middleware(request: NextRequest) {
-  // Use NextAuth's auth() function which properly reads the session
-  const session = await auth();
+  // Get JWT token - NextAuth v5 uses authjs.session-token cookie
+  const token = await getToken({
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET,
+    cookieName: process.env.NODE_ENV === "production"
+      ? "__Secure-authjs.session-token"
+      : "authjs.session-token"
+  });
   const onboardingCookie = request.cookies.get("onboarding_complete");
 
   const { pathname } = request.nextUrl;
@@ -14,18 +20,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check if onboarding is complete (from cookie or session)
-  // Note: onboardingCompleted is stored in the JWT token, accessible via session
-  const isOnboardingComplete = onboardingCookie?.value === "true";
+  // Check if onboarding is complete (from cookie or JWT)
+  const isOnboardingComplete = onboardingCookie?.value === "true" || token?.onboardingCompleted === true;
 
   // Allow access to onboarding routes for authenticated users
   if (pathname === "/onboarding" || pathname.startsWith("/api/onboarding")) {
     // But redirect to home if already completed onboarding
-    if (session?.user && isOnboardingComplete) {
+    if (token && isOnboardingComplete) {
       return NextResponse.redirect(new URL("/", request.url));
     }
     // Allow access if authenticated but not completed
-    if (session?.user) {
+    if (token) {
       return NextResponse.next();
     }
     // Redirect to login if not authenticated
@@ -33,8 +38,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Redirect to login if no session
-  if (!session?.user) {
+  // Redirect to login if no token
+  if (!token) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
