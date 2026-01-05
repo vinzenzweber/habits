@@ -43,7 +43,7 @@ export default function RegisterPage() {
         setError("Registration successful, but login failed. Please try logging in.");
         setLoading(false);
       } else {
-        router.push("/");
+        router.push("/onboarding");
         router.refresh();
       }
     } catch (err) {

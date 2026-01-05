@@ -1,6 +1,5 @@
 import bcrypt from "bcryptjs";
-import { query, transaction } from "@/lib/db";
-import { structuredWorkouts, DAY_ORDER } from "@/lib/workoutPlan";
+import { query } from "@/lib/db";
 
 export const runtime = 'nodejs';
 
@@ -30,28 +29,14 @@ export async function POST(request: Request) {
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Create user and workouts in a transaction
-    const userId = await transaction(async (client) => {
-      // Create user
-      const result = await client.query<{ id: number }>(`
-        INSERT INTO users (email, name, password_hash)
-        VALUES ($1, $2, $3)
-        RETURNING id
-      `, [email, name || email.split('@')[0], passwordHash]);
+    // Create user (workouts will be generated during onboarding)
+    const result = await query<{ id: number }>(`
+      INSERT INTO users (email, name, password_hash, onboarding_started_at)
+      VALUES ($1, $2, $3, NOW())
+      RETURNING id
+    `, [email, name || email.split('@')[0], passwordHash]);
 
-      const newUserId = result.rows[0].id;
-
-      // Copy default workouts for new user
-      for (const slug of DAY_ORDER) {
-        const workout = structuredWorkouts[slug];
-        await client.query(`
-          INSERT INTO workouts (user_id, slug, version, title, focus, description, workout_json, is_active)
-          VALUES ($1, $2, 1, $3, $4, $5, $6, true)
-        `, [newUserId, slug, workout.title, workout.focus, workout.description, JSON.stringify(workout)]);
-      }
-
-      return newUserId;
-    });
+    const userId = result.rows[0].id;
 
     return Response.json({ success: true, userId });
   } catch (error) {
