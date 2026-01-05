@@ -19,8 +19,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const email = credentials.email as string;
         const password = credentials.password as string;
 
+        // Query without onboarding_completed first (backward compatible)
         const result = await query(`
-          SELECT id, email, name, password_hash, onboarding_completed
+          SELECT id, email, name, password_hash
           FROM users WHERE email = $1
         `, [email]);
 
@@ -34,11 +35,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!valid) return null;
 
+        // Try to get onboarding status separately (column may not exist)
+        let onboardingCompleted = false;
+        try {
+          const onboardingResult = await query(
+            `SELECT onboarding_completed FROM users WHERE id = $1`,
+            [user.id]
+          );
+          onboardingCompleted = onboardingResult.rows[0]?.onboarding_completed ?? false;
+        } catch {
+          // Column doesn't exist yet - assume not completed for new users
+        }
+
         return {
           id: user.id.toString(),
           email: user.email,
           name: user.name,
-          onboardingCompleted: user.onboarding_completed ?? false
+          onboardingCompleted
         };
       }
     })
