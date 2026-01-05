@@ -20,7 +20,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const password = credentials.password as string;
 
         const result = await query(`
-          SELECT id, email, name, password_hash
+          SELECT id, email, name, password_hash, onboarding_completed
           FROM users WHERE email = $1
         `, [email]);
 
@@ -34,7 +34,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!valid) return null;
 
-        return { id: user.id.toString(), email: user.email, name: user.name };
+        return {
+          id: user.id.toString(),
+          email: user.email,
+          name: user.name,
+          onboardingCompleted: user.onboarding_completed ?? false
+        };
       }
     })
   ],
@@ -49,6 +54,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.onboardingCompleted = (user as { onboardingCompleted?: boolean }).onboardingCompleted ?? false;
       }
       return token;
     },

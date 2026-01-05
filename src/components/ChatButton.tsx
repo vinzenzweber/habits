@@ -1,9 +1,11 @@
 'use client';
 
+import { usePathname } from 'next/navigation';
 import { useChat } from '@/contexts/ChatContext';
 import { ChatModal } from './ChatModal';
 
 export function ChatButton() {
+  const pathname = usePathname();
   const {
     isOpen,
     openChat,
@@ -14,6 +16,11 @@ export function ChatButton() {
     clearMessageState,
     pageContext
   } = useChat();
+
+  // Don't show the chat button on the onboarding page (it has its own chat)
+  if (pathname === '/onboarding') {
+    return null;
+  }
 
   return (
     <>
