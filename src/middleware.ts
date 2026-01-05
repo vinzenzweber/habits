@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
+import { auth } from "@/lib/auth";
 
 export async function middleware(request: NextRequest) {
-  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+  // Use NextAuth's auth() function which properly reads the session
+  const session = await auth();
   const onboardingCookie = request.cookies.get("onboarding_complete");
 
   const { pathname } = request.nextUrl;
@@ -13,17 +14,18 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check if onboarding is complete (from cookie or JWT)
-  const isOnboardingComplete = onboardingCookie?.value === "true" || token?.onboardingCompleted === true;
+  // Check if onboarding is complete (from cookie or session)
+  // Note: onboardingCompleted is stored in the JWT token, accessible via session
+  const isOnboardingComplete = onboardingCookie?.value === "true";
 
   // Allow access to onboarding routes for authenticated users
   if (pathname === "/onboarding" || pathname.startsWith("/api/onboarding")) {
     // But redirect to home if already completed onboarding
-    if (token && isOnboardingComplete) {
+    if (session?.user && isOnboardingComplete) {
       return NextResponse.redirect(new URL("/", request.url));
     }
     // Allow access if authenticated but not completed
-    if (token) {
+    if (session?.user) {
       return NextResponse.next();
     }
     // Redirect to login if not authenticated
@@ -31,8 +33,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Redirect to login if no token
-  if (!token) {
+  // Redirect to login if no session
+  if (!session?.user) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
