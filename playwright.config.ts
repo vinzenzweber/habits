@@ -17,6 +17,12 @@ export default defineConfig({
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
+    // Pass through environment variables to the web server
+    env: {
+      ...process.env,
+      // Ensure test endpoints are available in CI
+      ALLOW_TEST_ENDPOINTS: process.env.CI ? 'true' : undefined,
+    },
   },
   projects: [
     {
