@@ -307,6 +307,19 @@ export async function updateWorkoutTool(userId: string, slug: string, workout: W
     throw new Error("Invalid workout structure");
   }
 
+  // Always recalculate totalSeconds from segments (don't trust AI-provided value)
+  const totalSeconds = workout.segments.reduce(
+    (sum, segment) => sum + (segment.durationSeconds || 0),
+    0
+  );
+
+  // Update the workout object with correct totalSeconds
+  const workoutToSave = {
+    ...workout,
+    slug,
+    totalSeconds
+  };
+
   // Get current version
   const current = await query(`
     SELECT version FROM workouts
@@ -329,10 +342,10 @@ export async function updateWorkoutTool(userId: string, slug: string, workout: W
     userId,
     slug,
     nextVersion,
-    workout.title,
-    workout.focus || "",
-    workout.description || "",
-    JSON.stringify(workout)
+    workoutToSave.title,
+    workoutToSave.focus || "",
+    workoutToSave.description || "",
+    JSON.stringify(workoutToSave)
   ]);
 
   return { success: true, version: nextVersion };
