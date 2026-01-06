@@ -18,11 +18,13 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
     // Pass through environment variables to the web server
-    env: {
-      ...process.env,
-      // Ensure test endpoints are available in CI
-      ALLOW_TEST_ENDPOINTS: process.env.CI ? 'true' : undefined,
-    },
+    // In CI, enable test endpoints for E2E testing
+    ...(process.env.CI && {
+      env: {
+        ...process.env as Record<string, string>,
+        ALLOW_TEST_ENDPOINTS: 'true',
+      },
+    }),
   },
   projects: [
     {
