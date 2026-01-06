@@ -21,7 +21,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/next.config.ts ./
-COPY --from=builder /app/scripts ./scripts
+COPY scripts ./scripts
 COPY package.json package-lock.json ./
 
 # Create directory for exercise image storage (Railway volume mount point)
