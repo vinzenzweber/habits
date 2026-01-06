@@ -803,7 +803,7 @@ export function ChatModal({
             disabled={loading || isRecording || isTranscribing}
             placeholder={isRecording ? "Recording..." : isTranscribing ? "Transcribing..." : "Type a message..."}
             rows={1}
-            className="flex-1 p-3 rounded bg-slate-800 text-white border border-slate-700 focus:border-emerald-500 outline-none disabled:opacity-50 resize-none overflow-hidden"
+            className="flex-1 p-3 rounded bg-slate-800 text-white border border-slate-700 focus:border-emerald-500 outline-none disabled:opacity-50 resize-none overflow-y-auto"
             style={{ minHeight: '48px', maxHeight: '150px' }}
           />
           <button
