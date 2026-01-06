@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { auth } from "@/lib/auth";
 import { query } from "@/lib/db";
-import { getAllWorkoutsTool, getWorkoutTool, updateWorkoutTool } from "@/lib/workout-tools";
+import { getAllWorkoutsTool, getWorkoutTool, updateWorkoutTool, getWorkoutStatsTool } from "@/lib/workout-tools";
 import {
   saveMemory,
   getMemories,
@@ -56,6 +56,18 @@ Always check memories at the start of conversations to personalize advice.
 
 **Workout Modifications:**
 You can view and modify the user's weekly workout plans using get_workout and update_workout tools.
+
+**Workout History & Stats:**
+Use get_workout_stats to access the user's complete workout history and statistics including:
+- Recent completions and total count
+- Current streak and longest streak
+- Completions this week, last 7 days, and last 30 days
+- Average workouts per week and workout duration
+- Most active days of the week
+- Difficulty feedback breakdown (too easy, just right, too hard)
+- Days since last workout
+
+Call this tool when discussing motivation, progress, consistency, or when the user asks about their history. Use the data to provide personalized encouragement and insights.
 
 **Exercise Library:**
 You have access to a global exercise library with AI-generated illustrations. When creating or modifying workouts:
@@ -367,6 +379,17 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         required: ["exerciseNames"]
       }
     }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_workout_stats",
+      description: "Get comprehensive workout completion statistics and history. Use this to understand the user's workout patterns, consistency, streaks, and progress. Call this when discussing motivation, progress, or when the user asks about their workout history.",
+      parameters: {
+        type: "object",
+        properties: {}
+      }
+    }
   }
 ];
 
@@ -515,6 +538,15 @@ async function executeTool(
       }
       break;
 
+    case "get_workout_stats":
+      try {
+        const stats = await getWorkoutStatsTool(userId);
+        result = stats;
+      } catch (error) {
+        result = { error: "Failed to get workout stats", message: error instanceof Error ? error.message : "Unknown error" };
+      }
+      break;
+
     default:
       result = { error: `Unknown tool: ${toolCall.function.name}` };
   }
@@ -612,7 +644,8 @@ ${memoryContext}${pageContextSection}${instructionSection}`;
       create_feedback_issue: "Recording feedback",
       search_exercises: "Searching exercises",
       create_exercise: "Creating exercise",
-      get_exercise_images: "Checking exercise images"
+      get_exercise_images: "Checking exercise images",
+      get_workout_stats: "Analyzing workout history"
     };
 
     const readableStream = new ReadableStream({

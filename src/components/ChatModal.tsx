@@ -119,6 +119,39 @@ export function ChatModal({
     };
   }, [isOpen]);
 
+  // Handle mobile keyboard visibility using visualViewport API
+  // This ensures the chat input stays visible when the keyboard opens on iOS/Android
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setKeyboardHeight(0);
+      return;
+    }
+
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+
+    const handleResize = () => {
+      // Calculate the difference between window height and viewport height
+      // This difference is the keyboard height on mobile
+      const heightDiff = window.innerHeight - viewport.height;
+      // Only set if significant (> 100px indicates keyboard, not just address bar)
+      setKeyboardHeight(heightDiff > 100 ? heightDiff : 0);
+    };
+
+    viewport.addEventListener('resize', handleResize);
+    viewport.addEventListener('scroll', handleResize);
+
+    // Initial check
+    handleResize();
+
+    return () => {
+      viewport.removeEventListener('resize', handleResize);
+      viewport.removeEventListener('scroll', handleResize);
+    };
+  }, [isOpen]);
+
   // Show rating buttons after AI responds to workout completion
   useEffect(() => {
     if (awaitingRating && !ratingSubmitted && !showRatingButtons && !loading && messages.length > 0) {
@@ -514,6 +547,40 @@ export function ChatModal({
     }
   }, [isRecording]);
 
+  // Press-and-hold mic button handlers
+  const handleMicTouchStart = useCallback((e: React.TouchEvent) => {
+    e.preventDefault(); // Prevent default to avoid long-press context menu
+    if (!loading && !isTranscribing && !isRecording) {
+      startRecording();
+    }
+  }, [loading, isTranscribing, isRecording, startRecording]);
+
+  const handleMicTouchEnd = useCallback((e: React.TouchEvent) => {
+    e.preventDefault();
+    if (isRecording) {
+      stopRecording();
+    }
+  }, [isRecording, stopRecording]);
+
+  const handleMicMouseDown = useCallback(() => {
+    if (!loading && !isTranscribing && !isRecording) {
+      startRecording();
+    }
+  }, [loading, isTranscribing, isRecording, startRecording]);
+
+  const handleMicMouseUp = useCallback(() => {
+    if (isRecording) {
+      stopRecording();
+    }
+  }, [isRecording, stopRecording]);
+
+  // Handle mouse leaving the button while pressed
+  const handleMicMouseLeave = useCallback(() => {
+    if (isRecording) {
+      stopRecording();
+    }
+  }, [isRecording, stopRecording]);
+
   // Text-to-Speech
   const speakMessage = useCallback(async (text: string, index: number) => {
     if (audioRef.current) {
@@ -573,7 +640,13 @@ export function ChatModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center">
-      <div className="bg-slate-900 w-full md:max-w-2xl md:rounded-lg max-h-[80vh] flex flex-col">
+      <div
+        className="bg-slate-900 w-full md:max-w-2xl md:rounded-lg flex flex-col transition-all duration-150"
+        style={{
+          maxHeight: keyboardHeight > 0 ? `calc(100vh - ${keyboardHeight}px)` : '80vh',
+          marginBottom: keyboardHeight > 0 ? 0 : undefined
+        }}
+      >
         <div className="flex items-center justify-between p-4 border-b border-slate-700">
           <h2 className="text-lg font-semibold">Personal Trainer</h2>
           <div className="flex items-center gap-2">
@@ -614,7 +687,7 @@ export function ChatModal({
                 Tell me about your equipment, goals, or injuries — I&apos;ll remember for next time!
               </p>
               <p className="text-xs mt-2 text-slate-500">
-                🎤 Tap the microphone to use voice input
+                🎤 Hold the microphone to record, release to send
               </p>
             </div>
           )}
@@ -734,21 +807,26 @@ export function ChatModal({
             style={{ minHeight: '48px', maxHeight: '150px' }}
           />
           <button
-            onClick={isRecording ? stopRecording : startRecording}
+            onTouchStart={handleMicTouchStart}
+            onTouchEnd={handleMicTouchEnd}
+            onTouchCancel={handleMicTouchEnd}
+            onMouseDown={handleMicMouseDown}
+            onMouseUp={handleMicMouseUp}
+            onMouseLeave={handleMicMouseLeave}
             disabled={loading || isTranscribing}
-            className={`px-4 py-3 rounded transition ${
+            className={`px-4 py-3 rounded transition select-none touch-none ${
               isRecording
                 ? 'bg-red-600 hover:bg-red-700 animate-pulse'
                 : isTranscribing
                   ? 'bg-slate-700 cursor-wait'
-                  : 'bg-slate-700 hover:bg-slate-600'
+                  : 'bg-slate-700 hover:bg-slate-600 active:bg-red-600'
             } disabled:opacity-50`}
-            title={isRecording ? "Stop recording" : isTranscribing ? "Transcribing..." : "Voice input"}
+            title={isRecording ? "Release to send" : isTranscribing ? "Transcribing..." : "Hold to record"}
           >
             {isTranscribing ? (
               <span className="text-xl">⏳</span>
             ) : isRecording ? (
-              <span className="text-xl">⏹</span>
+              <span className="text-xl">🎙️</span>
             ) : (
               <span className="text-xl">🎤</span>
             )}
