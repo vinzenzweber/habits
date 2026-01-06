@@ -73,20 +73,33 @@ EOF
 )"
 ```
 
-### 4. Request Copilot Review
-- After PR is created, request review from @copilot
+### 4. Wait for CI Checks
+- After PR is created, wait for all CI checks to pass
+- Fix any failing checks before requesting review
+
+```bash
+# Watch CI checks status (poll until complete)
+gh pr checks <pr-number> --watch
+
+# Or check status manually
+gh pr checks <pr-number>
+
+# If checks fail, view the logs
+gh run list --branch <branch-name>
+gh run view <run-id> --log-failed
+```
+
+### 5. Request Copilot Review
+- After CI checks pass, request review from @copilot
 
 ```bash
 gh pr edit <pr-number> --add-reviewer copilot
 ```
 
-### 5. Wait for Review
+### 6. Wait for Review
 - Poll for review completion and fetch comments
 
 ```bash
-# Check CI status
-gh pr checks <pr-number>
-
 # View PR details and comments
 gh pr view <pr-number> --comments
 
@@ -98,7 +111,7 @@ gh api repos/<owner>/<repo>/pulls/<pr-number>/comments
 gh pr view <pr-number> --json mergeable,mergeStateStatus,reviewDecision,reviews,comments
 ```
 
-### 6. Address Review Feedback
+### 7. Address Review Feedback
 For each issue found:
 1. Read the comment and understand the concern
 2. Make the necessary code changes
@@ -113,7 +126,7 @@ git commit -m "fix: address review feedback"
 git push
 ```
 
-### 7. Test Locally with Playwright
+### 8. Test Locally with Playwright
 - Use Playwright MCP to verify the changes work correctly
 - Navigate through affected user flows
 - Capture screenshots if needed for verification
@@ -129,12 +142,13 @@ npm run dev
 # - mcp__playwright__browser_take_screenshot
 ```
 
-### 8. Iterate Until Complete
-- Repeat steps 5-7 until all review comments are resolved
+### 9. Iterate Until Complete
+- Repeat steps 6-8 until all review comments are resolved
 - Ensure all CI checks pass
 
-### 9. Merge Pull Request
+### 10. Merge Pull Request
 Only merge when ALL conditions are met:
+- All CI checks pass
 - Local tests pass with Playwright
 - No unresolved review comments
 - No merge conflicts
@@ -148,7 +162,7 @@ gh pr view <pr-number> --json mergeable,mergeStateStatus
 gh pr merge <pr-number> --squash --delete-branch
 ```
 
-### 10. Wait for Railway Deployment
+### 11. Wait for Railway Deployment
 - Railway auto-deploys on merge to main
 - Check deployment status
 
@@ -163,7 +177,7 @@ railway status
 railway domain
 ```
 
-### 11. Check Railway Logs
+### 12. Check Railway Logs
 - Check deploy logs for build errors
 - Check application logs for runtime errors
 - Look for startup issues, database connection problems, etc.
@@ -176,7 +190,7 @@ railway logs
 railway logs 2>&1 | head -100
 ```
 
-### 12. Fix Deployment Issues (if any)
+### 13. Fix Deployment Issues (if any)
 If deployment fails or logs show errors:
 1. Identify the root cause from logs
 2. Create a hotfix on a new branch
@@ -194,7 +208,7 @@ gh pr create --title "fix: hotfix" --body "Hotfix for production issue"
 gh pr merge <pr-number> --squash --delete-branch
 ```
 
-### 13. Verify Production with Playwright
+### 14. Verify Production with Playwright
 - Navigate to production URL with Playwright MCP
 - Test all affected user flows on live site
 - Verify the feature works as expected in production
