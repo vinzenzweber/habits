@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // Get JWT token - NextAuth v5 uses authjs.session-token cookie
   const token = await getToken({
     req: request,
@@ -54,7 +54,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Only run middleware on app routes, excluding static files and auth
+  // Only run proxy on app routes, excluding static files and auth
   matcher: [
     "/",
     "/workouts/:path*",

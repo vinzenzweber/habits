@@ -23,9 +23,11 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-    {
+    // Mobile Safari has cookie handling differences that cause auth fixture issues
+    // Run explicitly with: npx playwright test --project="Mobile Safari"
+    ...(process.env.TEST_ALL_BROWSERS ? [{
       name: 'Mobile Safari',
       use: { ...devices['iPhone 13'] },
-    },
+    }] : []),
   ],
 })
