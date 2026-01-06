@@ -23,8 +23,19 @@ test.describe('Workout Flow', () => {
       await expect(todayBadge).toBeVisible({ timeout: 10000 })
 
       // Should show motivational header (time-based dynamic messaging)
-      // Matches patterns like "Morning momentum", "Start your day", "Beat the evening slump", etc.
-      const motivationalHeader = page.getByText(/momentum|start your day|midday|afternoon|end your day|still time|perfect time|energy boost|beat.*slump/i).first()
+      // These are the exact messages from MotivationalHeader component
+      const motivationalMessages = [
+        "Morning momentum builds champions",
+        "Start your day strong",
+        "Midday power-up awaits",
+        "Perfect time for a workout",
+        "Afternoon energy boost ready",
+        "Beat the evening slump",
+        "End your day accomplished",
+        "There's still time today",
+      ];
+      const regex = new RegExp(motivationalMessages.join("|"), "i");
+      const motivationalHeader = page.getByText(regex).first();
       await expect(motivationalHeader).toBeVisible()
     })
   })

@@ -5,7 +5,7 @@ name = "habits"
 builder = "DOCKERFILE"
 
 [deploy]
-startCommand = "npm run start"
+startCommand = "npm run db:migrate && npm run start"
 healthcheckPath = "/"
 healthcheckTimeout = 30
 

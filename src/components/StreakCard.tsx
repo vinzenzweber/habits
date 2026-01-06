@@ -10,7 +10,7 @@ export function StreakCard({ stats }: StreakCardProps) {
     return (
       <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🎯</span>
+          <span className="text-2xl" role="img" aria-label="Target">🎯</span>
           <div>
             <p className="font-medium text-slate-100">Start your streak today</p>
             <p className="text-sm text-slate-400">
@@ -30,7 +30,7 @@ export function StreakCard({ stats }: StreakCardProps) {
       <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-950/50 to-slate-900/50 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">🔥</span>
+            <span className="text-2xl" role="img" aria-label="Fire streak">🔥</span>
             <div>
               <p className="text-lg font-semibold text-emerald-400">
                 {currentStreak} Day Streak
@@ -58,7 +58,9 @@ export function StreakCard({ stats }: StreakCardProps) {
     return (
       <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-950/30 to-slate-900/50 p-4">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">{isAtRisk ? "⚡" : "🔥"}</span>
+          <span className="text-2xl" role="img" aria-label={isAtRisk ? "Warning" : "Fire streak"}>
+            {isAtRisk ? "⚡" : "🔥"}
+          </span>
           <div>
             <p className="font-medium text-amber-400">
               {isAtRisk ? "Don't break your streak!" : "1 Day Streak"}
@@ -80,7 +82,7 @@ export function StreakCard({ stats }: StreakCardProps) {
   return (
     <div className="rounded-2xl border border-slate-700 bg-slate-900/50 p-4">
       <div className="flex items-center gap-3">
-        <span className="text-2xl">💪</span>
+        <span className="text-2xl" role="img" aria-label="Strength">💪</span>
         <div>
           <p className="font-medium text-slate-100">Start a new streak</p>
           <p className="text-sm text-slate-400">

@@ -702,21 +702,38 @@ export interface StreakStats {
 }
 
 /**
+ * Format a date as YYYY-MM-DD string (date only, no time)
+ */
+function formatDateString(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+/**
  * Get user's streak statistics for home page display
  */
 export async function getUserStreakStats(): Promise<StreakStats | null> {
   const session = await auth();
   if (!session?.user?.id) return null;
 
-  // Get all completions for this user
+  // Get completions with limit - we only need recent history for streak calculation
+  // Limit to 365 days of data which is sufficient for any realistic streak
   const result = await query(`
     SELECT completed_at
     FROM workout_completions
     WHERE user_id = $1
     ORDER BY completed_at DESC
+    LIMIT 365
   `, [session.user.id]);
 
   const completions = result.rows as Array<{ completed_at: string }>;
+
+  // Get total count separately for accuracy
+  const countResult = await query(`
+    SELECT COUNT(*) as total
+    FROM workout_completions
+    WHERE user_id = $1
+  `, [session.user.id]);
+  const totalCompletions = parseInt(countResult.rows[0]?.total ?? "0", 10);
 
   if (completions.length === 0) {
     return {
@@ -730,16 +747,23 @@ export async function getUserStreakStats(): Promise<StreakStats | null> {
   // Calculate streaks
   const { currentStreak, longestStreak } = calculateStreaks(completions);
 
-  // Days since last workout
+  // Days since last workout - use date-only comparison to avoid timezone issues
   const lastDate = new Date(completions[0].completed_at);
   const now = new Date();
-  const diffTime = now.getTime() - lastDate.getTime();
-  const daysSinceLastWorkout = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  const lastDateStr = formatDateString(lastDate);
+  const nowStr = formatDateString(now);
+
+  // Calculate days difference using date strings to avoid timezone issues
+  const lastDateObj = new Date(lastDateStr + "T00:00:00");
+  const nowDateObj = new Date(nowStr + "T00:00:00");
+  const daysSinceLastWorkout = Math.floor(
+    (nowDateObj.getTime() - lastDateObj.getTime()) / (1000 * 60 * 60 * 24)
+  );
 
   return {
     currentStreak,
     longestStreak,
-    totalCompletions: completions.length,
+    totalCompletions,
     daysSinceLastWorkout,
   };
 }
@@ -755,14 +779,9 @@ function calculateStreaks(completions: Array<{ completed_at: string }>): {
     return { currentStreak: 0, longestStreak: 0 };
   }
 
-  // Get unique dates (normalized to day only)
+  // Get unique dates (normalized to day only) using helper
   const uniqueDates = [
-    ...new Set(
-      completions.map((c) => {
-        const date = new Date(c.completed_at);
-        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-      })
-    ),
+    ...new Set(completions.map((c) => formatDateString(new Date(c.completed_at)))),
   ]
     .sort()
     .reverse(); // Most recent first
@@ -773,11 +792,11 @@ function calculateStreaks(completions: Array<{ completed_at: string }>): {
 
   // Calculate current streak (must include today or yesterday)
   const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const todayStr = formatDateString(today);
 
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
+  const yesterdayStr = formatDateString(yesterday);
 
   let currentStreak = 0;
   if (uniqueDates[0] === todayStr || uniqueDates[0] === yesterdayStr) {
@@ -786,7 +805,7 @@ function calculateStreaks(completions: Array<{ completed_at: string }>): {
 
     for (let i = 1; i < uniqueDates.length; i++) {
       checkDate.setDate(checkDate.getDate() - 1);
-      const checkStr = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, "0")}-${String(checkDate.getDate()).padStart(2, "0")}`;
+      const checkStr = formatDateString(checkDate);
 
       if (uniqueDates[i] === checkStr) {
         currentStreak++;
@@ -808,7 +827,7 @@ function calculateStreaks(completions: Array<{ completed_at: string }>): {
 
     // Check if consecutive days
     prevDate.setDate(prevDate.getDate() + 1);
-    const prevNextStr = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}-${String(prevDate.getDate()).padStart(2, "0")}`;
+    const prevNextStr = formatDateString(prevDate);
 
     if (sortedDates[i] === prevNextStr) {
       tempStreak++;
