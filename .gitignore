@@ -47,3 +47,4 @@ public/videos/
 # MCP config
 .mcp.json
 .playwright-mcp/
+data/

@@ -53,6 +53,39 @@ export function OnboardingChat({ onComplete }: OnboardingChatProps) {
     }
   }, [hasStarted, messages]);
 
+  // Handle mobile keyboard visibility using visualViewport API
+  // This ensures the chat input stays visible when the keyboard opens on iOS/Android
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    if (!hasStarted) {
+      setKeyboardHeight(0);
+      return;
+    }
+
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+
+    const handleResize = () => {
+      // Calculate the difference between window height and viewport height
+      // This difference is the keyboard height on mobile
+      const heightDiff = window.innerHeight - viewport.height;
+      // Only set if significant (> 100px indicates keyboard, not just address bar)
+      setKeyboardHeight(heightDiff > 100 ? heightDiff : 0);
+    };
+
+    viewport.addEventListener('resize', handleResize);
+    viewport.addEventListener('scroll', handleResize);
+
+    // Initial check
+    handleResize();
+
+    return () => {
+      viewport.removeEventListener('resize', handleResize);
+      viewport.removeEventListener('scroll', handleResize);
+    };
+  }, [hasStarted]);
+
   // Auto-send voice message after transcription completes
   useEffect(() => {
     if (!isTranscribing && pendingVoiceMessageRef.current && input === pendingVoiceMessageRef.current) {
@@ -296,6 +329,40 @@ export function OnboardingChat({ onComplete }: OnboardingChatProps) {
     }
   }, [isRecording]);
 
+  // Press-and-hold mic button handlers
+  const handleMicTouchStart = useCallback((e: React.TouchEvent) => {
+    e.preventDefault(); // Prevent default to avoid long-press context menu
+    if (!loading && !isTranscribing && !isRecording) {
+      startRecording();
+    }
+  }, [loading, isTranscribing, isRecording, startRecording]);
+
+  const handleMicTouchEnd = useCallback((e: React.TouchEvent) => {
+    e.preventDefault();
+    if (isRecording) {
+      stopRecording();
+    }
+  }, [isRecording, stopRecording]);
+
+  const handleMicMouseDown = useCallback(() => {
+    if (!loading && !isTranscribing && !isRecording) {
+      startRecording();
+    }
+  }, [loading, isTranscribing, isRecording, startRecording]);
+
+  const handleMicMouseUp = useCallback(() => {
+    if (isRecording) {
+      stopRecording();
+    }
+  }, [isRecording, stopRecording]);
+
+  // Handle mouse leaving the button while pressed
+  const handleMicMouseLeave = useCallback(() => {
+    if (isRecording) {
+      stopRecording();
+    }
+  }, [isRecording, stopRecording]);
+
   // Welcome screen before starting
   if (!hasStarted) {
     return (
@@ -322,9 +389,15 @@ export function OnboardingChat({ onComplete }: OnboardingChatProps) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div
+      className="flex flex-col transition-all duration-150"
+      style={{
+        minHeight: keyboardHeight > 0 ? `calc(100vh - ${keyboardHeight}px)` : '100vh',
+        maxHeight: keyboardHeight > 0 ? `calc(100vh - ${keyboardHeight}px)` : undefined
+      }}
+    >
       {/* Header */}
-      <header className="border-b border-slate-800 px-4 py-4">
+      <header className="border-b border-slate-800 px-4 py-4 flex-shrink-0">
         <div className="max-w-2xl mx-auto">
           <h1 className="text-lg font-semibold">Setting Up Your Program</h1>
           <p className="text-sm text-slate-400">Answer a few questions to get your personalized plan</p>
@@ -397,7 +470,7 @@ export function OnboardingChat({ onComplete }: OnboardingChatProps) {
       </div>
 
       {/* Input */}
-      <div className="border-t border-slate-800 px-4 py-4">
+      <div className="border-t border-slate-800 px-4 py-4 flex-shrink-0">
         <div className="max-w-2xl mx-auto flex gap-2 items-end">
           <textarea
             ref={textareaRef}
@@ -411,21 +484,26 @@ export function OnboardingChat({ onComplete }: OnboardingChatProps) {
             style={{ minHeight: '48px', maxHeight: '150px' }}
           />
           <button
-            onClick={isRecording ? stopRecording : startRecording}
+            onTouchStart={handleMicTouchStart}
+            onTouchEnd={handleMicTouchEnd}
+            onTouchCancel={handleMicTouchEnd}
+            onMouseDown={handleMicMouseDown}
+            onMouseUp={handleMicMouseUp}
+            onMouseLeave={handleMicMouseLeave}
             disabled={loading || isTranscribing}
-            className={`px-4 py-3 rounded-xl transition ${
+            className={`px-4 py-3 rounded-xl transition select-none touch-none ${
               isRecording
                 ? 'bg-red-600 hover:bg-red-700 animate-pulse'
                 : isTranscribing
                   ? 'bg-slate-700 cursor-wait'
-                  : 'bg-slate-700 hover:bg-slate-600'
+                  : 'bg-slate-700 hover:bg-slate-600 active:bg-red-600'
             } disabled:opacity-50`}
-            title={isRecording ? "Stop recording" : isTranscribing ? "Transcribing..." : "Voice input"}
+            title={isRecording ? "Release to send" : isTranscribing ? "Transcribing..." : "Hold to record"}
           >
             {isTranscribing ? (
               <span className="text-xl">⏳</span>
             ) : isRecording ? (
-              <span className="text-xl">⏹</span>
+              <span className="text-xl">🎙️</span>
             ) : (
               <span className="text-xl">🎤</span>
             )}
