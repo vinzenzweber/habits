@@ -71,7 +71,7 @@ export function GuidedRoutinePlayer({
   const [isTrackingCompletion, setIsTrackingCompletion] = useState(false);
   const countdownAudioRef = useRef<HTMLAudioElement | null>(null);
   const segmentBeepPlayedRef = useRef(false);
-  const startTimeRef = useRef(Date.now());
+  const startTimeRef = useRef<number>(0);
   const hasTrackedCompletionRef = useRef(false);
 
   useEffect(() => {
@@ -84,35 +84,36 @@ export function GuidedRoutinePlayer({
   useEffect(() => {
     if (hasFinished && workout.slug && !hasTrackedCompletionRef.current) {
       hasTrackedCompletionRef.current = true;
-      setIsTrackingCompletion(true);
       const actualDuration = Math.floor((Date.now() - startTimeRef.current) / 1000);
 
-      fetch(`/api/workouts/${workout.slug}/complete`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ durationSeconds: actualDuration })
-      })
-        .then((res) => {
+      // Use async function to properly sequence state updates
+      const trackCompletion = async () => {
+        setIsTrackingCompletion(true);
+        try {
+          const res = await fetch(`/api/workouts/${workout.slug}/complete`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ durationSeconds: actualDuration })
+          });
           if (!res.ok) {
             throw new Error('Failed to save workout completion');
           }
-          return res.json();
-        })
-        .then((data) => {
+          const data = await res.json();
           if (data.completionId) {
             setCompletionId(data.completionId);
           }
           // Trigger confetti animation
           setShowConfetti(true);
-        })
-        .catch((error) => {
+        } catch (error) {
           console.error('Completion tracking error:', error);
           // Still show confetti even if tracking failed
           setShowConfetti(true);
-        })
-        .finally(() => {
+        } finally {
           setIsTrackingCompletion(false);
-        });
+        }
+      };
+
+      trackCompletion();
     }
   }, [hasFinished, workout.slug]);
 

@@ -630,7 +630,7 @@ ${memoryContext}${pageContextSection}${instructionSection}`;
     // Create a streaming response that includes tool progress
     const encoder = new TextEncoder();
     let fullContent = "";
-    let allToolCalls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[] = [];
+    const allToolCalls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[] = [];
 
     // Human-readable tool names for display
     const TOOL_DISPLAY_NAMES: Record<string, string> = {

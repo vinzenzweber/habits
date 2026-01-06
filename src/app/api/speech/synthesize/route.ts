@@ -39,8 +39,9 @@ export async function POST(request: Request) {
         'Content-Length': audioBuffer.length.toString(),
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("TTS error:", error);
-    return Response.json({ error: error.message || "Speech synthesis failed" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Speech synthesis failed";
+    return Response.json({ error: message }, { status: 500 });
   }
 }

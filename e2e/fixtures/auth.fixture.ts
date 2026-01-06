@@ -21,20 +21,20 @@ type AuthFixtures = {
 
 export const test = base.extend<AuthFixtures>({
   // Fresh user that just registered - will be on onboarding page
-  newUserPage: async ({ page }, use) => {
+  newUserPage: async ({ page }, callback) => {
     const user = generateTestUser()
     await registerUser(page, user)
     await loginUser(page, user.email, user.password)
-    await use(page)
+    await callback(page)
   },
 
   // User with completed onboarding - can access all pages
-  authenticatedPage: async ({ page }, use) => {
+  authenticatedPage: async ({ page }, callback) => {
     const user = generateTestUser()
     await registerUser(page, user)
     await loginUser(page, user.email, user.password)
     await completeOnboarding(page)
-    await use(page)
+    await callback(page)
   },
 })
 

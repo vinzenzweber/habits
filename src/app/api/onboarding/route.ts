@@ -351,7 +351,7 @@ export async function POST(request: Request) {
     // Stream response
     const encoder = new TextEncoder();
     let fullContent = "";
-    let allToolCalls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[] = [];
+    const allToolCalls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[] = [];
     let shouldSendComplete = false;
 
     const TOOL_DISPLAY_NAMES: Record<string, string> = {

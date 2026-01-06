@@ -43,11 +43,11 @@ export async function saveMemory(
       success: true,
       message: `Remembered ${key} in ${category}: ${value}`
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error('saveMemory error:', error);
     return {
       success: false,
-      message: error.message || 'Failed to save memory'
+      message: error instanceof Error ? error.message : 'Failed to save memory'
     };
   }
 }
@@ -76,7 +76,7 @@ export async function getMemories(
 
     const result = await query(sql, params);
     return result.rows as UserMemory[];
-  } catch (error: any) {
+  } catch (error) {
     console.error('getMemories error:', error);
     return [];
   }
@@ -104,11 +104,11 @@ export async function deleteMemory(
       success: true,
       message: `Forgot ${key} from ${category}`
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error('deleteMemory error:', error);
     return {
       success: false,
-      message: error.message || 'Failed to delete memory'
+      message: error instanceof Error ? error.message : 'Failed to delete memory'
     };
   }
 }
