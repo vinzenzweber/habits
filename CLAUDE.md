@@ -275,3 +275,75 @@ Each image takes ~30 seconds to generate. For 50 exercises (100 images), expect 
 - Integrated in workout detail page and guided player
 - Images hidden for `prep` and `rest` segments
 - Gracefully handles missing images (no broken UI)
+
+## Testing
+
+### Test Commands
+
+```bash
+npm test              # Run unit tests in watch mode
+npm run test:unit     # Run unit tests once
+npm run test:coverage # Run with coverage report
+npm run test:e2e      # Run Playwright E2E tests
+npm run test:e2e:ui   # Run E2E with interactive UI
+npm run test:e2e:headed # Run E2E with visible browser
+```
+
+### Test Structure
+
+```
+src/
+├── lib/__tests__/              # Unit tests for business logic
+│   ├── workout-generator.test.ts
+│   └── timer-utils.test.ts
+├── components/__tests__/       # Component tests
+│   └── GuidedRoutinePlayer.test.tsx
+e2e/
+├── fixtures/                   # Test helpers and fixtures
+│   └── auth.fixture.ts
+├── auth.spec.ts               # Authentication E2E tests
+└── workout-flow.spec.ts       # Workout player E2E tests
+```
+
+### Writing Tests
+
+**Unit Tests** (Vitest + Testing Library):
+- Test pure business logic (timer calculations, workout generation)
+- Mock external dependencies (database, OpenAI API)
+- Place tests in `__tests__` directories next to source files
+- Use `.test.ts` or `.test.tsx` extension
+
+**E2E Tests** (Playwright):
+- Test critical user flows (auth, onboarding, workout playback)
+- Run against full application with real database
+- Generate unique test users to avoid conflicts
+- Use `test.skip` for tests that need specific prerequisites
+
+### Mocking Strategies
+
+**Database**: Mock `@/lib/db` query function in unit tests
+```typescript
+vi.mock('@/lib/db', () => ({
+  query: vi.fn().mockResolvedValue({ rows: [] })
+}))
+```
+
+**OpenAI API**: Mock to avoid costs and ensure determinism
+```typescript
+vi.mock('openai', () => ({
+  default: vi.fn().mockImplementation(() => ({
+    chat: { completions: { create: vi.fn().mockResolvedValue(mockResponse) } }
+  }))
+}))
+```
+
+**Next.js Navigation**: Mocked globally in vitest.setup.ts
+
+### CI/CD
+
+GitHub Actions runs tests on every push and PR:
+1. **Unit tests**: Run first, fail fast
+2. **Build**: Verify production build succeeds
+3. **E2E tests**: Run against production build with PostgreSQL service
+
+Test artifacts (screenshots, reports) uploaded on failure.

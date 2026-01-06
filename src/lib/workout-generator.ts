@@ -522,7 +522,7 @@ export async function generateWorkoutPlan(
     await query(`
       INSERT INTO workouts (user_id, slug, version, title, focus, description, workout_json, is_active)
       VALUES ($1, $2, 1, $3, $4, $5, $6, true)
-      ON CONFLICT (user_id, slug, is_active) WHERE is_active = true
+      ON CONFLICT (user_id, slug) WHERE is_active = true
       DO UPDATE SET
         version = workouts.version + 1,
         title = EXCLUDED.title,

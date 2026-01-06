@@ -4,7 +4,20 @@ Create a pull request with full review, testing, deployment, and verification cy
 
 ## Steps
 
-### 1. Commit Changes
+### 1. Run Tests
+- Run unit tests to ensure no regressions
+- Run E2E tests for affected user flows
+- Fix any failing tests before proceeding
+
+```bash
+# Run unit tests
+npm run test:unit
+
+# Run E2E tests (requires build)
+npm run test:e2e
+```
+
+### 2. Commit Changes
 - Run `git status` to see all changes
 - Run `git diff` to review staged and unstaged changes
 - Stage relevant files with `git add`
@@ -204,3 +217,24 @@ railway domain
 - Keep commits atomic and well-described
 - Respond to review comments with explanations when needed
 - Production URL can be found with `railway domain`
+
+## Testing Requirements for New Features
+
+When adding new features, ensure tests are updated:
+
+1. **Unit tests**: Add tests for new business logic
+   - Timer/duration calculations → `src/lib/__tests__/timer-utils.test.ts`
+   - Workout generation logic → `src/lib/__tests__/workout-generator.test.ts`
+   - New utilities → create new test file in `__tests__` directory
+
+2. **E2E tests**: Add tests for new user-facing flows
+   - Authentication changes → `e2e/auth.spec.ts`
+   - Workout player changes → `e2e/workout-flow.spec.ts`
+   - New pages → create new spec file in `e2e/`
+
+3. **Update existing tests**: When behavior changes
+   - Run `npm run test:unit` to catch breaking tests
+   - Update test expectations to match new behavior
+
+4. **Verify coverage**: Don't decrease test coverage
+   - Run `npm run test:coverage` to check coverage report

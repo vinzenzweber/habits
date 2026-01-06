@@ -15,8 +15,8 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Allow access to auth routes
-  if (pathname.startsWith("/api/auth") || pathname === "/login" || pathname === "/register" || pathname === "/logout") {
+  // Allow access to auth routes and test routes
+  if (pathname.startsWith("/api/auth") || pathname.startsWith("/api/test") || pathname === "/login" || pathname === "/register" || pathname === "/logout") {
     return NextResponse.next();
   }
 
@@ -63,5 +63,6 @@ export const config = {
     "/api/speech/:path*",
     "/api/workouts/:path*",
     "/api/onboarding/:path*",
+    "/api/test/:path*",
   ]
 };
