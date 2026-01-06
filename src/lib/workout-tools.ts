@@ -219,7 +219,7 @@ function calculateStreaks(completions: Array<{ completed_at: string }>): { curre
   let currentStreak = 0;
   if (uniqueDates[0] === todayStr || uniqueDates[0] === yesterdayStr) {
     currentStreak = 1;
-    let checkDate = new Date(uniqueDates[0]);
+    const checkDate = new Date(uniqueDates[0]);
 
     for (let i = 1; i < uniqueDates.length; i++) {
       checkDate.setDate(checkDate.getDate() - 1);
@@ -242,7 +242,6 @@ function calculateStreaks(completions: Array<{ completed_at: string }>): { curre
 
   for (let i = 1; i < sortedDates.length; i++) {
     const prevDate = new Date(sortedDates[i - 1]);
-    const currDate = new Date(sortedDates[i]);
 
     // Check if consecutive days
     prevDate.setDate(prevDate.getDate() + 1);
@@ -286,7 +285,21 @@ export async function getWorkoutTool(userId: string, slug: string) {
   return result.rows[0]?.workout_json || null;
 }
 
-export async function updateWorkoutTool(userId: string, slug: string, workout: any) {
+interface WorkoutInput {
+  title: string;
+  segments: Array<{
+    id: string;
+    title: string;
+    durationSeconds: number;
+    category: string;
+    detail?: string;
+    round?: string;
+  }>;
+  focus?: string;
+  description?: string;
+}
+
+export async function updateWorkoutTool(userId: string, slug: string, workout: WorkoutInput) {
   // TODO: Add Zod schema validation here
 
   // Validate basic structure
