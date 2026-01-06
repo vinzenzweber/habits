@@ -22,9 +22,21 @@ test.describe('Workout Flow', () => {
       const todayBadge = page.getByText(/today/i).first()
       await expect(todayBadge).toBeVisible({ timeout: 10000 })
 
-      // Should show "Continue Your Week" section with featured workout
-      const continueSection = page.getByText(/continue your week/i)
-      await expect(continueSection).toBeVisible()
+      // Should show motivational header (time-based dynamic messaging)
+      // These are the exact messages from MotivationalHeader component
+      const motivationalMessages = [
+        "Morning momentum builds champions",
+        "Start your day strong",
+        "Midday power-up awaits",
+        "Perfect time for a workout",
+        "Afternoon energy boost ready",
+        "Beat the evening slump",
+        "End your day accomplished",
+        "There's still time today",
+      ];
+      const regex = new RegExp(motivationalMessages.join("|"), "i");
+      const motivationalHeader = page.getByText(regex).first();
+      await expect(motivationalHeader).toBeVisible()
     })
   })
 

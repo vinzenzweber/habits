@@ -3,6 +3,15 @@ import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { WorkoutPreviewMini } from "@/components/WorkoutPreviewMini";
+
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 11) return "Ready for your morning workout?";
+  if (hour >= 11 && hour < 14) return "Time for a midday energy boost";
+  if (hour >= 14 && hour < 18) return "Your afternoon workout awaits";
+  return "End your day strong";
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -10,6 +19,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const greeting = getGreeting();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,16 +48,21 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-      <div className="bg-slate-900 rounded-lg p-8 max-w-md w-full">
-        <h1 className="text-2xl font-bold mb-6">Login to Habits</h1>
+      <div className="bg-slate-900 rounded-lg p-8 max-w-md w-full space-y-6">
+        <div>
+          <p className="text-emerald-400 text-sm font-medium mb-1">{greeting}</p>
+          <h1 className="text-2xl font-bold">Welcome back</h1>
+        </div>
+
+        <WorkoutPreviewMini />
 
         {error && (
-          <div className="bg-red-500/20 text-red-200 p-3 rounded mb-4">
+          <div className="bg-red-500/20 text-red-200 p-3 rounded">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           <div>
             <label htmlFor="email" className="block text-sm mb-2">Email</label>
             <input

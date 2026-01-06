@@ -2,11 +2,14 @@ import Link from "next/link";
 
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { LogoutButton } from "@/components/LogoutButton";
+import { MotivationalHeader } from "@/components/MotivationalHeader";
+import { StreakCard } from "@/components/StreakCard";
 import {
   getAllWorkouts,
   getNextUncompletedWorkout,
   getTodayCompletions,
   getTodaySlug,
+  getUserStreakStats,
 } from "@/lib/workoutPlan";
 
 export const dynamic = "force-dynamic";
@@ -18,12 +21,14 @@ function formatDuration(seconds: number) {
 }
 
 export default async function Home() {
-  const [nextWorkout, allWorkouts, completions] = await Promise.all([
+  const [nextWorkout, allWorkouts, completions, streakStats] = await Promise.all([
     getNextUncompletedWorkout(),
     getAllWorkouts(),
     getTodayCompletions(),
+    getUserStreakStats(),
   ]);
   const todaySlug = getTodaySlug();
+  const hasStreak = (streakStats?.currentStreak ?? 0) >= 1;
 
   if (!nextWorkout || allWorkouts.length === 0) {
     throw new Error("Workout plan missing.");
@@ -40,11 +45,12 @@ export default async function Home() {
           <LogoutButton />
         </header>
 
+        {/* Streak Display */}
+        <StreakCard stats={streakStats} />
+
         {/* Featured: Next uncompleted workout */}
         <section className="space-y-4">
-          <h2 className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">
-            Continue Your Week
-          </h2>
+          <MotivationalHeader hasStreak={hasStreak} />
           <Link
             href={`/workouts/${nextWorkout.slug}`}
             className="block rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/30 p-6 transition hover:border-emerald-500/50 hover:shadow-lg hover:shadow-emerald-500/10"
