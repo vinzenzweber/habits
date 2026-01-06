@@ -4,10 +4,13 @@ import { getToken } from "next-auth/jwt";
 
 export async function proxy(request: NextRequest) {
   // Get JWT token - NextAuth v5 uses authjs.session-token cookie
+  // In production over HTTPS, use __Secure- prefix; otherwise use plain cookie name
+  // This allows E2E tests to run over HTTP in CI while still being secure in production
+  const isSecureContext = request.nextUrl.protocol === "https:";
   const token = await getToken({
     req: request,
     secret: process.env.NEXTAUTH_SECRET,
-    cookieName: process.env.NODE_ENV === "production"
+    cookieName: isSecureContext
       ? "__Secure-authjs.session-token"
       : "authjs.session-token"
   });
