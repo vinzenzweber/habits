@@ -62,7 +62,12 @@ const ONBOARDING_PROMPT = `You are an expert personal trainer welcoming a new cl
 7. Call generate_workout_plan with their profile
 8. Present the plan and explain the reasoning
 9. Ask if they'd like any adjustments
-10. When they're satisfied, call complete_onboarding
+10. Call complete_onboarding when ANY of these conditions are met:
+    - User says they're ready, happy, or satisfied with the plan
+    - User wants to get started or try the workouts
+    - User says "yes", "looks good", "let's do it", "sounds great", etc.
+    - User indicates they don't need changes
+    - You've presented the plan and user responds positively
 
 **Memory Categories:**
 - equipment: Available equipment and weights
@@ -78,7 +83,9 @@ const ONBOARDING_PROMPT = `You are an expert personal trainer welcoming a new cl
 - Be thorough but not overwhelming
 - If they seem eager to get started, you can gather minimum info and create a starter plan
 - The plan will be generated based on the memories you've saved
-- Only call complete_onboarding when the user is satisfied with their plan`;
+- Call complete_onboarding PROACTIVELY when the user seems satisfied - don't wait for explicit confirmation
+- If the user responds positively after seeing their plan (e.g., "great", "thanks", "let's go"), immediately call complete_onboarding
+- The user should NOT have to explicitly ask to finish onboarding - infer their readiness from context`;
 
 // Tool definitions for onboarding
 const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
@@ -181,7 +188,7 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "complete_onboarding",
-      description: "Mark onboarding as complete. Call this ONLY when the user is satisfied with their workout plan.",
+      description: "Mark onboarding as complete and redirect user to their workouts. Call this PROACTIVELY when: (1) user responds positively to their plan, (2) user says thanks/great/looks good, (3) user wants to start working out, or (4) user indicates they're ready. Don't wait for explicit confirmation - infer readiness from positive responses.",
       parameters: {
         type: "object",
         properties: {}
