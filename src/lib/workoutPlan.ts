@@ -691,4 +691,134 @@ export function getTodaySlug(now: Date = new Date()): DaySlug {
   return DAY_ORDER[now.getDay()];
 }
 
+/**
+ * Streak stats for display on the home page
+ */
+export interface StreakStats {
+  currentStreak: number;
+  longestStreak: number;
+  totalCompletions: number;
+  daysSinceLastWorkout: number | null;
+}
+
+/**
+ * Get user's streak statistics for home page display
+ */
+export async function getUserStreakStats(): Promise<StreakStats | null> {
+  const session = await auth();
+  if (!session?.user?.id) return null;
+
+  // Get all completions for this user
+  const result = await query(`
+    SELECT completed_at
+    FROM workout_completions
+    WHERE user_id = $1
+    ORDER BY completed_at DESC
+  `, [session.user.id]);
+
+  const completions = result.rows as Array<{ completed_at: string }>;
+
+  if (completions.length === 0) {
+    return {
+      currentStreak: 0,
+      longestStreak: 0,
+      totalCompletions: 0,
+      daysSinceLastWorkout: null,
+    };
+  }
+
+  // Calculate streaks
+  const { currentStreak, longestStreak } = calculateStreaks(completions);
+
+  // Days since last workout
+  const lastDate = new Date(completions[0].completed_at);
+  const now = new Date();
+  const diffTime = now.getTime() - lastDate.getTime();
+  const daysSinceLastWorkout = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  return {
+    currentStreak,
+    longestStreak,
+    totalCompletions: completions.length,
+    daysSinceLastWorkout,
+  };
+}
+
+/**
+ * Calculate current and longest streak from completion dates
+ */
+function calculateStreaks(completions: Array<{ completed_at: string }>): {
+  currentStreak: number;
+  longestStreak: number;
+} {
+  if (completions.length === 0) {
+    return { currentStreak: 0, longestStreak: 0 };
+  }
+
+  // Get unique dates (normalized to day only)
+  const uniqueDates = [
+    ...new Set(
+      completions.map((c) => {
+        const date = new Date(c.completed_at);
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      })
+    ),
+  ]
+    .sort()
+    .reverse(); // Most recent first
+
+  if (uniqueDates.length === 0) {
+    return { currentStreak: 0, longestStreak: 0 };
+  }
+
+  // Calculate current streak (must include today or yesterday)
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
+
+  let currentStreak = 0;
+  if (uniqueDates[0] === todayStr || uniqueDates[0] === yesterdayStr) {
+    currentStreak = 1;
+    const checkDate = new Date(uniqueDates[0]);
+
+    for (let i = 1; i < uniqueDates.length; i++) {
+      checkDate.setDate(checkDate.getDate() - 1);
+      const checkStr = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, "0")}-${String(checkDate.getDate()).padStart(2, "0")}`;
+
+      if (uniqueDates[i] === checkStr) {
+        currentStreak++;
+      } else {
+        break;
+      }
+    }
+  }
+
+  // Calculate longest streak
+  let longestStreak = 1;
+  let tempStreak = 1;
+
+  // Sort dates ascending for longest streak calculation
+  const sortedDates = [...uniqueDates].sort();
+
+  for (let i = 1; i < sortedDates.length; i++) {
+    const prevDate = new Date(sortedDates[i - 1]);
+
+    // Check if consecutive days
+    prevDate.setDate(prevDate.getDate() + 1);
+    const prevNextStr = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}-${String(prevDate.getDate()).padStart(2, "0")}`;
+
+    if (sortedDates[i] === prevNextStr) {
+      tempStreak++;
+      longestStreak = Math.max(longestStreak, tempStreak);
+    } else {
+      tempStreak = 1;
+    }
+  }
+
+  return { currentStreak, longestStreak };
+}
+
 export { structuredWorkouts, DAY_ORDER, DAY_LABELS };

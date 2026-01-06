@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
+import { WorkoutPreviewMini } from "@/components/WorkoutPreviewMini";
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
@@ -54,16 +55,22 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-      <div className="bg-slate-900 rounded-lg p-8 max-w-md w-full">
-        <h1 className="text-2xl font-bold mb-6">Create Account</h1>
+      <div className="bg-slate-900 rounded-lg p-8 max-w-md w-full space-y-6">
+        <div>
+          <p className="text-emerald-400 text-sm font-medium mb-1">Build your streak, transform your routine</p>
+          <h1 className="text-2xl font-bold">Get Started</h1>
+          <p className="text-slate-400 text-sm mt-2">7 unique workouts designed for every day of the week</p>
+        </div>
+
+        <WorkoutPreviewMini />
 
         {error && (
-          <div className="bg-red-500/20 text-red-200 p-3 rounded mb-4">
+          <div className="bg-red-500/20 text-red-200 p-3 rounded">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           <div>
             <label htmlFor="name" className="block text-sm mb-2">Name (optional)</label>
             <input

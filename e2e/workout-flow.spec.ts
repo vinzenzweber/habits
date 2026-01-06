@@ -22,9 +22,10 @@ test.describe('Workout Flow', () => {
       const todayBadge = page.getByText(/today/i).first()
       await expect(todayBadge).toBeVisible({ timeout: 10000 })
 
-      // Should show "Continue Your Week" section with featured workout
-      const continueSection = page.getByText(/continue your week/i)
-      await expect(continueSection).toBeVisible()
+      // Should show motivational header (time-based dynamic messaging)
+      // Matches patterns like "Morning momentum", "Start your day", "Beat the evening slump", etc.
+      const motivationalHeader = page.getByText(/momentum|start your day|midday|afternoon|end your day|still time|perfect time|energy boost|beat.*slump/i).first()
+      await expect(motivationalHeader).toBeVisible()
     })
   })
 
