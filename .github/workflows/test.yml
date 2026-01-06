@@ -59,6 +59,8 @@ jobs:
           NEXTAUTH_SECRET: test-secret-for-ci
           NEXTAUTH_URL: http://localhost:3000
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          # Enable test endpoints in production build for E2E tests
+          ALLOW_TEST_ENDPOINTS: true
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
