@@ -6,8 +6,8 @@ builder = "DOCKERFILE"
 
 [deploy]
 startCommand = "npm run db:migrate && npm run start"
-healthcheckPath = "/"
-healthcheckTimeout = 30
+healthcheckPath = "/login"
+healthcheckTimeout = 60
 
 # Volume for storing exercise images
 [[volumes]]
