@@ -135,13 +135,62 @@ Railway deployment configured via:
 - User registration auto-creates default workouts
 - All routes protected except /login and /register
 
+## Streak Preservation System
+
+The app includes a streak preservation system to help users maintain their workout streak on difficult days (low motivation, illness, travel).
+
+### Three Protection Mechanisms
+
+| Mechanism | Description | Limit |
+|-----------|-------------|-------|
+| **Nano Workout** | 3-minute minimal workout (10 squats, 10 push-ups, 10 crunches) | Max 2 per week |
+| **Streak Shield** | Earned freeze that auto-applies on missed days | Max stockpile: 2 |
+| **Rest Day** | 1 built-in rest day per 7-day rolling period | 1 per 7 days |
+
+### How Shields Are Earned
+
+- Complete 7 consecutive **full** workouts to earn 1 shield
+- Nano workouts count toward maintaining streak but NOT toward earning shields
+- Shields auto-apply when you miss a day (if available)
+- Maximum stockpile of 2 shields
+
+### Key Files
+
+- `src/lib/nanoWorkout.ts` - Nano workout definition
+- `src/lib/streakShields.ts` - Shield and streak preservation logic
+- `src/app/workouts/nano/` - Nano workout pages
+- `src/app/api/workouts/nano/` - Nano workout API
+- `src/app/api/streak/` - Streak shield and check APIs
+- `src/components/NanoWorkoutCard.tsx` - Home page nano prompt
+- `src/components/ShieldBanner.tsx` - Shield notification banner
+
+### API Endpoints
+
+- `GET /api/workouts/nano` - Check nano availability and get workout
+- `POST /api/workouts/nano/complete` - Complete nano workout
+- `GET /api/streak/shields` - Get shield status
+- `POST /api/streak/shields` - Manually use a shield
+- `GET /api/streak/check` - Get streak preservation status
+- `POST /api/streak/check` - Check and auto-apply shields
+
+### Completion Types
+
+The `workout_completions` table tracks different completion types:
+- `full` - Regular daily workout
+- `nano` - Nano workout (3-minute minimal)
+- `shield` - Shield auto-applied for missed day
+- `rest` - Designated rest day
+
 ## Database
 
 Uses PostgreSQL with the following tables:
 - `users` - User accounts
 - `sessions` - NextAuth.js sessions
 - `workouts` - User-scoped workout plans with versioning
-- `workout_completions` - Workout completion history
+- `workout_completions` - Workout completion history (with `completion_type`: full, nano, shield, rest)
+- `streak_shields` - Earned/used streak protection shields
+- `nano_workout_usage` - Weekly nano workout usage tracking
+- `rest_day_usage` - Rest day tracking for streak preservation
 - `chat_sessions` - AI chat sessions
 - `chat_messages` - Chat message history
 - `user_memories` - Personal trainer memory (equipment, goals, medical, preferences)

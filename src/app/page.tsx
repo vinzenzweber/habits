@@ -3,6 +3,8 @@ import Link from "next/link";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { LogoutButton } from "@/components/LogoutButton";
 import { MotivationalHeader } from "@/components/MotivationalHeader";
+import { NanoWorkoutCard } from "@/components/NanoWorkoutCard";
+import { ShieldBanner } from "@/components/ShieldBanner";
 import { StreakCard } from "@/components/StreakCard";
 import {
   getAllWorkouts,
@@ -29,6 +31,7 @@ export default async function Home() {
   ]);
   const todaySlug = getTodaySlug();
   const hasStreak = (streakStats?.currentStreak ?? 0) >= 1;
+  const hasCompletedToday = completions[todaySlug] ?? false;
 
   if (!nextWorkout || allWorkouts.length === 0) {
     throw new Error("Workout plan missing.");
@@ -45,8 +48,17 @@ export default async function Home() {
           <LogoutButton />
         </header>
 
+        {/* Shield Banner (shows when shield was auto-applied) */}
+        {hasStreak && <ShieldBanner currentStreak={streakStats?.currentStreak ?? 0} />}
+
         {/* Streak Display */}
         <StreakCard stats={streakStats} />
+
+        {/* Nano Workout Option (shows when not completed today) */}
+        <NanoWorkoutCard
+          nanoRemaining={streakStats?.nanoRemaining ?? 0}
+          hasCompletedToday={hasCompletedToday}
+        />
 
         {/* Featured: Next uncompleted workout */}
         <section className="space-y-4">

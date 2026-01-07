@@ -12,9 +12,14 @@ import type {
   RoutineSegmentCategory,
   WorkoutDay,
 } from "@/lib/workoutPlan";
+import type { NanoWorkout } from "@/lib/nanoWorkout";
+
+// Base workout type that both regular and nano workouts satisfy
+type PlayableWorkout = WorkoutDay | (NanoWorkout & { label?: string });
 
 type GuidedRoutinePlayerProps = {
-  workout: WorkoutDay;
+  workout: PlayableWorkout;
+  isNano?: boolean;
 };
 
 type CategoryStyles = {
@@ -37,6 +42,10 @@ const BEEP_TRIGGER_SECONDS = 4;
 const WORKOUT_COMPLETION_MESSAGE = (title: string) =>
   `I just completed the ${title} workout! Congratulate me briefly and ask how the difficulty felt. After I respond, you may suggest modifications if appropriate but do NOT automatically apply any changes.`;
 
+// Message for nano workout completion
+const NANO_COMPLETION_MESSAGE = () =>
+  `I just completed a nano workout to save my streak! Give me a brief but enthusiastic congratulation for showing up even on a tough day.`;
+
 function formatTime(seconds: number) {
   const clamped = Math.max(0, Math.ceil(seconds));
   const minutes = Math.floor(clamped / 60);
@@ -52,6 +61,7 @@ function sumDuration(segments: RoutineSegment[], endIndex: number) {
 
 export function GuidedRoutinePlayer({
   workout,
+  isNano = false,
 }: GuidedRoutinePlayerProps) {
   const { openChat } = useChat();
   const segments = useMemo(() => workout.segments ?? [], [workout.segments]);
@@ -90,7 +100,12 @@ export function GuidedRoutinePlayer({
       const trackCompletion = async () => {
         setIsTrackingCompletion(true);
         try {
-          const res = await fetch(`/api/workouts/${workout.slug}/complete`, {
+          // Use different endpoint for nano workouts
+          const endpoint = isNano
+            ? "/api/workouts/nano/complete"
+            : `/api/workouts/${workout.slug}/complete`;
+
+          const res = await fetch(endpoint, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ durationSeconds: actualDuration })
@@ -115,17 +130,19 @@ export function GuidedRoutinePlayer({
 
       trackCompletion();
     }
-  }, [hasFinished, workout.slug]);
+  }, [hasFinished, workout.slug, isNano]);
 
   // Handle confetti completion - open chat modal
   const handleConfettiComplete = useCallback(() => {
     setShowConfetti(false);
     openChat({
-      initialMessage: WORKOUT_COMPLETION_MESSAGE(workout.title),
+      initialMessage: isNano
+        ? NANO_COMPLETION_MESSAGE()
+        : WORKOUT_COMPLETION_MESSAGE(workout.title),
       autoSend: true,
       completionId: completionId ?? undefined
     });
-  }, [openChat, workout.title, completionId]);
+  }, [openChat, workout.title, completionId, isNano]);
 
   useEffect(() => {
     if (!hasRoutine || !isRunning || hasFinished) {
