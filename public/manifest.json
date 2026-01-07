@@ -1,6 +1,6 @@
 {
-  "name": "Habits — Morning Workout Routines",
-  "short_name": "Habits",
+  "name": "FitStreak — Daily Workout Habits",
+  "short_name": "FitStreak",
   "description": "Mobile-first morning workout routines matched to every day of the week to build a sustainable habit streak.",
   "start_url": "/",
   "display": "standalone",
