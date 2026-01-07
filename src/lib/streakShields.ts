@@ -37,6 +37,16 @@ export interface StreakPreservationStatus {
 }
 
 /**
+ * Convert a Date to local YYYY-MM-DD string (avoids UTC timezone issues)
+ */
+function toLocalDateString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+/**
  * Get the start of the current ISO week (Monday)
  */
 function getWeekStart(date: Date = new Date()): string {
@@ -45,7 +55,7 @@ function getWeekStart(date: Date = new Date()): string {
   // Adjust to get Monday (day 1). If Sunday (0), go back 6 days
   const diff = day === 0 ? -6 : 1 - day;
   d.setDate(d.getDate() + diff);
-  return d.toISOString().split("T")[0];
+  return toLocalDateString(d);
 }
 
 /**
@@ -150,9 +160,7 @@ export async function recordRestDay(userId: number, date?: Date): Promise<boolea
     return false;
   }
 
-  const restDate = date
-    ? date.toISOString().split("T")[0]
-    : new Date().toISOString().split("T")[0];
+  const restDate = toLocalDateString(date ?? new Date());
 
   await query(
     `
@@ -169,26 +177,27 @@ export async function recordRestDay(userId: number, date?: Date): Promise<boolea
 /**
  * Earn a streak shield (called after completing full workouts)
  * Only earns if user hasn't reached max stockpile
+ * Uses atomic query to prevent race conditions
  */
 export async function earnShield(
   userId: number,
   streakLength: number
 ): Promise<boolean> {
-  // Check current stockpile
-  const status = await getAvailableShields(userId);
-  if (status.available >= MAX_SHIELD_STOCKPILE) {
-    return false; // Already at max
-  }
-
-  await query(
+  // Atomically insert a shield only if current stockpile is below maximum
+  const result = await query(
     `
     INSERT INTO streak_shields (user_id, earned_from_streak)
-    VALUES ($1, $2)
+    SELECT $1, $2
+    WHERE (
+      SELECT COUNT(*) FROM streak_shields
+      WHERE user_id = $1 AND used_at IS NULL
+    ) < $3
+    RETURNING id
     `,
-    [userId, streakLength]
+    [userId, streakLength, MAX_SHIELD_STOCKPILE]
   );
 
-  return true;
+  return result.rows.length > 0;
 }
 
 /**
@@ -225,9 +234,7 @@ export async function applyShield(
   }
 
   // Create a completion record for the shield
-  const shieldDate = forDate
-    ? forDate.toISOString().split("T")[0]
-    : new Date().toISOString().split("T")[0];
+  const shieldDate = toLocalDateString(forDate ?? new Date());
 
   // We need to get a workout_id to insert into workout_completions
   // Use the first active workout for this user as a placeholder
@@ -260,15 +267,17 @@ export async function applyShield(
 /**
  * Check if auto-shield should be applied for yesterday
  * Called on app open to preserve streak
+ * First checks if a rest day can be used before consuming a shield
  */
 export async function checkAndAutoApplyShield(userId: number): Promise<{
   applied: boolean;
   shieldId?: number;
+  usedRestDay?: boolean;
 }> {
   // Get yesterday's date
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toISOString().split("T")[0];
+  const yesterdayStr = toLocalDateString(yesterday);
 
   // Check if there was any completion yesterday
   const completionResult = await query(
@@ -286,11 +295,26 @@ export async function checkAndAutoApplyShield(userId: number): Promise<{
     return { applied: false };
   }
 
+  // Check if yesterday was already a recorded rest day
+  const restDayResult = await query(
+    `
+    SELECT id FROM rest_day_usage
+    WHERE user_id = $1 AND rest_date = $2::date
+    LIMIT 1
+    `,
+    [userId, yesterdayStr]
+  );
+
+  if (restDayResult.rows.length > 0) {
+    // Yesterday was a rest day, streak is preserved
+    return { applied: false };
+  }
+
   // Check if there's an active streak that would break
   // (had a workout 2 days ago)
   const twoDaysAgo = new Date();
   twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-  const twoDaysAgoStr = twoDaysAgo.toISOString().split("T")[0];
+  const twoDaysAgoStr = toLocalDateString(twoDaysAgo);
 
   const streakResult = await query(
     `
@@ -307,7 +331,13 @@ export async function checkAndAutoApplyShield(userId: number): Promise<{
     return { applied: false };
   }
 
-  // Try to apply shield
+  // First, try to use a rest day (free, doesn't consume shield)
+  const restDayUsed = await recordRestDay(userId, yesterday);
+  if (restDayUsed) {
+    return { applied: true, usedRestDay: true };
+  }
+
+  // If no rest day available, try to apply shield
   const shieldId = await applyShield(userId, yesterday);
 
   if (shieldId) {
@@ -325,45 +355,7 @@ export async function checkAndEarnShield(userId: number): Promise<{
   earned: boolean;
   streakLength?: number;
 }> {
-  // Count consecutive full workouts (not nano, not shield)
-  const result = await query(
-    `
-    WITH recent_completions AS (
-      SELECT
-        DATE(completed_at) as completion_date,
-        completion_type
-      FROM workout_completions
-      WHERE user_id = $1
-      ORDER BY completed_at DESC
-      LIMIT 30
-    ),
-    consecutive AS (
-      SELECT
-        completion_date,
-        completion_type,
-        ROW_NUMBER() OVER (ORDER BY completion_date DESC) as rn
-      FROM recent_completions
-      WHERE completion_type = 'full'
-    )
-    SELECT COUNT(*) as streak
-    FROM consecutive c1
-    WHERE NOT EXISTS (
-      -- Check for gaps (missing days)
-      SELECT 1 FROM consecutive c2
-      WHERE c2.rn = c1.rn + 1
-      AND c2.completion_date != c1.completion_date - INTERVAL '1 day'
-    )
-    AND c1.completion_date >= (
-      -- Find where the streak starts
-      SELECT MAX(completion_date) - INTERVAL '30 days' FROM consecutive
-    )
-    `,
-    [userId]
-  );
-  // Note: result is intentionally unused - the simpler query below is more reliable
-  void result;
-
-  // Simpler approach: count consecutive full workouts from today backwards
+  // Count consecutive full workouts from today backwards
   const simpleResult = await query(
     `
     WITH dated_completions AS (

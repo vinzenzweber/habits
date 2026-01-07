@@ -27,7 +27,8 @@ export async function POST() {
     const status = await getStreakPreservationStatus();
 
     return Response.json({
-      shieldAutoApplied: autoShieldResult.applied,
+      shieldAutoApplied: autoShieldResult.applied && !autoShieldResult.usedRestDay,
+      restDayApplied: autoShieldResult.applied && autoShieldResult.usedRestDay,
       shieldId: autoShieldResult.shieldId,
       status,
     });

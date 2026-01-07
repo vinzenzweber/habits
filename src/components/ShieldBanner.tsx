@@ -1,51 +1,69 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface ShieldBannerProps {
   currentStreak: number;
 }
 
+type ProtectionType = "shield" | "restDay" | null;
+
 /**
- * Banner that shows when a streak shield was auto-applied
- * Checks on mount and shows notification if shield was used
+ * Banner that shows when a streak shield or rest day was auto-applied
+ * Checks on mount and shows notification if protection was used
+ * Uses a ref to prevent duplicate API calls on remounts
  */
 export function ShieldBanner({ currentStreak }: ShieldBannerProps) {
-  const [shieldApplied, setShieldApplied] = useState(false);
+  const [protectionType, setProtectionType] = useState<ProtectionType>(null);
   const [dismissed, setDismissed] = useState(false);
+  const hasChecked = useRef(false);
 
   useEffect(() => {
-    // Check if shield should be auto-applied
-    const checkShield = async () => {
+    // Prevent duplicate checks on remount
+    if (hasChecked.current) return;
+    hasChecked.current = true;
+
+    // Check if protection should be auto-applied
+    const checkProtection = async () => {
       try {
         const res = await fetch("/api/streak/check", { method: "POST" });
         if (res.ok) {
           const data = await res.json();
           if (data.shieldAutoApplied) {
-            setShieldApplied(true);
+            setProtectionType("shield");
+          } else if (data.restDayApplied) {
+            setProtectionType("restDay");
           }
         }
       } catch (error) {
-        console.error("Failed to check shield status:", error);
+        console.error("Failed to check protection status:", error);
       }
     };
 
-    checkShield();
+    checkProtection();
   }, []);
 
-  if (!shieldApplied || dismissed) {
+  if (!protectionType || dismissed) {
     return null;
   }
 
+  const isRestDay = protectionType === "restDay";
+
   return (
-    <div className="rounded-2xl border border-blue-500/30 bg-gradient-to-r from-blue-950/50 to-slate-900/50 p-4">
+    <div className={`rounded-2xl border p-4 ${
+      isRestDay
+        ? "border-emerald-500/30 bg-gradient-to-r from-emerald-950/50 to-slate-900/50"
+        : "border-blue-500/30 bg-gradient-to-r from-blue-950/50 to-slate-900/50"
+    }`}>
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3">
-          <span className="text-2xl" role="img" aria-label="Shield">
-            🛡️
+          <span className="text-2xl" role="img" aria-label={isRestDay ? "Rest" : "Shield"}>
+            {isRestDay ? "😴" : "🛡️"}
           </span>
           <div>
-            <p className="font-medium text-blue-300">Streak Shield Activated!</p>
+            <p className={`font-medium ${isRestDay ? "text-emerald-300" : "text-blue-300"}`}>
+              {isRestDay ? "Rest Day Used!" : "Streak Shield Activated!"}
+            </p>
             <p className="mt-1 text-sm text-slate-400">
               Your {currentStreak}-day streak was protected. Keep it going today!
             </p>
