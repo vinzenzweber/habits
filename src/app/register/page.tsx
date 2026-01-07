@@ -79,6 +79,7 @@ export default function RegisterPage() {
               value={name}
               onChange={e => setName(e.target.value)}
               required
+              maxLength={255}
               disabled={loading}
               className="w-full p-3 rounded bg-slate-800 border border-slate-700 focus:border-emerald-500 outline-none disabled:opacity-50"
             />

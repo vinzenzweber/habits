@@ -24,6 +24,9 @@ export async function POST(request: Request) {
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return Response.json({ error: "Name is required" }, { status: 400 });
     }
+    if (name.trim().length > 255) {
+      return Response.json({ error: "Name must be at most 255 characters" }, { status: 400 });
+    }
 
     // Check if user exists
     const existing = await query(`SELECT id FROM users WHERE email = $1`, [email]);

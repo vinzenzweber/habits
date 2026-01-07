@@ -84,6 +84,20 @@ describe('POST /api/auth/register', () => {
       expect(response.status).toBe(400)
       expect(data.error).toBe('Name is required')
     })
+
+    it('returns error when name exceeds 255 characters', async () => {
+      const request = createRequest({
+        email: 'test@example.com',
+        password: 'ValidPassword123!',
+        name: 'a'.repeat(256)
+      })
+
+      const response = await POST(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(data.error).toBe('Name must be at most 255 characters')
+    })
   })
 
   describe('email validation', () => {
