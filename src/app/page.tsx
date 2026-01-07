@@ -43,7 +43,7 @@ export default async function Home() {
         {/* Header */}
         <header className="flex items-center justify-between">
           <p className="text-xs font-semibold uppercase tracking-[0.4em] text-emerald-400">
-            Habits
+            FitStreak
           </p>
           <LogoutButton />
         </header>

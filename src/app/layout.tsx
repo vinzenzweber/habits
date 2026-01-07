@@ -16,16 +16,25 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Habits — Morning Workout Routines",
+  title: "FitStreak — Daily Workout Habits",
   description:
     "Mobile-first morning workout routines matched to every day of the week to build a sustainable habit streak.",
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Habits",
+    title: "FitStreak",
   },
-  applicationName: "Habits",
+  applicationName: "FitStreak",
 };
 
 export const viewport: Viewport = {
