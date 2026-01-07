@@ -20,6 +20,11 @@ export async function POST(request: Request) {
       return Response.json({ error: "Password must be 8-128 characters" }, { status: 400 });
     }
 
+    // Validate name
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      return Response.json({ error: "Name is required" }, { status: 400 });
+    }
+
     // Check if user exists
     const existing = await query(`SELECT id FROM users WHERE email = $1`, [email]);
     if (existing.rows.length > 0) {
@@ -35,7 +40,7 @@ export async function POST(request: Request) {
       INSERT INTO users (email, name, password_hash)
       VALUES ($1, $2, $3)
       RETURNING id
-    `, [email, name || email.split('@')[0], passwordHash]);
+    `, [email, name.trim(), passwordHash]);
 
     // Try to set onboarding_started_at if column exists (gracefully handle if not)
     try {

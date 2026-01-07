@@ -72,12 +72,13 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           <div>
-            <label htmlFor="name" className="block text-sm mb-2">Name (optional)</label>
+            <label htmlFor="name" className="block text-sm mb-2">Name</label>
             <input
               id="name"
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
+              required
               disabled={loading}
               className="w-full p-3 rounded bg-slate-800 border border-slate-700 focus:border-emerald-500 outline-none disabled:opacity-50"
             />

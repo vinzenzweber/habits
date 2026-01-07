@@ -11,15 +11,29 @@ test.describe('Authentication', () => {
       await page.goto('/register')
 
       // Check for essential form elements
+      await expect(page.getByLabel(/^name$/i)).toBeVisible()
       await expect(page.getByLabel(/email/i)).toBeVisible()
       await expect(page.getByLabel(/password/i)).toBeVisible()
       await expect(page.getByRole('button', { name: /register|sign up|create account/i })).toBeVisible()
+    })
+
+    test('validates name is required', async ({ page }) => {
+      await page.goto('/register')
+
+      // Fill email and password but not name
+      await page.getByLabel(/email/i).fill(generateTestEmail())
+      await page.getByLabel(/password/i).fill('ValidPassword123!')
+      await page.getByRole('button', { name: /register|sign up|create account/i }).click()
+
+      // Should stay on register page (HTML5 validation will prevent submit)
+      await expect(page).toHaveURL(/\/register/)
     })
 
     test('validates email format', async ({ page }) => {
       await page.goto('/register')
 
       // Try invalid email
+      await page.getByLabel(/^name$/i).fill('Test User')
       await page.getByLabel(/email/i).fill('invalid-email')
       await page.getByLabel(/password/i).fill('ValidPassword123!')
       await page.getByRole('button', { name: /register|sign up|create account/i }).click()
@@ -32,6 +46,7 @@ test.describe('Authentication', () => {
       await page.goto('/register')
 
       // Try short password
+      await page.getByLabel(/^name$/i).fill('Test User')
       await page.getByLabel(/email/i).fill(generateTestEmail())
       await page.getByLabel(/password/i).fill('short')
       await page.getByRole('button', { name: /register|sign up|create account/i }).click()
@@ -45,14 +60,9 @@ test.describe('Authentication', () => {
 
       await page.goto('/register')
 
+      await page.getByLabel(/^name$/i).fill('Test User')
       await page.getByLabel(/email/i).fill(email)
       await page.getByLabel(/password/i).fill('ValidPassword123!')
-
-      // Fill name if visible
-      const nameField = page.getByLabel(/name/i)
-      if (await nameField.isVisible()) {
-        await nameField.fill('Test User')
-      }
 
       await page.getByRole('button', { name: /register|sign up|create account/i }).click()
 
@@ -65,6 +75,7 @@ test.describe('Authentication', () => {
 
       // First registration
       await page.goto('/register')
+      await page.getByLabel(/^name$/i).fill('Test User')
       await page.getByLabel(/email/i).fill(email)
       await page.getByLabel(/password/i).fill('ValidPassword123!')
       await page.getByRole('button', { name: /register|sign up|create account/i }).click()
@@ -74,6 +85,7 @@ test.describe('Authentication', () => {
 
       // Second registration with same email
       await page.goto('/register')
+      await page.getByLabel(/^name$/i).fill('Another User')
       await page.getByLabel(/email/i).fill(email)
       await page.getByLabel(/password/i).fill('DifferentPassword123!')
       await page.getByRole('button', { name: /register|sign up|create account/i }).click()
@@ -93,6 +105,7 @@ test.describe('Authentication', () => {
       // Register user once for login tests
       const page = await browser.newPage()
       await page.goto('/register')
+      await page.getByLabel(/^name$/i).fill('Login Test User')
       await page.getByLabel(/email/i).fill(testEmail)
       await page.getByLabel(/password/i).fill(testPassword)
       await page.getByRole('button', { name: /register|sign up|create account/i }).click()
@@ -154,6 +167,7 @@ test.describe('Authentication', () => {
 
       // Register and login
       await page.goto('/register')
+      await page.getByLabel(/^name$/i).fill('Session Test User')
       await page.getByLabel(/email/i).fill(email)
       await page.getByLabel(/password/i).fill('ValidPassword123!')
       await page.getByRole('button', { name: /register|sign up|create account/i }).click()
