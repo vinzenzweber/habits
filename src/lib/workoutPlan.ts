@@ -699,6 +699,11 @@ export interface StreakStats {
   longestStreak: number;
   totalCompletions: number;
   daysSinceLastWorkout: number | null;
+  // Streak preservation status
+  availableShields: number;
+  nanoUsedThisWeek: number;
+  nanoRemaining: number;
+  restDayAvailable: boolean;
 }
 
 /**
@@ -715,25 +720,35 @@ export async function getUserStreakStats(): Promise<StreakStats | null> {
   const session = await auth();
   if (!session?.user?.id) return null;
 
-  // Get completions with limit - we only need recent history for streak calculation
+  const userId = parseInt(session.user.id, 10);
+
+  // Get completions with completion_type for streak calculation
   // Limit to 365 days of data which is sufficient for any realistic streak
   const result = await query(`
-    SELECT completed_at
+    SELECT completed_at, COALESCE(completion_type, 'full') as completion_type
     FROM workout_completions
     WHERE user_id = $1
     ORDER BY completed_at DESC
     LIMIT 365
-  `, [session.user.id]);
+  `, [userId]);
 
-  const completions = result.rows as Array<{ completed_at: string }>;
+  const completions = result.rows as Array<{ completed_at: string; completion_type: string }>;
 
   // Get total count separately for accuracy
   const countResult = await query(`
     SELECT COUNT(*) as total
     FROM workout_completions
     WHERE user_id = $1
-  `, [session.user.id]);
+  `, [userId]);
   const totalCompletions = parseInt(countResult.rows[0]?.total ?? "0", 10);
+
+  // Get streak preservation status
+  const { getAvailableShields, getNanoUsageThisWeek, getRestDayStatus } = await import("./streakShields");
+  const [shieldStatus, nanoStatus, restDayStatus] = await Promise.all([
+    getAvailableShields(userId),
+    getNanoUsageThisWeek(userId),
+    getRestDayStatus(userId),
+  ]);
 
   if (completions.length === 0) {
     return {
@@ -741,10 +756,14 @@ export async function getUserStreakStats(): Promise<StreakStats | null> {
       longestStreak: 0,
       totalCompletions: 0,
       daysSinceLastWorkout: null,
+      availableShields: shieldStatus.available,
+      nanoUsedThisWeek: nanoStatus.usedThisWeek,
+      nanoRemaining: nanoStatus.remainingThisWeek,
+      restDayAvailable: restDayStatus.available,
     };
   }
 
-  // Calculate streaks
+  // Calculate streaks (full, nano, and shield all count as valid streak days)
   const { currentStreak, longestStreak } = calculateStreaks(completions);
 
   // Days since last workout - use date-only comparison to avoid timezone issues
@@ -765,6 +784,10 @@ export async function getUserStreakStats(): Promise<StreakStats | null> {
     longestStreak,
     totalCompletions,
     daysSinceLastWorkout,
+    availableShields: shieldStatus.available,
+    nanoUsedThisWeek: nanoStatus.usedThisWeek,
+    nanoRemaining: nanoStatus.remainingThisWeek,
+    restDayAvailable: restDayStatus.available,
   };
 }
 

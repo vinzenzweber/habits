@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { checkAndEarnShield } from "@/lib/streakShields";
 
 export const runtime = 'nodejs';
 
@@ -29,20 +30,27 @@ export async function POST(
       return Response.json({ error: "Workout not found" }, { status: 404 });
     }
 
+    const userId = parseInt(session.user.id, 10);
+
     const result = await query(`
-      INSERT INTO workout_completions (user_id, workout_id, workout_snapshot, duration_seconds)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO workout_completions (user_id, workout_id, workout_snapshot, duration_seconds, completion_type)
+      VALUES ($1, $2, $3, $4, 'full')
       RETURNING id
     `, [
-      session.user.id,
+      userId,
       workout.rows[0].id,
       workout.rows[0].workout_json,
       durationSeconds
     ]);
 
+    // Check if user earned a shield (every 7 consecutive full workouts)
+    const shieldResult = await checkAndEarnShield(userId);
+
     return Response.json({
       success: true,
-      completionId: result.rows[0].id
+      completionId: result.rows[0].id,
+      shieldEarned: shieldResult.earned,
+      streakLength: shieldResult.streakLength
     });
   } catch (error) {
     console.error("Completion tracking error:", error);

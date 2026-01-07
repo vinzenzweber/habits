@@ -4,6 +4,41 @@ interface StreakCardProps {
   stats: StreakStats | null;
 }
 
+/**
+ * Small indicator badges for streak preservation options
+ */
+function PreservationBadges({ stats }: { stats: StreakStats }) {
+  const { availableShields, nanoRemaining, restDayAvailable } = stats;
+
+  // Don't show badges if no preservation options available
+  if (availableShields === 0 && nanoRemaining === 0 && !restDayAvailable) {
+    return null;
+  }
+
+  return (
+    <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-700/50 pt-3">
+      {availableShields > 0 && (
+        <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 text-xs text-blue-400">
+          <span role="img" aria-label="Shield">🛡️</span>
+          {availableShields} shield{availableShields > 1 ? "s" : ""}
+        </span>
+      )}
+      {nanoRemaining > 0 && (
+        <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/10 px-2 py-0.5 text-xs text-purple-400">
+          <span role="img" aria-label="Nano">⚡</span>
+          {nanoRemaining} nano
+        </span>
+      )}
+      {restDayAvailable && (
+        <span className="inline-flex items-center gap-1 rounded-full bg-slate-500/10 px-2 py-0.5 text-xs text-slate-400">
+          <span role="img" aria-label="Rest">😴</span>
+          rest day
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function StreakCard({ stats }: StreakCardProps) {
   // First time user - no completions yet
   if (!stats || stats.totalCompletions === 0) {
@@ -48,6 +83,7 @@ export function StreakCard({ stats }: StreakCardProps) {
             </span>
           )}
         </div>
+        <PreservationBadges stats={stats} />
       </div>
     );
   }
@@ -74,6 +110,7 @@ export function StreakCard({ stats }: StreakCardProps) {
             </p>
           </div>
         </div>
+        <PreservationBadges stats={stats} />
       </div>
     );
   }
@@ -92,6 +129,7 @@ export function StreakCard({ stats }: StreakCardProps) {
           </p>
         </div>
       </div>
+      <PreservationBadges stats={stats} />
     </div>
   );
 }
