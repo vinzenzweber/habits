@@ -38,6 +38,12 @@ const CATEGORY_STYLES: Record<RoutineSegmentCategory, CategoryStyles> = {
 
 const BEEP_TRIGGER_SECONDS = 4;
 
+// Threshold in pixels from left edge to detect swipe-back gesture
+const SWIPE_EDGE_THRESHOLD_PX = 30;
+
+// Style to prevent horizontal overscroll navigation
+const PREVENT_OVERSCROLL_STYLE = { overscrollBehaviorX: 'none' as const };
+
 // Message sent to AI after workout completion
 const WORKOUT_COMPLETION_MESSAGE = (title: string) =>
   `I just completed the ${title} workout! Congratulate me briefly and ask how the difficulty felt. After I respond, you may suggest modifications if appropriate but do NOT automatically apply any changes.`;
@@ -283,12 +289,32 @@ export function GuidedRoutinePlayer({
     setIsRunning(true);
   };
 
+  // Track touch start position to detect horizontal swipes from edge
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+
   // Prevent swipe-back navigation on touch devices
-  // This stops accidental workout cancellations from edge swipes
-  const preventSwipeBack = useCallback((e: React.TouchEvent) => {
+  // Only blocks horizontal swipes starting from the left edge, allowing vertical scrolling
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
-    // If touch starts near the left edge (within 30px), prevent default to block swipe-back
-    if (touch && touch.clientX < 30) {
+    if (touch && touch.clientX < SWIPE_EDGE_THRESHOLD_PX) {
+      touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+    } else {
+      touchStartRef.current = null;
+    }
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+
+    const touch = e.touches[0];
+    if (!touch) return;
+
+    const deltaX = touch.clientX - touchStartRef.current.x;
+    const deltaY = touch.clientY - touchStartRef.current.y;
+
+    // Only prevent if moving horizontally (swipe-back gesture)
+    // Allow vertical scrolling by checking if horizontal movement dominates
+    if (Math.abs(deltaX) > Math.abs(deltaY) && deltaX > 10) {
       e.preventDefault();
     }
   }, []);
@@ -296,8 +322,9 @@ export function GuidedRoutinePlayer({
   const content = hasRoutine ? (
     <div
       className="relative flex min-h-screen flex-col bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white touch-pan-y"
-      style={{ overscrollBehaviorX: 'none' }}
-      onTouchStart={preventSwipeBack}
+      style={PREVENT_OVERSCROLL_STYLE}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
     >
       <div className="absolute inset-x-0 top-0 z-10 h-44 bg-gradient-to-b from-slate-950 via-slate-950/90 to-transparent" />
       <header className="relative z-20 flex items-center justify-between gap-3 px-5 pt-6">
