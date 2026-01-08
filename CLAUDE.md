@@ -105,6 +105,8 @@ TypeScript path alias `@/*` maps to `./src/*` (see tsconfig.json)
 
 ## Deployment
 
+**Production URL:** https://fitstreak.app
+
 Railway deployment configured via:
 - `Dockerfile` — Multi-stage build with Node 20 Alpine
 - `railway.toml` — Deployment configuration
