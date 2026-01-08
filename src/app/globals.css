@@ -25,6 +25,15 @@ body {
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui;
 }
 
+/* Prevent text selection on interactive elements to avoid accidental highlighting on mobile */
+button,
+[role="button"],
+a {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* Hide scrollbar for Chrome, Safari and Opera */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
