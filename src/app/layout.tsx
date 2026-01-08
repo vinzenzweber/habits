@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ChatButton } from "@/components/ChatButton";
 import { ChatProvider } from "@/contexts/ChatContext";
+import { MainContentWrapper } from "@/components/MainContentWrapper";
 import { auth } from "@/lib/auth";
 
 const geistSans = Geist({
@@ -58,7 +59,9 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-950 text-slate-100`}
       >
         <ChatProvider>
-          {children}
+          <MainContentWrapper>
+            {children}
+          </MainContentWrapper>
           {session?.user && <ChatButton />}
         </ChatProvider>
       </body>

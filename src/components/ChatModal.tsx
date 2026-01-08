@@ -122,6 +122,20 @@ export function ChatModal({
   // Handle mobile keyboard visibility using visualViewport API
   // This ensures the chat input stays visible when the keyboard opens on iOS/Android
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  // Detect desktop breakpoint (md: 768px)
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(min-width: 768px)');
+    setIsDesktop(mediaQuery.matches);
+
+    const handleChange = (e: MediaQueryListEvent) => {
+      setIsDesktop(e.matches);
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
 
   useEffect(() => {
     if (!isOpen) {
@@ -616,13 +630,22 @@ export function ChatModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center">
+    <>
+      {/* Mobile backdrop overlay */}
       <div
-        className="bg-slate-900 w-full md:max-w-2xl md:rounded-lg flex flex-col transition-all duration-150"
-        style={{
-          maxHeight: keyboardHeight > 0 ? `calc(100vh - ${keyboardHeight}px)` : '80vh',
-          marginBottom: keyboardHeight > 0 ? 0 : undefined
-        }}
+        className="fixed inset-0 bg-black/50 z-50 md:hidden"
+        onClick={onClose}
+      />
+      {/* Chat container: full-screen modal on mobile, sidebar on desktop */}
+      <div
+        className="fixed z-50 bg-slate-900 flex flex-col transition-all duration-300 ease-in-out
+          inset-x-0 bottom-0 rounded-t-lg h-[80vh]
+          md:inset-x-auto md:inset-y-0 md:right-0 md:w-[400px] md:h-screen md:rounded-none md:border-l md:border-slate-700"
+        style={!isDesktop && keyboardHeight > 0 ? {
+          // Mobile keyboard handling: adjust height when keyboard is open
+          maxHeight: `calc(100vh - ${keyboardHeight}px)`,
+          height: 'auto'
+        } : undefined}
       >
         <div className="flex items-center justify-between p-4 border-b border-slate-700">
           <h2 className="text-lg font-semibold">Personal Trainer</h2>
@@ -812,6 +835,6 @@ export function ChatModal({
           </button>
         </div>
       </div>
-    </div>
+    </>
   );
 }
