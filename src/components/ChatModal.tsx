@@ -547,39 +547,16 @@ export function ChatModal({
     }
   }, [isRecording]);
 
-  // Press-and-hold mic button handlers
-  const handleMicTouchStart = useCallback((e: React.TouchEvent) => {
-    e.preventDefault(); // Prevent default to avoid long-press context menu
-    if (!loading && !isTranscribing && !isRecording) {
+  // Toggle mic button - click to start, click to stop
+  const handleMicClick = useCallback(() => {
+    if (loading || isTranscribing) return;
+
+    if (isRecording) {
+      stopRecording();
+    } else {
       startRecording();
     }
-  }, [loading, isTranscribing, isRecording, startRecording]);
-
-  const handleMicTouchEnd = useCallback((e: React.TouchEvent) => {
-    e.preventDefault();
-    if (isRecording) {
-      stopRecording();
-    }
-  }, [isRecording, stopRecording]);
-
-  const handleMicMouseDown = useCallback(() => {
-    if (!loading && !isTranscribing && !isRecording) {
-      startRecording();
-    }
-  }, [loading, isTranscribing, isRecording, startRecording]);
-
-  const handleMicMouseUp = useCallback(() => {
-    if (isRecording) {
-      stopRecording();
-    }
-  }, [isRecording, stopRecording]);
-
-  // Handle mouse leaving the button while pressed
-  const handleMicMouseLeave = useCallback(() => {
-    if (isRecording) {
-      stopRecording();
-    }
-  }, [isRecording, stopRecording]);
+  }, [loading, isTranscribing, isRecording, startRecording, stopRecording]);
 
   // Text-to-Speech
   const speakMessage = useCallback(async (text: string, index: number) => {
@@ -687,7 +664,7 @@ export function ChatModal({
                 Tell me about your equipment, goals, or injuries — I&apos;ll remember for next time!
               </p>
               <p className="text-xs mt-2 text-slate-500">
-                🎤 Hold the microphone to record, release to send
+                🎤 Click the microphone to record, click again to send
               </p>
             </div>
           )}
@@ -807,21 +784,16 @@ export function ChatModal({
             style={{ minHeight: '48px', maxHeight: '150px' }}
           />
           <button
-            onTouchStart={handleMicTouchStart}
-            onTouchEnd={handleMicTouchEnd}
-            onTouchCancel={handleMicTouchEnd}
-            onMouseDown={handleMicMouseDown}
-            onMouseUp={handleMicMouseUp}
-            onMouseLeave={handleMicMouseLeave}
+            onClick={handleMicClick}
             disabled={loading || isTranscribing}
-            className={`px-4 py-3 rounded transition select-none touch-none ${
+            className={`px-4 py-3 rounded transition select-none ${
               isRecording
                 ? 'bg-red-600 hover:bg-red-700 animate-pulse'
                 : isTranscribing
                   ? 'bg-slate-700 cursor-wait'
-                  : 'bg-slate-700 hover:bg-slate-600 active:bg-red-600'
+                  : 'bg-slate-700 hover:bg-slate-600'
             } disabled:opacity-50`}
-            title={isRecording ? "Release to send" : isTranscribing ? "Transcribing..." : "Hold to record"}
+            title={isRecording ? "Click to stop and send" : isTranscribing ? "Transcribing..." : "Click to record"}
           >
             {isTranscribing ? (
               <span className="text-xl">⏳</span>
