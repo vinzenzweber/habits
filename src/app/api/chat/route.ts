@@ -61,38 +61,53 @@ You can view and modify the user's weekly workout plans using get_workout and up
 When modifying workouts, you MUST preserve the correct structure:
 
 1. **Phase Order**: Segments must follow this order:
-   - prep (1-2 segments: "Get Ready", stretches)
-   - warmup (2-4 segments: dynamic movements)
-   - main (exercises repeated for multiple rounds with rest between)
+   - prep (1-2 segments: "Get Ready" countdown)
+   - warmup (2-4 segments: actual exercise names like "Arm circles", "Jumping jacks", "Inchworms" - NEVER use "warm-up" or "warmup" as a title)
+   - main (exercises LITERALLY DUPLICATED for multiple rounds with rest between)
    - hiit (optional: high-intensity intervals)
-   - recovery (1-2 segments: cool-down stretches)
+   - recovery (1-2 segments: cool-down stretches like "Child's pose")
 
-2. **Main Exercise Rounds**: Main exercises MUST be repeated for multiple rounds (typically 3):
-   - Each exercise appears 3 times (once per round)
+2. **Exercise Naming Rules**:
+   - The \`title\` field must be the CLEAN exercise name (e.g., "Goblet squats")
+   - NEVER put round indicators in the title (wrong: "Goblet squats (Round 1)")
+   - Put round indicators in the \`round\` field (e.g., \`round: "Round 1/3"\`)
+   - Exercise titles should match the exercise library when possible
+
+3. **Main Exercise Rounds**: Exercises MUST be LITERALLY DUPLICATED in the segments array:
+   - For 3 rounds of 2 exercises, create 6 main segments (2 exercises × 3 rounds)
    - Add "Rest" segments (30-60 seconds) between rounds
-   - Use round indicator like "Round 1 of 3", "Round 2 of 3", "Round 3 of 3"
 
-   Example structure for 3 exercises with 3 rounds:
-   - Exercise A (Round 1 of 3)
-   - Exercise B (Round 1 of 3)
-   - Exercise C (Round 1 of 3)
-   - Rest (30-60 seconds)
-   - Exercise A (Round 2 of 3)
-   - Exercise B (Round 2 of 3)
-   - Exercise C (Round 2 of 3)
-   - Rest (30-60 seconds)
-   - Exercise A (Round 3 of 3)
-   - Exercise B (Round 3 of 3)
-   - Exercise C (Round 3 of 3)
+   For 2 exercises with 3 rounds, create these segments:
+   [Exercise A, round: "Round 1/3"], [Exercise B, round: "Round 1/3"],
+   [Rest, 30-60 sec],
+   [Exercise A, round: "Round 2/3"], [Exercise B, round: "Round 2/3"],
+   [Rest, 30-60 sec],
+   [Exercise A, round: "Round 3/3"], [Exercise B, round: "Round 3/3"]
 
-3. **Category Assignment**: Never mix categories incorrectly:
-   - prep: Only for "Get Ready" countdown or mental preparation
-   - warmup: Dynamic stretches and light movements to prepare
+4. **Category Assignment**:
+   - prep: Only for "Get Ready" countdown
+   - warmup: Dynamic movements with real exercise names
    - main: Primary strength/conditioning exercises
-   - rest: Recovery periods between rounds or exercises
+   - rest: Recovery periods between rounds
    - recovery: Cool-down stretches at the end
 
-4. **When Adding/Removing Exercises**: Maintain round structure. If adding a new main exercise, add it to ALL rounds, not just once.
+5. **When Adding/Removing Exercises**: Add to ALL rounds. If adding a new exercise to a 3-round workout, add it 3 times (once per round).
+
+**Complete Workout Example (2 main exercises, 2 rounds):**
+\`\`\`
+segments: [
+  { title: "Get Ready", durationSeconds: 10, category: "prep" },
+  { title: "Arm circles", durationSeconds: 30, category: "warmup" },
+  { title: "Jumping jacks", durationSeconds: 30, category: "warmup" },
+  { title: "Goblet squats", durationSeconds: 45, detail: "10 reps", category: "main", round: "Round 1/2" },
+  { title: "Push-ups", durationSeconds: 45, detail: "10 reps", category: "main", round: "Round 1/2" },
+  { title: "Rest", durationSeconds: 30, category: "rest" },
+  { title: "Goblet squats", durationSeconds: 45, detail: "10 reps", category: "main", round: "Round 2/2" },
+  { title: "Push-ups", durationSeconds: 45, detail: "10 reps", category: "main", round: "Round 2/2" },
+  { title: "Child's pose", durationSeconds: 30, category: "recovery" }
+]
+\`\`\`
+Note: Workouts are validated - improperly structured workouts will generate warnings.
 
 **Workout History & Stats:**
 Use get_workout_stats to access the user's complete workout history and statistics including:
