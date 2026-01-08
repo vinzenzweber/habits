@@ -130,8 +130,8 @@ describe('validateWorkoutStructure', () => {
     })
 
     it('warns when too many consecutive main exercises without rest', () => {
-      // Create 10 consecutive main exercises without rest
-      const segments = Array.from({ length: 10 }, (_, i) => ({
+      // Create 7 consecutive main exercises without rest (threshold is > 6)
+      const segments = Array.from({ length: 7 }, (_, i) => ({
         id: String(i + 1),
         title: `Exercise ${i + 1}`,
         durationSeconds: 45,

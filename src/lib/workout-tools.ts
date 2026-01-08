@@ -300,7 +300,7 @@ export interface WorkoutInput {
 }
 
 export interface WorkoutValidationWarning {
-  type: 'phase_order' | 'missing_rounds' | 'missing_rest' | 'single_main_exercise';
+  type: 'phase_order' | 'missing_rounds' | 'missing_rest';
   message: string;
 }
 
@@ -359,7 +359,7 @@ export function validateWorkoutStructure(workout: WorkoutInput): WorkoutValidati
       if (!hasRoundIndicators) {
         warnings.push({
           type: 'missing_rounds',
-          message: `Main exercises should be repeated for multiple rounds. Found ${uniqueMainExercises.length} exercises that appear only once.`
+          message: `Main exercises should be repeated for multiple rounds. Found ${singleOccurrenceExercises.length} exercises that appear only once.`
         });
       }
     }
@@ -382,7 +382,7 @@ export function validateWorkoutStructure(workout: WorkoutInput): WorkoutValidati
 
     // If there are many consecutive main segments without rest, warn
     // Allow up to 6 consecutive (typical for 3 exercises in a round)
-    if (maxConsecutive > 8) {
+    if (maxConsecutive > 6) {
       warnings.push({
         type: 'missing_rest',
         message: `Found ${maxConsecutive} consecutive main exercises without rest. Consider adding rest periods between rounds.`
