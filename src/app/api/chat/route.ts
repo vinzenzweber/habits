@@ -68,9 +68,9 @@ When modifying workouts, you MUST preserve the correct structure:
    - recovery (1-2 segments: cool-down stretches like "Child's pose")
 
 2. **Exercise Naming Rules**:
-   - The \`title\` field must be the CLEAN exercise name (e.g., "Goblet squats")
+   - The title field must be the CLEAN exercise name (e.g., "Goblet squats")
    - NEVER put round indicators in the title (wrong: "Goblet squats (Round 1)")
-   - Put round indicators in the \`round\` field (e.g., \`round: "Round 1/3"\`)
+   - Put round indicators in the round field (e.g., round: "Round 1/3")
    - Exercise titles should match the exercise library when possible
 
 3. **Main Exercise Rounds**: Exercises MUST be LITERALLY DUPLICATED in the segments array:
@@ -78,11 +78,11 @@ When modifying workouts, you MUST preserve the correct structure:
    - Add "Rest" segments (30-60 seconds) between rounds
 
    For 2 exercises with 3 rounds, create these segments:
-   [Exercise A, round: "Round 1/3"], [Exercise B, round: "Round 1/3"],
-   [Rest, 30-60 sec],
-   [Exercise A, round: "Round 2/3"], [Exercise B, round: "Round 2/3"],
-   [Rest, 30-60 sec],
-   [Exercise A, round: "Round 3/3"], [Exercise B, round: "Round 3/3"]
+   Exercise A with round: "Round 1/3", Exercise B with round: "Round 1/3",
+   a Rest segment (30-60 sec),
+   Exercise A with round: "Round 2/3", Exercise B with round: "Round 2/3",
+   a Rest segment (30-60 sec),
+   Exercise A with round: "Round 3/3", Exercise B with round: "Round 3/3"
 
 4. **Category Assignment**:
    - prep: Only for "Get Ready" countdown
