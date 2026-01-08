@@ -126,6 +126,9 @@ export function ChatModal({
 
   // Detect desktop breakpoint (md: 768px)
   useEffect(() => {
+    // Guard for SSR - window is not available on server
+    if (typeof window === 'undefined') return;
+
     const mediaQuery = window.matchMedia('(min-width: 768px)');
     setIsDesktop(mediaQuery.matches);
 
@@ -635,6 +638,13 @@ export function ChatModal({
       <div
         className="fixed inset-0 bg-black/50 z-50 md:hidden"
         onClick={onClose}
+        aria-hidden="true"
+      />
+      {/* Desktop backdrop overlay - subtle so content remains visible */}
+      <div
+        className="hidden md:fixed md:inset-0 md:block md:z-40"
+        onClick={onClose}
+        aria-hidden="true"
       />
       {/* Chat container: full-screen modal on mobile, sidebar on desktop */}
       <div
