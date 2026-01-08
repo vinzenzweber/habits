@@ -636,7 +636,7 @@ export async function getAllWorkouts(): Promise<WorkoutDay[]> {
     const workout = row.workout_json as StructuredWorkout;
     // Always recalculate totalSeconds from segments to ensure accuracy
     const totalSeconds = workout.segments?.reduce(
-      (sum, s) => sum + (s.durationSeconds || 0),
+      (sum: number, s: { durationSeconds: number }) => sum + (s.durationSeconds || 0),
       0
     ) || 0;
     return {
