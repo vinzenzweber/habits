@@ -285,7 +285,7 @@ export async function getWorkoutTool(userId: string, slug: string) {
   return result.rows[0]?.workout_json || null;
 }
 
-interface WorkoutInput {
+export interface WorkoutInput {
   title: string;
   segments: Array<{
     id: string;
@@ -299,12 +299,110 @@ interface WorkoutInput {
   description?: string;
 }
 
-export async function updateWorkoutTool(userId: string, slug: string, workout: WorkoutInput) {
-  // TODO: Add Zod schema validation here
+export interface WorkoutValidationWarning {
+  type: 'phase_order' | 'missing_rounds' | 'missing_rest';
+  message: string;
+}
 
+// Valid category order for workouts
+const CATEGORY_ORDER = ['prep', 'warmup', 'main', 'hiit', 'recovery'];
+
+// Exported for testing
+export function validateWorkoutStructure(workout: WorkoutInput): WorkoutValidationWarning[] {
+  const warnings: WorkoutValidationWarning[] = [];
+  const segments = workout.segments;
+
+  if (!segments || segments.length === 0) {
+    return warnings;
+  }
+
+  // Check phase order - categories should follow the expected order
+  let lastCategoryIndex = -1;
+  for (const segment of segments) {
+    // Skip rest segments when checking order
+    if (segment.category === 'rest') continue;
+
+    const categoryIndex = CATEGORY_ORDER.indexOf(segment.category);
+    if (categoryIndex !== -1 && categoryIndex < lastCategoryIndex) {
+      warnings.push({
+        type: 'phase_order',
+        message: `Category "${segment.category}" appears after "${CATEGORY_ORDER[lastCategoryIndex]}" - expected order: prep → warmup → main → hiit → recovery`
+      });
+      break; // Only report first order violation
+    }
+    if (categoryIndex !== -1) {
+      lastCategoryIndex = categoryIndex;
+    }
+  }
+
+  // Check main exercises have rounds
+  const mainSegments = segments.filter(s => s.category === 'main' && s.title !== 'Rest');
+  if (mainSegments.length > 0) {
+    // Get unique exercise titles
+    const uniqueMainExercises = [...new Set(mainSegments.map(s => s.title))];
+
+    // Count occurrences of each exercise
+    const exerciseCounts: Record<string, number> = {};
+    for (const segment of mainSegments) {
+      exerciseCounts[segment.title] = (exerciseCounts[segment.title] || 0) + 1;
+    }
+
+    // Check if exercises appear multiple times (indicating rounds)
+    const singleOccurrenceExercises = uniqueMainExercises.filter(
+      title => exerciseCounts[title] === 1
+    );
+
+    if (singleOccurrenceExercises.length > 0 && uniqueMainExercises.length > 1) {
+      // If there are multiple unique main exercises but some only appear once,
+      // the workout might be missing rounds
+      const hasRoundIndicators = mainSegments.some(s => s.round && s.round.includes('of'));
+      if (!hasRoundIndicators) {
+        warnings.push({
+          type: 'missing_rounds',
+          message: `Main exercises should be repeated for multiple rounds. Found ${singleOccurrenceExercises.length} exercises that appear only once.`
+        });
+      }
+    }
+  }
+
+  // Check for rest segments between main exercise groups
+  const mainAndRestSegments = segments.filter(s => s.category === 'main' || s.category === 'rest');
+  if (mainAndRestSegments.length > 3) {
+    // Count consecutive main segments without rest
+    let consecutiveMain = 0;
+    let maxConsecutive = 0;
+    for (const segment of mainAndRestSegments) {
+      if (segment.category === 'main') {
+        consecutiveMain++;
+        maxConsecutive = Math.max(maxConsecutive, consecutiveMain);
+      } else {
+        consecutiveMain = 0;
+      }
+    }
+
+    // If there are many consecutive main segments without rest, warn
+    // Allow up to 6 consecutive (typical for 3 exercises in a round)
+    if (maxConsecutive > 6) {
+      warnings.push({
+        type: 'missing_rest',
+        message: `Found ${maxConsecutive} consecutive main exercises without rest. Consider adding rest periods between rounds.`
+      });
+    }
+  }
+
+  return warnings;
+}
+
+export async function updateWorkoutTool(userId: string, slug: string, workout: WorkoutInput) {
   // Validate basic structure
   if (!workout.title || !workout.segments || !Array.isArray(workout.segments)) {
     throw new Error("Invalid workout structure");
+  }
+
+  // Validate workout structure and log warnings
+  const structureWarnings = validateWorkoutStructure(workout);
+  if (structureWarnings.length > 0) {
+    console.warn(`[Workout Structure Warnings for ${slug}]:`, structureWarnings);
   }
 
   // Always recalculate totalSeconds from segments (don't trust AI-provided value)
@@ -348,5 +446,9 @@ export async function updateWorkoutTool(userId: string, slug: string, workout: W
     JSON.stringify(workoutToSave)
   ]);
 
-  return { success: true, version: nextVersion };
+  return {
+    success: true,
+    version: nextVersion,
+    structureWarnings: structureWarnings.length > 0 ? structureWarnings : undefined
+  };
 }
