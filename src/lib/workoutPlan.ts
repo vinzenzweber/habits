@@ -600,8 +600,14 @@ export async function getWorkoutBySlug(slug: string | null | undefined): Promise
   if (result.rows.length === 0) return null;
 
   const workout = result.rows[0].workout_json;
+  // Always recalculate totalSeconds from segments to ensure accuracy
+  const totalSeconds = workout.segments?.reduce(
+    (sum: number, s: { durationSeconds: number }) => sum + (s.durationSeconds || 0),
+    0
+  ) || 0;
   return {
     ...workout,
+    totalSeconds,
     label: DAY_LABELS[normalized],
   };
 }
@@ -628,8 +634,14 @@ export async function getAllWorkouts(): Promise<WorkoutDay[]> {
 
   return result.rows.map(row => {
     const workout = row.workout_json as StructuredWorkout;
+    // Always recalculate totalSeconds from segments to ensure accuracy
+    const totalSeconds = workout.segments?.reduce(
+      (sum, s) => sum + (s.durationSeconds || 0),
+      0
+    ) || 0;
     return {
       ...workout,
+      totalSeconds,
       label: DAY_LABELS[workout.slug]
     };
   });
