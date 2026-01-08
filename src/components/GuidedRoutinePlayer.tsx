@@ -283,8 +283,22 @@ export function GuidedRoutinePlayer({
     setIsRunning(true);
   };
 
+  // Prevent swipe-back navigation on touch devices
+  // This stops accidental workout cancellations from edge swipes
+  const preventSwipeBack = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    // If touch starts near the left edge (within 30px), prevent default to block swipe-back
+    if (touch && touch.clientX < 30) {
+      e.preventDefault();
+    }
+  }, []);
+
   const content = hasRoutine ? (
-    <div className="relative flex min-h-screen flex-col bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white">
+    <div
+      className="relative flex min-h-screen flex-col bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white touch-pan-y"
+      style={{ overscrollBehaviorX: 'none' }}
+      onTouchStart={preventSwipeBack}
+    >
       <div className="absolute inset-x-0 top-0 z-10 h-44 bg-gradient-to-b from-slate-950 via-slate-950/90 to-transparent" />
       <header className="relative z-20 flex items-center justify-between gap-3 px-5 pt-6">
         <Link
