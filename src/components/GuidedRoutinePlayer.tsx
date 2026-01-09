@@ -36,7 +36,8 @@ const CATEGORY_STYLES: Record<RoutineSegmentCategory, CategoryStyles> = {
   rest: { badge: "bg-slate-500/20 text-slate-200", bar: "bg-slate-200" },
 };
 
-const BEEP_TRIGGER_SECONDS = 4;
+// Countdown beeps play at these seconds remaining before each segment ends
+const COUNTDOWN_SECONDS = [4, 3, 2, 1];
 
 // Threshold in pixels from left edge to detect swipe-back gesture
 const SWIPE_EDGE_THRESHOLD_PX = 30;
@@ -86,7 +87,8 @@ export function GuidedRoutinePlayer({
   const [completionId, setCompletionId] = useState<number | null>(null);
   const [isTrackingCompletion, setIsTrackingCompletion] = useState(false);
   const countdownAudioRef = useRef<HTMLAudioElement | null>(null);
-  const segmentBeepPlayedRef = useRef(false);
+  // Track which countdown seconds have been played for the current segment
+  const countdownBeepsPlayedRef = useRef<Set<number>>(new Set());
   const startTimeRef = useRef<number>(0);
   const hasTrackedCompletionRef = useRef(false);
 
@@ -162,13 +164,13 @@ export function GuidedRoutinePlayer({
             if (index >= segments.length - 1) {
               setHasFinished(true);
               setIsRunning(false);
-              segmentBeepPlayedRef.current = false;
+              countdownBeepsPlayedRef.current.clear();
               return index;
             }
             const nextIndex = index + 1;
             const nextDuration = segments[nextIndex]?.durationSeconds ?? 0;
             setRemainingSeconds(nextDuration);
-            segmentBeepPlayedRef.current = false;
+            countdownBeepsPlayedRef.current.clear();
             return nextIndex;
           });
           return 0;
@@ -199,13 +201,18 @@ export function GuidedRoutinePlayer({
 
     const roundedRemaining = Math.ceil(remainingSeconds);
 
-    if (roundedRemaining > BEEP_TRIGGER_SECONDS || roundedRemaining <= 0) {
-      segmentBeepPlayedRef.current = false;
+    // Reset tracking when not in countdown zone
+    if (roundedRemaining > 4) {
+      countdownBeepsPlayedRef.current.clear();
       return;
     }
 
-    if (!segmentBeepPlayedRef.current && roundedRemaining === BEEP_TRIGGER_SECONDS) {
-      segmentBeepPlayedRef.current = true;
+    // Play beep for each second in countdown (4, 3, 2, 1)
+    if (
+      COUNTDOWN_SECONDS.includes(roundedRemaining) &&
+      !countdownBeepsPlayedRef.current.has(roundedRemaining)
+    ) {
+      countdownBeepsPlayedRef.current.add(roundedRemaining);
       audio.currentTime = 0;
       void audio.play();
     }
@@ -270,7 +277,7 @@ export function GuidedRoutinePlayer({
       setCurrentIndex(0);
       setRemainingSeconds(segments[0]?.durationSeconds ?? 0);
       setHasFinished(false);
-      segmentBeepPlayedRef.current = false;
+      countdownBeepsPlayedRef.current.clear();
       setIsRunning(true);
       return;
     }
@@ -283,7 +290,7 @@ export function GuidedRoutinePlayer({
     setHasFinished(false);
     setShowConfetti(false);
     setCompletionId(null);
-    segmentBeepPlayedRef.current = false;
+    countdownBeepsPlayedRef.current.clear();
     hasTrackedCompletionRef.current = false;
     startTimeRef.current = Date.now();
     setIsRunning(true);

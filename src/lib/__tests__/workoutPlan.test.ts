@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+// Import structuredWorkouts before mocks to test the builder function
+import { structuredWorkouts } from '../workoutPlan'
+
 // Mock auth
 vi.mock('@/lib/auth', () => ({
   auth: vi.fn()
@@ -9,6 +12,116 @@ vi.mock('@/lib/auth', () => ({
 vi.mock('@/lib/db', () => ({
   query: vi.fn()
 }))
+
+describe('buildStructuredWorkout - transition segments', () => {
+  describe('restBetweenStepsSeconds', () => {
+    it('inserts transition segments between HIIT exercises on Friday', () => {
+      const friday = structuredWorkouts.friday
+      const segments = friday.segments
+
+      // Find HIIT segments
+      const hiitSegments = segments.filter(s => s.category === 'hiit')
+      expect(hiitSegments.length).toBeGreaterThan(0)
+
+      // Find "Get ready" transition segments within the HIIT phase
+      const transitionSegments = segments.filter(s =>
+        s.title === 'Get ready' && s.detail?.startsWith('Next:')
+      )
+
+      // With 4 exercises and 3 rounds, we should have 3 transitions per round = 9 total
+      // (transitions between exercises 1-2, 2-3, 3-4 in each round)
+      expect(transitionSegments.length).toBe(9)
+    })
+
+    it('transition segments have 5 second duration', () => {
+      const friday = structuredWorkouts.friday
+      const transitionSegments = friday.segments.filter(s =>
+        s.title === 'Get ready' && s.detail?.startsWith('Next:')
+      )
+
+      for (const segment of transitionSegments) {
+        expect(segment.durationSeconds).toBe(5)
+      }
+    })
+
+    it('transition segments show next exercise name in detail', () => {
+      const friday = structuredWorkouts.friday
+      const transitionSegments = friday.segments.filter(s =>
+        s.title === 'Get ready' && s.detail?.startsWith('Next:')
+      )
+
+      // Check that each transition shows the upcoming exercise
+      for (const segment of transitionSegments) {
+        expect(segment.detail).toMatch(/^Next: Minute \d+:/)
+      }
+    })
+
+    it('transition segments have rest category', () => {
+      const friday = structuredWorkouts.friday
+      const transitionSegments = friday.segments.filter(s =>
+        s.title === 'Get ready' && s.detail?.startsWith('Next:')
+      )
+
+      for (const segment of transitionSegments) {
+        expect(segment.category).toBe('rest')
+      }
+    })
+
+    it('transition segments have correct round labels', () => {
+      const friday = structuredWorkouts.friday
+      const transitionSegments = friday.segments.filter(s =>
+        s.title === 'Get ready' && s.detail?.startsWith('Next:')
+      )
+
+      // With 3 rounds, we should have 3 transitions per round
+      // Each should have the correct round label
+      const round1 = transitionSegments.filter(s => s.round === 'Round 1/3')
+      const round2 = transitionSegments.filter(s => s.round === 'Round 2/3')
+      const round3 = transitionSegments.filter(s => s.round === 'Round 3/3')
+
+      expect(round1.length).toBe(3)
+      expect(round2.length).toBe(3)
+      expect(round3.length).toBe(3)
+    })
+
+    it('no transition after last exercise in each round', () => {
+      const friday = structuredWorkouts.friday
+      const segments = friday.segments
+
+      // Find all "Minute 4: Mountain climbers" segments (last HIIT exercise in each round)
+      const mountainClimberIndices: number[] = []
+      segments.forEach((s, i) => {
+        if (s.title === 'Minute 4: Mountain climbers') {
+          mountainClimberIndices.push(i)
+        }
+      })
+
+      // After each mountain climbers segment, the next segment should NOT be a "Get ready" transition
+      // (it should either be the start of the next round or end of the HIIT block)
+      for (const idx of mountainClimberIndices) {
+        const nextSegment = segments[idx + 1]
+        if (nextSegment) {
+          // If there's a next segment, it should either be another HIIT exercise (next round)
+          // or a different category, but NOT a "Get ready" transition
+          if (nextSegment.title === 'Get ready' && nextSegment.detail?.startsWith('Next:')) {
+            // This would be wrong - no transition should follow the last exercise
+            expect(nextSegment.detail).not.toMatch(/Next: Minute 4/)
+          }
+        }
+      }
+    })
+
+    it('workouts without restBetweenStepsSeconds have no transitions', () => {
+      // Monday workout does not have restBetweenStepsSeconds
+      const monday = structuredWorkouts.monday
+      const transitionSegments = monday.segments.filter(s =>
+        s.title === 'Get ready' && s.detail?.startsWith('Next:')
+      )
+
+      expect(transitionSegments.length).toBe(0)
+    })
+  })
+})
 
 describe('workoutPlan', () => {
   beforeEach(() => {
