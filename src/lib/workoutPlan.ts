@@ -68,6 +68,7 @@ type PhaseConfig = {
   category: RoutineSegmentCategory;
   rounds?: number;
   restBetweenRoundsSeconds?: number;
+  restBetweenStepsSeconds?: number;
   steps: StepConfig[];
 };
 
@@ -146,7 +147,8 @@ function buildStructuredWorkout(config: WorkoutConfig): StructuredWorkout {
   for (const phase of config.phases) {
     const rounds = phase.rounds ?? 1;
     for (let roundIndex = 0; roundIndex < rounds; roundIndex += 1) {
-      for (const step of phase.steps) {
+      for (let stepIndex = 0; stepIndex < phase.steps.length; stepIndex += 1) {
+        const step = phase.steps[stepIndex];
         segments.push({
           id: `${config.slug}-${segments.length}`,
           title: step.title,
@@ -155,6 +157,20 @@ function buildStructuredWorkout(config: WorkoutConfig): StructuredWorkout {
           category: step.category ?? phase.category,
           round: rounds > 1 ? `Round ${roundIndex + 1}/${rounds}` : undefined,
         });
+
+        // Add transition period between steps (not after the last step in a round)
+        const isLastStep = stepIndex === phase.steps.length - 1;
+        if (phase.restBetweenStepsSeconds && !isLastStep) {
+          const nextStep = phase.steps[stepIndex + 1];
+          segments.push({
+            id: `${config.slug}-${segments.length}`,
+            title: "Get ready",
+            durationSeconds: phase.restBetweenStepsSeconds,
+            detail: `Next: ${nextStep.title}`,
+            category: "rest",
+            round: rounds > 1 ? `Round ${roundIndex + 1}/${rounds}` : undefined,
+          });
+        }
       }
 
       if (
@@ -436,6 +452,7 @@ const structuredWorkouts: Record<DaySlug, StructuredWorkout> = {
         title: "EMOM block",
         category: "hiit",
         rounds: 3,
+        restBetweenStepsSeconds: 5,
         steps: [
           {
             title: "Minute 1: Kettlebell push press",

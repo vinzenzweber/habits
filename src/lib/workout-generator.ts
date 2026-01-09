@@ -470,7 +470,8 @@ function buildWorkout(
       );
 
       if (hiitExercises.length > 0) {
-        for (const exercise of hiitExercises) {
+        for (let i = 0; i < hiitExercises.length; i++) {
+          const exercise = hiitExercises[i];
           const levelConfig = exercise[profile.experienceLevel];
           segments.push({
             id: `${dayConfig.slug}-${segmentId++}`,
@@ -479,6 +480,19 @@ function buildWorkout(
             detail: levelConfig?.reps || exercise.detail,
             category: 'hiit'
           });
+
+          // Add transition between HIIT exercises (not after the last one)
+          const isLastExercise = i === hiitExercises.length - 1;
+          if (!isLastExercise) {
+            const nextExercise = hiitExercises[i + 1];
+            segments.push({
+              id: `${dayConfig.slug}-${segmentId++}`,
+              title: 'Get ready',
+              durationSeconds: 5,
+              detail: `Next: ${nextExercise.name}`,
+              category: 'rest'
+            });
+          }
         }
       }
     }
