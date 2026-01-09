@@ -44,7 +44,14 @@ Applied migrations are tracked in the `_migrations` table.
 
 - **Next.js App Router** (src/app/)
   - `/` (page.tsx) — Home screen showing today's workout preview
-  - `/workouts/[slug]` (workouts/[slug]/page.tsx) — Full-screen guided workout player for a specific day
+  - `/login` — User login page
+  - `/register` — User registration page
+  - `/logout` — Logout handler
+  - `/onboarding` — New user onboarding chat
+  - `/workouts/[slug]` — Workout detail/preview page
+  - `/workouts/[slug]/play` — Full-screen guided workout player
+  - `/workouts/nano` — Nano workout preview
+  - `/workouts/nano/play` — Nano workout player
 
 ### Core Data Model
 
@@ -117,7 +124,7 @@ Railway deployment configured via:
 - Target: ES2017
 - Strict mode enabled
 - Module resolution: bundler
-- JSX: react-jsx (Next.js 19 compatible)
+- JSX: react-jsx (Next.js 16 compatible)
 
 ## Development Principles
 
@@ -244,7 +251,7 @@ The chat functions as a personal fitness trainer with:
 
 **Tech Stack:**
 - OpenAI GPT-4o with function calling (SDK v6.15.0)
-- Chat UI accessible via floating button (💬) on all pages
+- Chat UI: floating button (💬) opens right sidebar on desktop, full-screen modal on mobile
 - Workout modifications are versioned in database
 
 ## Exercise Images
@@ -346,9 +353,11 @@ npm run test:e2e:headed # Run E2E with visible browser
 src/
 ├── lib/__tests__/              # Unit tests for business logic
 │   ├── workout-generator.test.ts
+│   ├── workout-tools.test.ts
+│   ├── workoutPlan.test.ts
 │   └── timer-utils.test.ts
-├── components/__tests__/       # Component tests
-│   └── GuidedRoutinePlayer.test.tsx
+├── app/api/auth/register/__tests__/  # API route tests
+│   └── route.test.ts
 e2e/
 ├── fixtures/                   # Test helpers and fixtures
 │   └── auth.fixture.ts
