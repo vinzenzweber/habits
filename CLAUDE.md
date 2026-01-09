@@ -398,3 +398,210 @@ GitHub Actions runs tests on every push and PR:
 3. **E2E tests**: Run against production build with PostgreSQL service
 
 Test artifacts (screenshots, reports) uploaded on failure.
+
+## Feature Development Workflow
+
+A reusable workflow for implementing and releasing new product features.
+
+### Phase 1: Planning
+
+**1.1 Understand the Request**
+- Clarify requirements with the user
+- Use `Task` (Explore agent) to understand relevant codebase areas
+- Identify files that need modification
+
+**1.2 Create Implementation Plan**
+- Write plan to plan file with files to modify, approach, and testing strategy
+- Get user approval via `ExitPlanMode`
+
+### Phase 2: Implementation
+
+**2.1 Track Progress**
+- Create todo list with `TodoWrite`
+- Mark tasks in_progress/completed as you work
+
+**2.2 Make Changes**
+- Use `Edit`/`Write` tools to modify code
+- Follow existing patterns in the codebase
+- Keep changes minimal and focused
+
+**2.3 Local Verification**
+```bash
+npm run lint      # Check for lint errors
+npm run build     # Verify production build
+```
+
+### Phase 3: Testing
+
+**3.1 Manual Testing with Playwright MCP**
+```bash
+npm run dev       # Start dev server
+```
+
+**Important: Always register a new test user first before testing the feature.**
+
+1. Navigate to `/register` and create a new account
+2. Then test the feature being built
+3. Use Playwright MCP tools:
+   - `mcp__playwright__browser_navigate` to open app
+   - `mcp__playwright__browser_resize` for responsive testing
+   - `mcp__playwright__browser_click` to interact
+   - `mcp__playwright__browser_take_screenshot` to capture state
+
+**3.2 Iterate on Feedback**
+- Fix issues found during testing
+- Re-test until feature works correctly
+
+### Phase 4: PR Creation
+
+**4.1 Run Tests**
+```bash
+npm run test:unit    # Unit tests
+npm run test:e2e     # E2E tests (optional)
+```
+
+**4.2 Commit Changes**
+```bash
+git status
+git diff --stat
+git add <files>
+git commit -m "feat: description
+
+Details here.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+```
+
+**4.3 Create Branch & Push**
+```bash
+git checkout -b feat/feature-name
+git push -u origin feat/feature-name
+```
+
+**4.4 Create Pull Request**
+```bash
+gh pr create --title "feat: description" --body "$(cat <<'EOF'
+## Summary
+- Change 1
+- Change 2
+
+## Test plan
+- [ ] Test case 1
+- [ ] Test case 2
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+EOF
+)"
+```
+
+### Phase 5: CI/CD
+
+**5.1 Wait for CI Checks (~3 minutes)**
+```bash
+gh pr checks <pr-number> --watch
+```
+- CI typically takes ~3 minutes (unit tests + E2E tests)
+- Fix any failing checks before proceeding
+
+### Phase 6: Code Review
+
+Copilot review is triggered automatically when PR is created.
+
+**6.1 Wait for Review**
+```bash
+gh pr view <pr-number> --comments
+gh api repos/<owner>/<repo>/pulls/<pr-number>/reviews
+```
+
+**6.2 Address Feedback**
+
+For each review comment:
+1. Understand the concern
+2. Make code changes
+3. Test locally
+4. Commit and push:
+```bash
+git add <files>
+git commit -m "fix: address review feedback"
+git push
+```
+
+**6.3 Re-run CI**
+- Wait for checks to pass again (~3 minutes)
+- Repeat until all feedback addressed
+
+### Phase 7: Merge & Deploy
+
+**7.1 Verify Merge Readiness**
+```bash
+gh pr view <pr-number> --json mergeable,mergeStateStatus
+# Should show: "mergeStateStatus":"CLEAN","mergeable":"MERGEABLE"
+```
+
+**7.2 Merge PR**
+```bash
+gh pr merge <pr-number> --squash --delete-branch
+```
+
+**7.3 Update Local**
+```bash
+git checkout main && git pull
+```
+
+### Phase 8: Production Verification
+
+**8.1 Wait for Deployment (~3 minutes)**
+- Railway auto-deploys on merge to main
+- Deployment typically takes ~3 minutes
+
+**8.2 Review Deployment Logs**
+```bash
+railway logs                    # View recent logs
+railway logs 2>&1 | head -100   # Check for errors
+```
+
+**If deployment fails or logs show errors:**
+1. Identify root cause from logs
+2. Create hotfix on new branch
+3. Test fix locally
+4. Fast-track PR and merge
+5. Re-verify deployment
+
+**8.3 Test Production with Playwright MCP**
+
+**Important: Always register a new test user first before testing the feature.**
+
+1. Navigate to https://fitstreak.app/register
+2. Create a new test account
+3. Then test the feature being built:
+   - `mcp__playwright__browser_navigate` → production URL
+   - `mcp__playwright__browser_snapshot` → verify page state
+   - `mcp__playwright__browser_console_messages` → check for errors
+
+### Phase 9: Documentation
+
+**9.1 Update Docs (if needed)**
+- Update `CLAUDE.md` with new patterns/learnings
+- Commit and push documentation changes
+
+### Workflow Quick Reference
+
+**Iteration Loops:**
+```
+Plan → Implement → Test → Fix → Commit → CI → Review → Merge → Deploy → Verify
+            ↑_____↓         ↑________↓
+```
+
+**Key Commands:**
+| Action | Command |
+|--------|---------|
+| Lint | `npm run lint` |
+| Build | `npm run build` |
+| Unit tests | `npm run test:unit` |
+| E2E tests | `npm run test:e2e` |
+| Dev server | `npm run dev` |
+| Watch CI | `gh pr checks <num> --watch` |
+| Merge | `gh pr merge <num> --squash --delete-branch` |
+| Deploy logs | `railway logs` |
