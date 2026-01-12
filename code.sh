@@ -64,35 +64,41 @@ mkdir -p "$STATE_DIR"
 
 # Format streaming JSON to show progress to human orchestrator
 # Streams: text responses, tool calls, and captures final result
+# IMPORTANT: Only outputs clean text to stdout, never raw JSON
 format_progress() {
     local line type subtype final_result=""
     while IFS= read -r line; do
-        # Skip non-JSON lines
+        # Skip non-JSON lines completely
         [[ "$line" != "{"* ]] && continue
 
-        type=$(echo "$line" | jq -r '.type // empty' 2>/dev/null || true)
+        # Validate it's actually parseable JSON before processing
+        if ! echo "$line" | jq -e . >/dev/null 2>&1; then
+            continue
+        fi
+
+        type=$(echo "$line" | jq -r '.type // empty' 2>/dev/null) || continue
 
         case "$type" in
             "assistant")
                 # Check for text content (Claude's response)
                 local text
-                text=$(echo "$line" | jq -r '.message.content[]? | select(.type == "text") | .text // empty' 2>/dev/null || true)
+                text=$(echo "$line" | jq -r '.message.content[]? | select(.type == "text") | .text // empty' 2>/dev/null) || true
                 if [ -n "$text" ] && [ "$text" != "null" ]; then
                     printf "${CYAN}Claude:${NC} %s\n" "$text" >&2
                 fi
 
                 # Check for tool use
                 local tool_name tool_input
-                tool_name=$(echo "$line" | jq -r '.message.content[]? | select(.type == "tool_use") | .name // empty' 2>/dev/null || true)
+                tool_name=$(echo "$line" | jq -r '.message.content[]? | select(.type == "tool_use") | .name // empty' 2>/dev/null) || true
                 if [ -n "$tool_name" ] && [ "$tool_name" != "null" ]; then
-                    tool_input=$(echo "$line" | jq -r '.message.content[]? | select(.type == "tool_use") | .input | (.description // .command // .pattern // .query // .file_path // .prompt // "working...") | tostring | .[0:100]' 2>/dev/null || true)
-                    printf "${YELLOW}  → %s:${NC} %s\n" "$tool_name" "$tool_input" >&2
+                    tool_input=$(echo "$line" | jq -r '.message.content[]? | select(.type == "tool_use") | .input | (.description // .command // .pattern // .query // .file_path // .prompt // "working...") | tostring | .[0:100]' 2>/dev/null) || true
+                    printf "${YELLOW}  → %s:${NC} %s\n" "$tool_name" "${tool_input:-working...}" >&2
                 fi
                 ;;
             "user")
                 # Tool result - show brief summary
-                local tool_result is_error
-                is_error=$(echo "$line" | jq -r '.message.content[]?.is_error // false' 2>/dev/null || true)
+                local is_error
+                is_error=$(echo "$line" | jq -r '.message.content[]?.is_error // false' 2>/dev/null) || true
                 if [ "$is_error" = "true" ]; then
                     printf "${RED}  ✗ Tool error${NC}\n" >&2
                 else
@@ -100,25 +106,28 @@ format_progress() {
                 fi
                 ;;
             "result")
-                subtype=$(echo "$line" | jq -r '.subtype // empty' 2>/dev/null || true)
+                subtype=$(echo "$line" | jq -r '.subtype // empty' 2>/dev/null) || true
                 if [ "$subtype" = "success" ]; then
-                    final_result=$(echo "$line" | jq -r '.result // empty' 2>/dev/null || true)
+                    final_result=$(echo "$line" | jq -r '.result // empty' 2>/dev/null) || true
                     local cost
-                    cost=$(echo "$line" | jq -r '.total_cost_usd // 0' 2>/dev/null || true)
-                    printf "${GREEN}Session complete (cost: \$%.4f)${NC}\n" "$cost" >&2
+                    cost=$(echo "$line" | jq -r '.total_cost_usd // 0' 2>/dev/null) || true
+                    printf "${GREEN}Session complete (cost: \$%.4f)${NC}\n" "${cost:-0}" >&2
                 else
-                    # Error result
+                    # Error result - show error but DON'T output anything to stdout
                     local errors
-                    errors=$(echo "$line" | jq -r '.errors // [] | join(", ") | .[0:200]' 2>/dev/null || true)
-                    printf "${RED}Session error: %s${NC}\n" "$errors" >&2
+                    errors=$(echo "$line" | jq -r '.errors // [] | .[:3] | join("; ") | .[0:200]' 2>/dev/null) || true
+                    printf "${RED}Session error: %s${NC}\n" "${errors:-unknown error}" >&2
                 fi
                 ;;
         esac
     done
 
-    # Output only the final result for capture
+    # Output only the final result for capture (only if it's clean text, not JSON)
     if [ -n "$final_result" ] && [ "$final_result" != "null" ]; then
-        printf "%s" "$final_result"
+        # Safety check: don't output if it looks like JSON
+        if [[ "$final_result" != "{"* ]]; then
+            printf "%s" "$final_result"
+        fi
     fi
 }
 
@@ -383,7 +392,7 @@ Execute these phases from CLAUDE.md:
 IMPORTANT: After creating the PR, output EXACTLY this format on its own line:
 PR_CREATED: <number>
 Example: PR_CREATED: 123
-"
+" > /dev/null  # Discard stdout - we find PR via git/gh commands below
 
     # Extract PR number - try multiple methods
     local pr_num=""
@@ -608,7 +617,7 @@ After ALL fixes:
 4. Push: git push
 
 Output 'FIXES_COMPLETE' when all fixes are complete and pushed.
-"
+" > /dev/null  # Discard stdout - no output capture needed
     success "Review feedback addressed"
 }
 
@@ -656,7 +665,7 @@ Execute these phases from CLAUDE.md:
    d. Check browser console for errors
 
 Output 'DEPLOYMENT_VERIFIED' when verification is complete, or 'DEPLOYMENT_FAILED' if there were issues.
-"
+" > /dev/null  # Discard stdout - no output capture needed
     success "Deployment verified"
 }
 
@@ -718,7 +727,7 @@ After updating:
 3. git push
 
 Output 'DOCS_UPDATED' when complete.
-"
+" > /dev/null  # Discard stdout - no output capture needed
         success "Documentation updated"
     else
         success "No documentation updates needed"
