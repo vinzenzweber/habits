@@ -62,23 +62,64 @@ header() { echo -e "\n${BOLD}${CYAN}$*${NC}" | tee -a "$LOG_FILE" >&2; }
 # Initialize state directory
 mkdir -p "$STATE_DIR"
 
-# Format streaming JSON to show progress
+# Format streaming JSON to show progress to human orchestrator
+# Streams: text responses, tool calls, and captures final result
 format_progress() {
-    local line tool_name tool_desc result
+    local line type subtype final_result=""
     while IFS= read -r line; do
-        # Extract tool calls
-        tool_name=$(echo "$line" | jq -r 'select(.type == "assistant") | .message.content[]? | select(.type == "tool_use") | .name // empty' 2>/dev/null || true)
-        if [ -n "$tool_name" ] && [ "$tool_name" != "null" ]; then
-            tool_desc=$(echo "$line" | jq -r 'select(.type == "assistant") | .message.content[]? | select(.type == "tool_use") | .input.description // .input.command // .input.pattern // .input.query // "working..."' 2>/dev/null | head -c 80 || true)
-            printf "  → %s: %s\n" "$tool_name" "$tool_desc" >&2
-        fi
+        # Skip non-JSON lines
+        [[ "$line" != "{"* ]] && continue
 
-        # Extract final result
-        result=$(echo "$line" | jq -r 'select(.type == "result") | .result // empty' 2>/dev/null || true)
-        if [ -n "$result" ] && [ "$result" != "null" ]; then
-            printf "%s" "$result"
-        fi
+        type=$(echo "$line" | jq -r '.type // empty' 2>/dev/null || true)
+
+        case "$type" in
+            "assistant")
+                # Check for text content (Claude's response)
+                local text
+                text=$(echo "$line" | jq -r '.message.content[]? | select(.type == "text") | .text // empty' 2>/dev/null || true)
+                if [ -n "$text" ] && [ "$text" != "null" ]; then
+                    printf "${CYAN}Claude:${NC} %s\n" "$text" >&2
+                fi
+
+                # Check for tool use
+                local tool_name tool_input
+                tool_name=$(echo "$line" | jq -r '.message.content[]? | select(.type == "tool_use") | .name // empty' 2>/dev/null || true)
+                if [ -n "$tool_name" ] && [ "$tool_name" != "null" ]; then
+                    tool_input=$(echo "$line" | jq -r '.message.content[]? | select(.type == "tool_use") | .input | (.description // .command // .pattern // .query // .file_path // .prompt // "working...") | tostring | .[0:100]' 2>/dev/null || true)
+                    printf "${YELLOW}  → %s:${NC} %s\n" "$tool_name" "$tool_input" >&2
+                fi
+                ;;
+            "user")
+                # Tool result - show brief summary
+                local tool_result is_error
+                is_error=$(echo "$line" | jq -r '.message.content[]?.is_error // false' 2>/dev/null || true)
+                if [ "$is_error" = "true" ]; then
+                    printf "${RED}  ✗ Tool error${NC}\n" >&2
+                else
+                    printf "${GREEN}  ✓ Tool completed${NC}\n" >&2
+                fi
+                ;;
+            "result")
+                subtype=$(echo "$line" | jq -r '.subtype // empty' 2>/dev/null || true)
+                if [ "$subtype" = "success" ]; then
+                    final_result=$(echo "$line" | jq -r '.result // empty' 2>/dev/null || true)
+                    local cost
+                    cost=$(echo "$line" | jq -r '.total_cost_usd // 0' 2>/dev/null || true)
+                    printf "${GREEN}Session complete (cost: \$%.4f)${NC}\n" "$cost" >&2
+                else
+                    # Error result
+                    local errors
+                    errors=$(echo "$line" | jq -r '.errors // [] | join(", ") | .[0:200]' 2>/dev/null || true)
+                    printf "${RED}Session error: %s${NC}\n" "$errors" >&2
+                fi
+                ;;
+        esac
     done
+
+    # Output only the final result for capture
+    if [ -n "$final_result" ] && [ "$final_result" != "null" ]; then
+        printf "%s" "$final_result"
+    fi
 }
 
 # Wrapper for claude command
@@ -100,6 +141,38 @@ run_claude() {
 }
 
 #─────────────────────────────────────────────────────────────────────
+# Issue tracking - avoid working on same issues repeatedly
+#─────────────────────────────────────────────────────────────────────
+SKIP_ISSUES_FILE="$STATE_DIR/skip_issues.txt"
+
+# Get issues to skip (have open PRs or have failed)
+get_issues_to_skip() {
+    # Issues with open PRs
+    local pr_issues
+    pr_issues=$(gh pr list --state open --json number,title --jq '.[].title | capture("issue.?#?(?<num>[0-9]+)"; "i") | .num' 2>/dev/null | tr '\n' ',' || echo "")
+
+    # Issues we've already tried and failed
+    local failed_issues=""
+    if [ -f "$SKIP_ISSUES_FILE" ]; then
+        failed_issues=$(cat "$SKIP_ISSUES_FILE" | tr '\n' ',' || echo "")
+    fi
+
+    echo "${pr_issues}${failed_issues}" | tr ',' '\n' | sort -u | grep -v '^$' | tr '\n' ',' | sed 's/,$//'
+}
+
+# Mark an issue as failed (skip in future)
+mark_issue_failed() {
+    local issue_num=$1
+    echo "$issue_num" >> "$SKIP_ISSUES_FILE"
+    log "Marked issue #$issue_num as failed - will skip in future cycles"
+}
+
+# Clear skip list (call when starting fresh)
+clear_skip_list() {
+    rm -f "$SKIP_ISSUES_FILE"
+}
+
+#─────────────────────────────────────────────────────────────────────
 # SESSION 1: Issue Selection
 # Context: Clean - focused decision-making
 #─────────────────────────────────────────────────────────────────────
@@ -107,19 +180,26 @@ select_issue() {
     header "SESSION 1: Issue Selection"
     log "Analyzing open issues to select the best one to work on..."
 
+    # Get issues to skip
+    local skip_issues
+    skip_issues=$(get_issues_to_skip)
+    if [ -n "$skip_issues" ]; then
+        log "Skipping issues: $skip_issues (have open PRs or previously failed)"
+    fi
+
     run_claude "-p" "
 You are selecting a GitHub issue to work on for the habits/fitstreak project.
 
 1. Fetch open issues: gh issue list --state open --json number,title,body,labels,assignees
-2. Analyze each issue for:
+2. SKIP these issues (they have open PRs or previously failed): $skip_issues
+3. From remaining issues, analyze for:
    - Priority (bugs > features > enhancements)
    - Complexity (prefer issues you can complete in one session)
    - Dependencies (skip if blocked by other issues)
    - Labels (look for 'good first issue', 'priority', etc.)
-   - Unassigned issues are preferred
-3. Select the BEST issue to work on now
+4. Select the BEST issue to work on now
 
-If there are no open issues, output: {\"number\": null, \"title\": null, \"body\": null}
+If there are no suitable open issues (after excluding skipped ones), output: {\"number\": null, \"title\": null, \"body\": null}
 
 Output ONLY a JSON object (no markdown, no explanation, no code blocks):
 {\"number\": 123, \"title\": \"Issue title\", \"body\": \"Issue description\"}
@@ -128,7 +208,7 @@ Output ONLY a JSON object (no markdown, no explanation, no code blocks):
     # Validate JSON output
     if ! jq -e . "$STATE_DIR/selected_issue.json" > /dev/null 2>&1; then
         error "Failed to parse issue selection output as JSON"
-        cat "$STATE_DIR/selected_issue.json"
+        cat "$STATE_DIR/selected_issue.json" >&2
         return 1
     fi
 
@@ -235,7 +315,7 @@ implement_and_test() {
     header "SESSION 3: Implementation + Testing + PR Creation"
     log "Implementing and testing issue #$issue_num..."
 
-    run_claude "interactive" "
+    run_claude "-p" "
 Implement GitHub issue #$issue_num following your approved plan.
 
 Execute these phases from CLAUDE.md:
@@ -487,7 +567,7 @@ fix_review_feedback() {
     local review_comments
     review_comments=$(jq -c '.comments' "$STATE_DIR/review_result.json")
 
-    run_claude "interactive" "
+    run_claude "-p" "
 Fix the code review feedback for PR #$pr_num.
 
 **Review Comments to Address:**
@@ -505,7 +585,7 @@ After ALL fixes:
 3. Commit: git commit -am 'fix: address review feedback'
 4. Push: git push
 
-Tell me when all fixes are complete and pushed.
+Output 'FIXES_COMPLETE' when all fixes are complete and pushed.
 "
     success "Review feedback addressed"
 }
@@ -521,7 +601,7 @@ merge_and_verify() {
     header "SESSION 6: Merge + Deploy + Verify"
     log "Merging and verifying PR #$pr_num..."
 
-    run_claude "interactive" "
+    run_claude "-p" "
 Merge and verify PR #$pr_num in production.
 
 Execute these phases from CLAUDE.md:
@@ -553,7 +633,7 @@ Execute these phases from CLAUDE.md:
    c. Test that the new feature works in production
    d. Check browser console for errors
 
-Report the deployment status when verification is complete.
+Output 'DEPLOYMENT_VERIFIED' when verification is complete, or 'DEPLOYMENT_FAILED' if there were issues.
 "
     success "Deployment verified"
 }
@@ -599,7 +679,7 @@ Output JSON ONLY (no markdown):
         reason=$(jq -r '.reason' "$STATE_DIR/docs_check.json")
         log "Documentation update needed: $reason"
 
-        run_claude "interactive" "
+        run_claude "-p" "
 Update CLAUDE.md based on changes from issue #$issue_num.
 
 **Reason for update:** $reason
@@ -614,6 +694,8 @@ After updating:
 1. git add CLAUDE.md
 2. git commit -m 'docs: update CLAUDE.md'
 3. git push
+
+Output 'DOCS_UPDATED' when complete.
 "
         success "Documentation updated"
     else
@@ -668,12 +750,14 @@ main() {
         PR_NUM=""
         if ! PR_NUM=$(implement_and_test "$ISSUE_NUM"); then
             error "Implementation failed. Skipping to next issue."
+            mark_issue_failed "$ISSUE_NUM"
             continue
         fi
 
         # Wait for CI
         if ! wait_for_ci "$PR_NUM"; then
             error "CI failed. Manual intervention needed for PR #$PR_NUM"
+            mark_issue_failed "$ISSUE_NUM"
             continue
         fi
 
@@ -697,15 +781,18 @@ main() {
                 # Re-run CI after fixes
                 if ! wait_for_ci "$PR_NUM"; then
                     error "CI failed after fixes. Manual intervention needed."
+                    mark_issue_failed "$ISSUE_NUM"
                     break
                 fi
             else
                 error "Max review rounds ($MAX_REVIEW_ROUNDS) reached. Manual intervention needed."
+                mark_issue_failed "$ISSUE_NUM"
             fi
         done
 
         if [ "$REVIEW_APPROVED" != true ]; then
             error "PR #$PR_NUM not approved after $MAX_REVIEW_ROUNDS rounds. Skipping."
+            mark_issue_failed "$ISSUE_NUM"
             continue
         fi
 
