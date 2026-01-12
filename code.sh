@@ -6,9 +6,15 @@
 # Feature Development Workflow from CLAUDE.md. It fetches GitHub issues,
 # plans implementation, codes, tests, reviews, and deploys.
 #
+# Features:
+#   - GitHub-based memory system (labels for phase, comments for session data)
+#   - Crash recovery and resume from any phase
+#   - Session cost tracking and audit trail
+#   - Multi-machine support (all state in GitHub)
+#
 # Session Architecture:
 #   1. Issue Selection (clean context)
-#   2. Planning (clean context, --plan mode)
+#   2. Planning (clean context)
 #   3. Implementation + Testing + PR (shared context - tight feedback loop)
 #   4. Code Review (CLEAN CONTEXT - critical for quality!)
 #   5. Fix Review Feedback (if needed)
@@ -16,8 +22,10 @@
 #   7. Documentation (optional)
 #
 # Usage:
-#   ./code.sh          # Run continuous loop
-#   ./code.sh --once   # Run single cycle
+#   ./code.sh              # Run continuous loop
+#   ./code.sh --once       # Run single cycle
+#   ./code.sh --resume     # Resume in-progress work only
+#   ./code.sh --status     # Show status of in-progress issues
 #
 set -euo pipefail
 
@@ -26,6 +34,8 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STATE_DIR="$REPO_ROOT/.auto-dev"
 LOG_FILE="$STATE_DIR/auto-dev.log"
 SINGLE_CYCLE=false
+RESUME_ONLY=false
+SHOW_STATUS=false
 MAX_REVIEW_ROUNDS=3
 
 # Parse arguments
@@ -35,9 +45,17 @@ while [[ $# -gt 0 ]]; do
             SINGLE_CYCLE=true
             shift
             ;;
+        --resume)
+            RESUME_ONLY=true
+            shift
+            ;;
+        --status)
+            SHOW_STATUS=true
+            shift
+            ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--once]"
+            echo "Usage: $0 [--once] [--resume] [--status]"
             exit 1
             ;;
     esac
@@ -49,6 +67,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
+MAGENTA='\033[0;35m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color
 
@@ -61,6 +80,262 @@ header() { echo -e "\n${BOLD}${CYAN}$*${NC}" | tee -a "$LOG_FILE" >&2; }
 
 # Initialize state directory
 mkdir -p "$STATE_DIR"
+
+#═══════════════════════════════════════════════════════════════════════════════
+# GITHUB MEMORY SYSTEM
+# Uses labels for phase tracking, comments for session memory
+#═══════════════════════════════════════════════════════════════════════════════
+
+# Label definitions: name:color:description
+PHASE_LABELS=(
+    "auto-dev:selecting:0E8A16:Being selected for development"
+    "auto-dev:planning:1D76DB:Creating implementation plan"
+    "auto-dev:implementing:5319E7:Writing code and testing"
+    "auto-dev:pr-waiting:FBCA04:PR created, waiting for CI"
+    "auto-dev:reviewing:D93F0B:Under code review"
+    "auto-dev:fixing:F9D0C4:Addressing review feedback"
+    "auto-dev:merging:0052CC:Being merged and deployed"
+    "auto-dev:verifying:BFD4F2:Production verification"
+    "auto-dev:complete:0E8A16:Successfully completed"
+    "auto-dev:blocked:B60205:Needs manual intervention"
+    "auto-dev:ci-failed:B60205:CI checks failing"
+)
+
+# Ensure all required labels exist in the repo
+ensure_labels_exist() {
+    log "Ensuring GitHub labels exist..."
+    for label_spec in "${PHASE_LABELS[@]}"; do
+        IFS=':' read -r name color desc <<< "$label_spec"
+        gh label create "$name" --color "$color" --description "$desc" 2>/dev/null || true
+    done
+}
+
+# Set workflow phase for an issue (removes old phase, adds new)
+set_phase() {
+    local issue_num=$1
+    local phase=$2
+
+    # Remove all existing auto-dev phase labels
+    local existing_labels
+    existing_labels=$(gh issue view "$issue_num" --json labels -q '.labels[].name' 2>/dev/null | grep "^auto-dev:" || true)
+
+    for old_label in $existing_labels; do
+        # Keep metadata labels (pr:, branch:, round:, cost:), remove phase labels
+        if [[ "$old_label" =~ ^auto-dev:(selecting|planning|implementing|pr-waiting|reviewing|fixing|merging|verifying|complete|blocked|ci-failed)$ ]]; then
+            gh issue edit "$issue_num" --remove-label "$old_label" 2>/dev/null || true
+        fi
+    done
+
+    # Add new phase label
+    gh issue edit "$issue_num" --add-label "auto-dev:$phase" 2>/dev/null || true
+    log "Phase → ${MAGENTA}$phase${NC} for issue #$issue_num"
+}
+
+# Get current phase of an issue
+get_phase() {
+    local issue_num=$1
+    local labels
+    labels=$(gh issue view "$issue_num" --json labels -q '.labels[].name' 2>/dev/null || echo "")
+
+    for phase in selecting planning implementing pr-waiting reviewing fixing merging verifying complete blocked ci-failed; do
+        if echo "$labels" | grep -q "^auto-dev:$phase$"; then
+            echo "$phase"
+            return 0
+        fi
+    done
+    echo ""
+}
+
+# Add/update a metadata label (pr number, branch, round, cost)
+set_metadata() {
+    local issue_num=$1
+    local key=$2
+    local value=$3
+
+    # Remove existing label with same key prefix
+    local existing
+    existing=$(gh issue view "$issue_num" --json labels -q ".labels[].name" 2>/dev/null | grep "^auto-dev:$key:" || true)
+    if [ -n "$existing" ]; then
+        gh issue edit "$issue_num" --remove-label "$existing" 2>/dev/null || true
+    fi
+
+    # Create and add new label
+    local label_name="auto-dev:$key:$value"
+    gh label create "$label_name" --color "CCCCCC" 2>/dev/null || true
+    gh issue edit "$issue_num" --add-label "$label_name" 2>/dev/null || true
+}
+
+# Get metadata value from labels
+get_metadata() {
+    local issue_num=$1
+    local key=$2
+    gh issue view "$issue_num" --json labels -q ".labels[].name" 2>/dev/null | \
+        grep "^auto-dev:$key:" | sed "s/auto-dev:$key://" | head -1
+}
+
+# Post session memory as a structured comment
+post_session_memory() {
+    local issue_num=$1
+    local phase_name=$2
+    local session_start=$3
+    local session_end=$4
+    local cost=$5
+    local summary=$6
+    local extra_info=${7:-""}
+
+    local duration=$((session_end - session_start))
+    local duration_min=$((duration / 60))
+    local duration_sec=$((duration % 60))
+    local duration_fmt="${duration_min}m ${duration_sec}s"
+
+    # Format timestamps
+    local start_fmt end_fmt
+    if date --version 2>/dev/null | grep -q GNU; then
+        start_fmt=$(date -d "@$session_start" -u +"%Y-%m-%dT%H:%M:%SZ")
+        end_fmt=$(date -d "@$session_end" -u +"%Y-%m-%dT%H:%M:%SZ")
+    else
+        start_fmt=$(date -r "$session_start" -u +"%Y-%m-%dT%H:%M:%SZ")
+        end_fmt=$(date -r "$session_end" -u +"%Y-%m-%dT%H:%M:%SZ")
+    fi
+
+    local session_id="session-$(date +%s)-$$"
+
+    local comment="## 🤖 Auto-Dev Session: $phase_name
+
+| Field | Value |
+|-------|-------|
+| **Session ID** | \`$session_id\` |
+| **Started** | $start_fmt |
+| **Completed** | $end_fmt |
+| **Duration** | $duration_fmt |
+| **Cost** | \$$cost |
+
+### Summary
+$summary"
+
+    if [ -n "$extra_info" ]; then
+        comment+="
+
+### Details
+$extra_info"
+    fi
+
+    comment+="
+
+---
+<sub>🤖 Automated by auto-dev</sub>"
+
+    gh issue comment "$issue_num" --body "$comment" 2>/dev/null || warn "Failed to post session memory"
+}
+
+# Get accumulated cost from all session comments
+get_accumulated_cost() {
+    local issue_num=$1
+
+    # Extract all costs from session comments and sum them
+    local total
+    total=$(gh issue view "$issue_num" --comments --json comments \
+        -q '[.comments[].body | capture("\\*\\*Cost\\*\\* \\| \\$(?<cost>[0-9.]+)") | .cost | tonumber] | add // 0' 2>/dev/null)
+
+    printf "%.2f" "${total:-0}"
+}
+
+# Find issues that are in-progress (have auto-dev phase labels)
+find_in_progress_issues() {
+    local phases=("selecting" "planning" "implementing" "pr-waiting" "reviewing" "fixing" "merging" "verifying")
+
+    for phase in "${phases[@]}"; do
+        local issues
+        issues=$(gh issue list --label "auto-dev:$phase" --json number,title -q '.[] | "\(.number):\(.title)"' 2>/dev/null || echo "")
+        if [ -n "$issues" ]; then
+            while IFS= read -r line; do
+                local num title
+                num=$(echo "$line" | cut -d: -f1)
+                title=$(echo "$line" | cut -d: -f2-)
+                echo "$num|$phase|$title"
+            done <<< "$issues"
+        fi
+    done
+}
+
+# Find the most actionable in-progress issue
+find_resumable_issue() {
+    # Priority order for resuming
+    local phases=("fixing" "reviewing" "pr-waiting" "implementing" "planning" "merging" "verifying" "selecting")
+
+    for phase in "${phases[@]}"; do
+        local issue
+        issue=$(gh issue list --label "auto-dev:$phase" --json number -q '.[0].number' 2>/dev/null || echo "")
+        if [ -n "$issue" ]; then
+            echo "$issue"
+            return 0
+        fi
+    done
+    echo ""
+}
+
+# Show status of all in-progress issues
+show_status() {
+    header "Auto-Dev Status"
+
+    local in_progress
+    in_progress=$(find_in_progress_issues)
+
+    if [ -z "$in_progress" ]; then
+        log "No in-progress issues found"
+        return 0
+    fi
+
+    echo ""
+    printf "%-6s %-15s %-50s\n" "ISSUE" "PHASE" "TITLE"
+    printf "%-6s %-15s %-50s\n" "-----" "-----" "-----"
+
+    while IFS='|' read -r num phase title; do
+        local pr_num branch cost
+        pr_num=$(get_metadata "$num" "pr")
+        cost=$(get_accumulated_cost "$num")
+
+        printf "%-6s %-15s %-50s\n" "#$num" "$phase" "${title:0:50}"
+        if [ -n "$pr_num" ]; then
+            printf "       └─ PR #%s, Cost: \$%s\n" "$pr_num" "$cost"
+        fi
+    done <<< "$in_progress"
+    echo ""
+}
+
+# Mark issue as blocked
+mark_blocked() {
+    local issue_num=$1
+    local reason=$2
+
+    set_phase "$issue_num" "blocked"
+
+    gh issue comment "$issue_num" --body "## ⚠️ Auto-Dev Blocked
+
+**Reason:** $reason
+**Time:** $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+### To Resume
+1. Fix the underlying issue
+2. Remove the \`auto-dev:blocked\` label
+3. Add the appropriate phase label to continue from:
+   - \`auto-dev:implementing\` - to restart implementation
+   - \`auto-dev:reviewing\` - to restart code review
+   - etc.
+
+---
+<sub>🤖 Automated by auto-dev</sub>" 2>/dev/null || true
+
+    error "Issue #$issue_num blocked: $reason"
+}
+
+#═══════════════════════════════════════════════════════════════════════════════
+# STREAMING OUTPUT FORMATTER
+#═══════════════════════════════════════════════════════════════════════════════
+
+# Track session metrics
+SESSION_START_TIME=""
+SESSION_COST=""
 
 # Format streaming JSON to show progress to human orchestrator
 # Streams: text responses, tool calls, and captures final result
@@ -109,14 +384,14 @@ format_progress() {
                 subtype=$(echo "$line" | jq -r '.subtype // empty' 2>/dev/null) || true
                 if [ "$subtype" = "success" ]; then
                     final_result=$(echo "$line" | jq -r '.result // empty' 2>/dev/null) || true
-                    local cost
-                    cost=$(echo "$line" | jq -r '.total_cost_usd // 0' 2>/dev/null) || true
-                    printf "${GREEN}Session complete (cost: \$%.4f)${NC}\n" "${cost:-0}" >&2
+                    SESSION_COST=$(echo "$line" | jq -r '.total_cost_usd // 0' 2>/dev/null) || true
+                    printf "${GREEN}Session complete (cost: \$%.4f)${NC}\n" "${SESSION_COST:-0}" >&2
                 else
                     # Error result - show error but DON'T output anything to stdout
                     local errors
                     errors=$(echo "$line" | jq -r '.errors // [] | .[:3] | join("; ") | .[0:200]' 2>/dev/null) || true
                     printf "${RED}Session error: %s${NC}\n" "${errors:-unknown error}" >&2
+                    SESSION_COST="0"
                 fi
                 ;;
         esac
@@ -139,6 +414,10 @@ run_claude() {
     shift
     local prompt_preview
     prompt_preview=$(echo "$1" | head -c 100 | tr '\n' ' ')
+
+    # Track session start
+    SESSION_START_TIME=$(date +%s)
+    SESSION_COST="0"
 
     # Log session start
     echo "" >> "$LOG_FILE"
@@ -164,44 +443,16 @@ run_claude() {
 
     # Log session end
     echo "" >> "$LOG_FILE"
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] CLAUDE SESSION END (exit code: $exit_code)" >> "$LOG_FILE"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] CLAUDE SESSION END (exit code: $exit_code, cost: \$${SESSION_COST:-0})" >> "$LOG_FILE"
     echo "═══════════════════════════════════════════════════════════════════" >> "$LOG_FILE"
     echo "" >> "$LOG_FILE"
 
     return $exit_code
 }
 
-#─────────────────────────────────────────────────────────────────────
-# Issue tracking - avoid working on same issues repeatedly
-#─────────────────────────────────────────────────────────────────────
-SKIP_ISSUES_FILE="$STATE_DIR/skip_issues.txt"
-
-# Get issues to skip (have open PRs or have failed)
-get_issues_to_skip() {
-    # Issues with open PRs
-    local pr_issues
-    pr_issues=$(gh pr list --state open --json number,title --jq '.[].title | capture("issue.?#?(?<num>[0-9]+)"; "i") | .num' 2>/dev/null | tr '\n' ',' || echo "")
-
-    # Issues we've already tried and failed
-    local failed_issues=""
-    if [ -f "$SKIP_ISSUES_FILE" ]; then
-        failed_issues=$(cat "$SKIP_ISSUES_FILE" | tr '\n' ',' || echo "")
-    fi
-
-    echo "${pr_issues}${failed_issues}" | tr ',' '\n' | sort -u | grep -v '^$' | tr '\n' ',' | sed 's/,$//'
-}
-
-# Mark an issue as failed (skip in future)
-mark_issue_failed() {
-    local issue_num=$1
-    echo "$issue_num" >> "$SKIP_ISSUES_FILE"
-    log "Marked issue #$issue_num as failed - will skip in future cycles"
-}
-
-# Clear skip list (call when starting fresh)
-clear_skip_list() {
-    rm -f "$SKIP_ISSUES_FILE"
-}
+#═══════════════════════════════════════════════════════════════════════════════
+# WORKFLOW SESSIONS
+#═══════════════════════════════════════════════════════════════════════════════
 
 #─────────────────────────────────────────────────────────────────────
 # SESSION 1: Issue Selection
@@ -211,30 +462,45 @@ select_issue() {
     header "SESSION 1: Issue Selection"
     log "Analyzing open issues to select the best one to work on..."
 
-    # Get issues to skip
+    # Get issues to skip (have auto-dev labels already)
     local skip_issues
-    skip_issues=$(get_issues_to_skip)
+    skip_issues=$(find_in_progress_issues | cut -d'|' -f1 | tr '\n' ',' | sed 's/,$//')
+
+    # Also skip issues with open PRs
+    local pr_issues
+    pr_issues=$(gh pr list --state open --json number,title --jq '.[].title | capture("issue.?#?(?<num>[0-9]+)"; "i") | .num' 2>/dev/null | tr '\n' ',' || echo "")
+
+    skip_issues="${skip_issues},${pr_issues}"
+    skip_issues=$(echo "$skip_issues" | tr ',' '\n' | sort -u | grep -v '^$' | tr '\n' ',' | sed 's/,$//')
+
     if [ -n "$skip_issues" ]; then
-        log "Skipping issues: $skip_issues (have open PRs or previously failed)"
+        log "Skipping issues: $skip_issues (in-progress or have open PRs)"
     fi
+
+    local session_start
+    session_start=$(date +%s)
 
     run_claude "-p" "
 You are selecting a GitHub issue to work on for the habits/fitstreak project.
 
 1. Fetch open issues: gh issue list --state open --json number,title,body,labels,assignees
-2. SKIP these issues (they have open PRs or previously failed): $skip_issues
-3. From remaining issues, analyze for:
+2. SKIP these issues (in-progress or have open PRs): $skip_issues
+3. SKIP issues with any 'auto-dev:' labels (they are being worked on)
+4. From remaining issues, analyze for:
    - Priority (bugs > features > enhancements)
    - Complexity (prefer issues you can complete in one session)
    - Dependencies (skip if blocked by other issues)
    - Labels (look for 'good first issue', 'priority', etc.)
-4. Select the BEST issue to work on now
+5. Select the BEST issue to work on now
 
 If there are no suitable open issues (after excluding skipped ones), output: {\"number\": null, \"title\": null, \"body\": null}
 
 Output ONLY a JSON object (no markdown, no explanation, no code blocks):
 {\"number\": 123, \"title\": \"Issue title\", \"body\": \"Issue description\"}
 " > "$STATE_DIR/selected_issue.json"
+
+    local session_end
+    session_end=$(date +%s)
 
     # Validate JSON output
     if ! jq -e . "$STATE_DIR/selected_issue.json" > /dev/null 2>&1; then
@@ -243,16 +509,24 @@ Output ONLY a JSON object (no markdown, no explanation, no code blocks):
         return 1
     fi
 
-    ISSUE_NUM=$(jq -r '.number' "$STATE_DIR/selected_issue.json")
+    local issue_num
+    issue_num=$(jq -r '.number' "$STATE_DIR/selected_issue.json")
 
-    if [ "$ISSUE_NUM" = "null" ] || [ -z "$ISSUE_NUM" ]; then
+    if [ "$issue_num" = "null" ] || [ -z "$issue_num" ]; then
         warn "No suitable issues found"
         return 1
     fi
 
-    ISSUE_TITLE=$(jq -r '.title' "$STATE_DIR/selected_issue.json")
-    success "Selected issue #$ISSUE_NUM: $ISSUE_TITLE"
-    echo "$ISSUE_NUM"
+    local issue_title
+    issue_title=$(jq -r '.title' "$STATE_DIR/selected_issue.json")
+
+    # Set phase and post memory
+    set_phase "$issue_num" "selecting"
+    post_session_memory "$issue_num" "Issue Selection" "$session_start" "$session_end" "${SESSION_COST:-0}" \
+        "Selected this issue for automated development."
+
+    success "Selected issue #$issue_num: $issue_title"
+    echo "$issue_num"
 }
 
 #─────────────────────────────────────────────────────────────────────
@@ -293,6 +567,7 @@ plan_implementation() {
     local issue_body=$3
 
     header "SESSION 2: Planning"
+    set_phase "$issue_num" "planning"
 
     # Check if plan already exists
     if has_implementation_plan "$issue_num"; then
@@ -303,6 +578,9 @@ plan_implementation() {
     fi
 
     log "Planning implementation for issue #$issue_num..."
+
+    local session_start
+    session_start=$(date +%s)
 
     # Generate plan using print mode (non-interactive)
     local plan
@@ -325,12 +603,19 @@ Output a well-structured markdown plan that can be posted as a GitHub comment.
 Start with '## Implementation Plan' as the header.
 ")
 
+    local session_end
+    session_end=$(date +%s)
+
     # Save plan locally
     echo "$plan" > "$STATE_DIR/plan-$issue_num.md"
 
     # Post plan as comment on the GitHub issue
     log "Posting plan to GitHub issue #$issue_num..."
     gh issue comment "$issue_num" --body "$plan"
+
+    # Post session memory
+    post_session_memory "$issue_num" "Planning" "$session_start" "$session_end" "${SESSION_COST:-0}" \
+        "Created and posted implementation plan to issue comments."
 
     success "Planning complete - posted to issue #$issue_num"
 }
@@ -344,7 +629,11 @@ implement_and_test() {
     local issue_num=$1
 
     header "SESSION 3: Implementation + Testing + PR Creation"
+    set_phase "$issue_num" "implementing"
     log "Implementing and testing issue #$issue_num..."
+
+    local session_start
+    session_start=$(date +%s)
 
     run_claude "-p" "
 Implement GitHub issue #$issue_num following your approved plan.
@@ -394,6 +683,9 @@ PR_CREATED: <number>
 Example: PR_CREATED: 123
 " > /dev/null  # Discard stdout - we find PR via git/gh commands below
 
+    local session_end
+    session_end=$(date +%s)
+
     # Extract PR number - try multiple methods
     local pr_num=""
     local current_branch
@@ -414,7 +706,7 @@ Example: PR_CREATED: 123
             local branch_name="feat/issue-$issue_num-auto"
             git checkout -b "$branch_name" 2>&1 >&2 || true
             git add -A 2>&1 >&2 || true
-            git commit -m "feat: implement issue #$issue_num" 2>&1 >&2 || true
+            git commit --no-gpg-sign -m "feat: implement issue #$issue_num" 2>&1 >&2 || true
             git push -u origin HEAD 2>&1 >&2 || true
             gh pr create --title "feat: implement issue #$issue_num" --body "Automated implementation for #$issue_num" 2>&1 >&2 || true
             current_branch="$branch_name"
@@ -450,6 +742,17 @@ Example: PR_CREATED: 123
         return 1
     fi
 
+    # Store PR metadata
+    set_metadata "$issue_num" "pr" "$pr_num"
+    set_metadata "$issue_num" "branch" "$current_branch"
+    set_phase "$issue_num" "pr-waiting"
+
+    # Post session memory
+    post_session_memory "$issue_num" "Implementation" "$session_start" "$session_end" "${SESSION_COST:-0}" \
+        "Implemented feature and created PR #$pr_num on branch \`$current_branch\`." \
+        "**PR:** #$pr_num
+**Branch:** \`$current_branch\`"
+
     success "PR #$pr_num created"
     echo "$pr_num"
 }
@@ -481,9 +784,14 @@ wait_for_ci() {
 #─────────────────────────────────────────────────────────────────────
 review_code() {
     local pr_num=$1
+    local issue_num=$2
 
     header "SESSION 4: Code Review (Fresh Context)"
+    set_phase "$issue_num" "reviewing"
     log "Reviewing PR #$pr_num with fresh eyes..."
+
+    local session_start
+    session_start=$(date +%s)
 
     # Get PR information for review
     local pr_diff pr_files pr_title pr_body
@@ -560,6 +868,9 @@ Provide your review as a JSON object ONLY (no markdown, no explanation):
 Be thorough but fair. Only request changes for real issues, not style preferences.
 " > "$STATE_DIR/review_result.json"
 
+    local session_end
+    session_end=$(date +%s)
+
     # Validate JSON
     if ! jq -e . "$STATE_DIR/review_result.json" > /dev/null 2>&1; then
         error "Failed to parse review output as JSON"
@@ -572,6 +883,12 @@ Be thorough but fair. Only request changes for real issues, not style preference
     review_summary=$(jq -r '.summary' "$STATE_DIR/review_result.json")
 
     log "Review Summary: $review_summary"
+
+    # Post session memory
+    post_session_memory "$issue_num" "Code Review" "$session_start" "$session_end" "${SESSION_COST:-0}" \
+        "Review result: **${review_status^^}**
+
+$review_summary"
 
     if [ "$review_status" = "approved" ]; then
         success "Code review: APPROVED"
@@ -591,9 +908,14 @@ Be thorough but fair. Only request changes for real issues, not style preference
 #─────────────────────────────────────────────────────────────────────
 fix_review_feedback() {
     local pr_num=$1
+    local issue_num=$2
 
     header "SESSION 5: Fixing Review Feedback"
+    set_phase "$issue_num" "fixing"
     log "Addressing review comments for PR #$pr_num..."
+
+    local session_start
+    session_start=$(date +%s)
 
     local review_comments
     review_comments=$(jq -c '.comments' "$STATE_DIR/review_result.json")
@@ -618,6 +940,17 @@ After ALL fixes:
 
 Output 'FIXES_COMPLETE' when all fixes are complete and pushed.
 " > /dev/null  # Discard stdout - no output capture needed
+
+    local session_end
+    session_end=$(date +%s)
+
+    # Update phase back to pr-waiting for CI
+    set_phase "$issue_num" "pr-waiting"
+
+    # Post session memory
+    post_session_memory "$issue_num" "Fix Review Feedback" "$session_start" "$session_end" "${SESSION_COST:-0}" \
+        "Addressed review feedback and pushed fixes."
+
     success "Review feedback addressed"
 }
 
@@ -628,9 +961,14 @@ Output 'FIXES_COMPLETE' when all fixes are complete and pushed.
 #─────────────────────────────────────────────────────────────────────
 merge_and_verify() {
     local pr_num=$1
+    local issue_num=$2
 
     header "SESSION 6: Merge + Deploy + Verify"
+    set_phase "$issue_num" "merging"
     log "Merging and verifying PR #$pr_num..."
+
+    local session_start
+    session_start=$(date +%s)
 
     run_claude "-p" "
 Merge and verify PR #$pr_num in production.
@@ -666,6 +1004,17 @@ Execute these phases from CLAUDE.md:
 
 Output 'DEPLOYMENT_VERIFIED' when verification is complete, or 'DEPLOYMENT_FAILED' if there were issues.
 " > /dev/null  # Discard stdout - no output capture needed
+
+    local session_end
+    session_end=$(date +%s)
+
+    # Update phase
+    set_phase "$issue_num" "verifying"
+
+    # Post session memory
+    post_session_memory "$issue_num" "Merge & Deploy" "$session_start" "$session_end" "${SESSION_COST:-0}" \
+        "Merged PR #$pr_num and verified production deployment."
+
     success "Deployment verified"
 }
 
@@ -679,6 +1028,9 @@ update_documentation() {
 
     header "SESSION 7: Documentation Check"
     log "Checking if documentation updates are needed..."
+
+    local session_start
+    session_start=$(date +%s)
 
     run_claude "-p" "
 Analyze if documentation updates are needed after implementing issue #$issue_num.
@@ -697,6 +1049,9 @@ Output JSON ONLY (no markdown):
 {\"needs_update\": true|false, \"reason\": \"Brief explanation\"}
 " > "$STATE_DIR/docs_check.json"
 
+    local session_end
+    session_end=$(date +%s)
+
     if ! jq -e . "$STATE_DIR/docs_check.json" > /dev/null 2>&1; then
         warn "Could not determine if docs need update"
         return 0
@@ -709,6 +1064,9 @@ Output JSON ONLY (no markdown):
         local reason
         reason=$(jq -r '.reason' "$STATE_DIR/docs_check.json")
         log "Documentation update needed: $reason"
+
+        local doc_session_start
+        doc_session_start=$(date +%s)
 
         run_claude "-p" "
 Update CLAUDE.md based on changes from issue #$issue_num.
@@ -728,6 +1086,13 @@ After updating:
 
 Output 'DOCS_UPDATED' when complete.
 " > /dev/null  # Discard stdout - no output capture needed
+
+        local doc_session_end
+        doc_session_end=$(date +%s)
+
+        post_session_memory "$issue_num" "Documentation" "$doc_session_start" "$doc_session_end" "${SESSION_COST:-0}" \
+            "Updated CLAUDE.md: $reason"
+
         success "Documentation updated"
     else
         success "No documentation updates needed"
@@ -735,8 +1100,183 @@ Output 'DOCS_UPDATED' when complete.
 }
 
 #─────────────────────────────────────────────────────────────────────
-# MAIN LOOP
+# Complete an issue
 #─────────────────────────────────────────────────────────────────────
+complete_issue() {
+    local issue_num=$1
+    local pr_num=$2
+
+    # Set final phase
+    set_phase "$issue_num" "complete"
+
+    # Calculate total cost
+    local total_cost
+    total_cost=$(get_accumulated_cost "$issue_num")
+    set_metadata "$issue_num" "cost" "$total_cost"
+
+    # Close the issue with a summary
+    gh issue close "$issue_num" --comment "## ✅ Completed by Auto-Dev
+
+| Metric | Value |
+|--------|-------|
+| **PR** | #$pr_num |
+| **Total Cost** | \$$total_cost |
+| **Completed** | $(date -u +"%Y-%m-%dT%H:%M:%SZ") |
+
+### Session Summary
+See comments above for detailed session logs.
+
+---
+<sub>🤖 Automated by auto-dev</sub>" 2>/dev/null || warn "Failed to close issue"
+
+    success "Issue #$issue_num completed! Total cost: \$$total_cost"
+}
+
+#═══════════════════════════════════════════════════════════════════════════════
+# RESUME LOGIC
+#═══════════════════════════════════════════════════════════════════════════════
+
+resume_from_phase() {
+    local issue_num=$1
+    local phase=$2
+
+    log "Resuming issue #$issue_num from phase: $phase"
+
+    # Load issue details
+    local issue_json
+    issue_json=$(gh issue view "$issue_num" --json title,body)
+    local issue_title issue_body
+    issue_title=$(echo "$issue_json" | jq -r '.title')
+    issue_body=$(echo "$issue_json" | jq -r '.body')
+
+    # Get PR number if exists
+    local pr_num
+    pr_num=$(get_metadata "$issue_num" "pr")
+
+    case "$phase" in
+        "selecting")
+            # Re-run from planning
+            plan_implementation "$issue_num" "$issue_title" "$issue_body"
+            resume_from_phase "$issue_num" "planning"
+            ;;
+        "planning")
+            # Run implementation
+            local new_pr
+            if new_pr=$(implement_and_test "$issue_num"); then
+                pr_num="$new_pr"
+                resume_from_phase "$issue_num" "pr-waiting"
+            else
+                mark_blocked "$issue_num" "Implementation failed"
+            fi
+            ;;
+        "implementing")
+            # Continue/retry implementation
+            local new_pr
+            if new_pr=$(implement_and_test "$issue_num"); then
+                pr_num="$new_pr"
+                resume_from_phase "$issue_num" "pr-waiting"
+            else
+                mark_blocked "$issue_num" "Implementation failed"
+            fi
+            ;;
+        "pr-waiting")
+            if [ -z "$pr_num" ]; then
+                mark_blocked "$issue_num" "No PR number found"
+                return 1
+            fi
+            if wait_for_ci "$pr_num"; then
+                resume_from_phase "$issue_num" "reviewing"
+            else
+                set_phase "$issue_num" "ci-failed"
+                mark_blocked "$issue_num" "CI checks failed"
+            fi
+            ;;
+        "reviewing"|"ci-failed")
+            if [ -z "$pr_num" ]; then
+                mark_blocked "$issue_num" "No PR number found"
+                return 1
+            fi
+            run_review_loop "$issue_num" "$pr_num"
+            ;;
+        "fixing")
+            if [ -z "$pr_num" ]; then
+                mark_blocked "$issue_num" "No PR number found"
+                return 1
+            fi
+            fix_review_feedback "$pr_num" "$issue_num"
+            if wait_for_ci "$pr_num"; then
+                resume_from_phase "$issue_num" "reviewing"
+            else
+                mark_blocked "$issue_num" "CI failed after fixes"
+            fi
+            ;;
+        "merging")
+            if [ -z "$pr_num" ]; then
+                mark_blocked "$issue_num" "No PR number found"
+                return 1
+            fi
+            merge_and_verify "$pr_num" "$issue_num"
+            update_documentation "$issue_num"
+            complete_issue "$issue_num" "$pr_num"
+            ;;
+        "verifying")
+            update_documentation "$issue_num"
+            complete_issue "$issue_num" "$pr_num"
+            ;;
+        "complete")
+            success "Issue #$issue_num is already complete"
+            ;;
+        "blocked")
+            warn "Issue #$issue_num is blocked - remove 'auto-dev:blocked' label and set appropriate phase to resume"
+            ;;
+        *)
+            warn "Unknown phase: $phase"
+            return 1
+            ;;
+    esac
+}
+
+run_review_loop() {
+    local issue_num=$1
+    local pr_num=$2
+
+    # Get current review round
+    local review_round
+    review_round=$(get_metadata "$issue_num" "round")
+    review_round=${review_round:-0}
+
+    while [ "$review_round" -lt "$MAX_REVIEW_ROUNDS" ]; do
+        review_round=$((review_round + 1))
+        set_metadata "$issue_num" "round" "$review_round"
+        log "Review round $review_round/$MAX_REVIEW_ROUNDS"
+
+        if review_code "$pr_num" "$issue_num"; then
+            # Approved - continue to merge
+            merge_and_verify "$pr_num" "$issue_num"
+            update_documentation "$issue_num"
+            complete_issue "$issue_num" "$pr_num"
+            return 0
+        fi
+
+        if [ "$review_round" -lt "$MAX_REVIEW_ROUNDS" ]; then
+            # Fix feedback
+            fix_review_feedback "$pr_num" "$issue_num"
+
+            # Re-run CI after fixes
+            if ! wait_for_ci "$pr_num"; then
+                mark_blocked "$issue_num" "CI failed after fixes"
+                return 1
+            fi
+        else
+            mark_blocked "$issue_num" "Max review rounds ($MAX_REVIEW_ROUNDS) reached"
+            return 1
+        fi
+    done
+}
+
+#═══════════════════════════════════════════════════════════════════════════════
+# MAIN LOOP
+#═══════════════════════════════════════════════════════════════════════════════
 main() {
     echo ""
     echo -e "${BOLD}${CYAN}╔════════════════════════════════════════════════════════════╗${NC}"
@@ -744,8 +1284,19 @@ main() {
     echo -e "${BOLD}${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 
+    # Handle --status flag
+    if [ "$SHOW_STATUS" = true ]; then
+        show_status
+        exit 0
+    fi
+
+    # Ensure labels exist
+    ensure_labels_exist
+
     if [ "$SINGLE_CYCLE" = true ]; then
         log "Single cycle mode - will exit after one issue"
+    elif [ "$RESUME_ONLY" = true ]; then
+        log "Resume mode - will only resume in-progress work"
     else
         log "Continuous mode - Press Ctrl+C to stop"
     fi
@@ -756,12 +1307,44 @@ main() {
     while true; do
         echo ""
         log "═══════════════════════════════════════════════════════════"
-        log "Starting new development cycle at $(date)"
+        log "Starting development cycle at $(date)"
         log "═══════════════════════════════════════════════════════════"
 
-        # Session 1: Select issue
-        ISSUE_NUM=""
-        if ! ISSUE_NUM=$(select_issue); then
+        # Check for in-progress work first (RESUME)
+        local resume_issue_num
+        resume_issue_num=$(find_resumable_issue)
+
+        if [ -n "$resume_issue_num" ]; then
+            local resume_phase
+            resume_phase=$(get_phase "$resume_issue_num")
+            log "Found in-progress issue #$resume_issue_num in phase: $resume_phase"
+
+            resume_from_phase "$resume_issue_num" "$resume_phase"
+
+            # Check if we completed or blocked
+            local new_phase
+            new_phase=$(get_phase "$resume_issue_num")
+            if [ "$new_phase" = "complete" ] || [ "$new_phase" = "blocked" ]; then
+                if [ "$SINGLE_CYCLE" = true ]; then
+                    log "Single cycle complete. Exiting."
+                    exit 0
+                fi
+            fi
+
+            # Continue to next iteration
+            sleep 5
+            continue
+        fi
+
+        # No in-progress work
+        if [ "$RESUME_ONLY" = true ]; then
+            log "No in-progress issues found. Exiting resume mode."
+            exit 0
+        fi
+
+        # Select new issue
+        local issue_num=""
+        if ! issue_num=$(select_issue); then
             if [ "$SINGLE_CYCLE" = true ]; then
                 warn "No issues to work on. Exiting."
                 exit 0
@@ -771,71 +1354,30 @@ main() {
             continue
         fi
 
-        ISSUE_TITLE=$(jq -r '.title' "$STATE_DIR/selected_issue.json")
-        ISSUE_BODY=$(jq -r '.body' "$STATE_DIR/selected_issue.json")
+        local issue_title issue_body
+        issue_title=$(jq -r '.title' "$STATE_DIR/selected_issue.json")
+        issue_body=$(jq -r '.body' "$STATE_DIR/selected_issue.json")
 
-        # Session 2: Plan implementation (requires user approval)
-        plan_implementation "$ISSUE_NUM" "$ISSUE_TITLE" "$ISSUE_BODY"
+        # Run the full workflow
+        plan_implementation "$issue_num" "$issue_title" "$issue_body"
 
-        # Session 3: Implement + Test + Create PR
-        PR_NUM=""
-        if ! PR_NUM=$(implement_and_test "$ISSUE_NUM"); then
-            error "Implementation failed. Skipping to next issue."
-            mark_issue_failed "$ISSUE_NUM"
+        local pr_num=""
+        if ! pr_num=$(implement_and_test "$issue_num"); then
+            mark_blocked "$issue_num" "Implementation failed"
             continue
         fi
 
-        # Wait for CI
-        if ! wait_for_ci "$PR_NUM"; then
-            error "CI failed. Manual intervention needed for PR #$PR_NUM"
-            mark_issue_failed "$ISSUE_NUM"
+        if ! wait_for_ci "$pr_num"; then
+            mark_blocked "$issue_num" "CI checks failed"
             continue
         fi
 
-        # Session 4: Code Review (fresh context!)
-        REVIEW_ROUND=0
-        REVIEW_APPROVED=false
-
-        while [ $REVIEW_ROUND -lt $MAX_REVIEW_ROUNDS ]; do
-            REVIEW_ROUND=$((REVIEW_ROUND + 1))
-            log "Review round $REVIEW_ROUND/$MAX_REVIEW_ROUNDS"
-
-            if review_code "$PR_NUM"; then
-                REVIEW_APPROVED=true
-                break
-            fi
-
-            if [ $REVIEW_ROUND -lt $MAX_REVIEW_ROUNDS ]; then
-                # Session 5: Fix feedback
-                fix_review_feedback "$PR_NUM"
-
-                # Re-run CI after fixes
-                if ! wait_for_ci "$PR_NUM"; then
-                    error "CI failed after fixes. Manual intervention needed."
-                    mark_issue_failed "$ISSUE_NUM"
-                    break
-                fi
-            else
-                error "Max review rounds ($MAX_REVIEW_ROUNDS) reached. Manual intervention needed."
-                mark_issue_failed "$ISSUE_NUM"
-            fi
-        done
-
-        if [ "$REVIEW_APPROVED" != true ]; then
-            error "PR #$PR_NUM not approved after $MAX_REVIEW_ROUNDS rounds. Skipping."
-            mark_issue_failed "$ISSUE_NUM"
+        if ! run_review_loop "$issue_num" "$pr_num"; then
+            # Already marked as blocked in run_review_loop
             continue
         fi
 
-        # Session 6: Merge + Deploy + Verify
-        merge_and_verify "$PR_NUM"
-
-        # Session 7: Documentation (optional)
-        update_documentation "$ISSUE_NUM"
-
-        success "═══════════════════════════════════════════════════════════"
-        success "Issue #$ISSUE_NUM COMPLETE!"
-        success "═══════════════════════════════════════════════════════════"
+        # Success path handled in run_review_loop -> complete_issue
 
         if [ "$SINGLE_CYCLE" = true ]; then
             log "Single cycle complete. Exiting."
