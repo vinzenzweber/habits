@@ -124,20 +124,42 @@ format_progress() {
 
 # Wrapper for claude command
 # Always runs with --dangerously-skip-permissions and --model opus
+# Logs all raw JSON output to LOG_FILE for debugging
 run_claude() {
     local mode="$1"
     shift
+    local prompt_preview
+    prompt_preview=$(echo "$1" | head -c 100 | tr '\n' ' ')
+
+    # Log session start
+    echo "" >> "$LOG_FILE"
+    echo "═══════════════════════════════════════════════════════════════════" >> "$LOG_FILE"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] CLAUDE SESSION START" >> "$LOG_FILE"
+    echo "Mode: $mode" >> "$LOG_FILE"
+    echo "Prompt: ${prompt_preview}..." >> "$LOG_FILE"
+    echo "═══════════════════════════════════════════════════════════════════" >> "$LOG_FILE"
 
     case "$mode" in
         "-p")
             # Print mode with streaming progress
-            claude --dangerously-skip-permissions --model opus --verbose -p --output-format stream-json "$@" | format_progress
+            # Tee raw JSON to log file while also formatting for terminal
+            claude --dangerously-skip-permissions --model opus --verbose -p --output-format stream-json "$@" 2>&1 | tee -a "$LOG_FILE" | format_progress
             ;;
         *)
-            # Interactive mode - streams to terminal naturally
-            claude --dangerously-skip-permissions --model opus "$@"
+            # Interactive mode - capture output to log
+            claude --dangerously-skip-permissions --model opus "$@" 2>&1 | tee -a "$LOG_FILE"
             ;;
     esac
+
+    local exit_code=${PIPESTATUS[0]}
+
+    # Log session end
+    echo "" >> "$LOG_FILE"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] CLAUDE SESSION END (exit code: $exit_code)" >> "$LOG_FILE"
+    echo "═══════════════════════════════════════════════════════════════════" >> "$LOG_FILE"
+    echo "" >> "$LOG_FILE"
+
+    return $exit_code
 }
 
 #─────────────────────────────────────────────────────────────────────
