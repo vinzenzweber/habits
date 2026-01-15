@@ -23,8 +23,10 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check if onboarding is complete (from cookie or JWT)
-  const isOnboardingComplete = onboardingCookie?.value === "true" || token?.onboardingCompleted === true;
+  // Check if onboarding is complete
+  // JWT token is set at login, but onboarding completion happens after login
+  // So we need to check BOTH: JWT (for users who completed before) OR cookie (for users who just completed)
+  const isOnboardingComplete = token?.onboardingCompleted === true || onboardingCookie?.value === "true";
 
   // Allow access to onboarding routes for authenticated users
   if (pathname === "/onboarding" || pathname.startsWith("/api/onboarding")) {
