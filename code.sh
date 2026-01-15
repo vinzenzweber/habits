@@ -892,6 +892,28 @@ implement_and_test() {
     set_phase "$issue_num" "implementing"
     log "Implementing and testing issue #$issue_num..."
 
+    # IMPORTANT: Ensure clean state - checkout main and create fresh branch
+    local current_branch
+    current_branch=$(git branch --show-current 2>/dev/null || echo "")
+    if [ "$current_branch" != "main" ]; then
+        log "Currently on branch '$current_branch', switching to main..."
+        # Stash any uncommitted changes (shouldn't happen, but safety first)
+        git stash --include-untracked 2>/dev/null || true
+        git checkout main 2>&1 | head -5 >&2 || true
+    fi
+
+    # Pull latest main
+    log "Pulling latest main..."
+    git pull --ff-only 2>&1 | head -5 >&2 || true
+
+    # Create fresh branch for this issue
+    local branch_name="feat/issue-${issue_num}"
+    log "Creating branch '$branch_name'..."
+    # Delete local branch if it exists (stale from previous attempt)
+    git branch -D "$branch_name" 2>/dev/null || true
+    git checkout -b "$branch_name" 2>&1 | head -3 >&2
+    set_metadata "$issue_num" "branch" "$branch_name"
+
     # Fetch the implementation plan from GitHub (primary source of truth)
     local implementation_plan
     implementation_plan=$(get_implementation_plan "$issue_num")
@@ -934,8 +956,9 @@ Execute these phases from CLAUDE.md:
 4. **Manual Testing**
    - Start dev server: npm run dev
    - Use Playwright MCP to test:
-     a. Navigate to http://localhost:3000/register
-     b. Create a NEW test user (unique email)
+     a. Navigate to http://localhost:3000/login
+     b. Log in with QA account (zubzone+qa@gmail.com / 3294sdzadsg\$&\$§)
+        - If account doesn't exist, register it first at /register
      c. Test the feature you implemented
      d. Verify it works correctly
 
@@ -944,9 +967,9 @@ Execute these phases from CLAUDE.md:
    - Re-run verification steps
 
 6. **Create PR**
+   - You are already on branch 'feat/issue-$issue_num' (created for you)
    - Stage changes: git add <files>
    - Commit: git commit -m 'feat: <description>'
-   - Create branch: git checkout -b feat/issue-$issue_num-<short-description>
    - Push: git push -u origin HEAD
    - Create PR: gh pr create --title '<title>' --body '<body>'
 
