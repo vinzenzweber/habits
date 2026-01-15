@@ -356,26 +356,40 @@ SESSION_COST=""
 # Format streaming JSON to show progress to human orchestrator
 # Streams: text responses, tool calls, and captures final result
 # IMPORTANT: Only outputs clean text to stdout, never raw JSON
-# Press ESC to pause, any key to resume
+# Press ESC to pause, any key to resume (only in interactive sessions)
 format_progress() {
     local line type subtype final_result=""
-    local paused=false
     # Tool name mapping stored in temp files (for subshell access)
-    rm -f /tmp/tool_names_$$ /tmp/tool_inputs_$$ 2>/dev/null
+    # Use mktemp for safer temp file creation (avoids PID conflicts)
+    local tool_names_file tool_inputs_file
+    tool_names_file=$(mktemp -t tool_names.XXXXXX) || tool_names_file="/tmp/tool_names_$$_$RANDOM"
+    tool_inputs_file=$(mktemp -t tool_inputs.XXXXXX) || tool_inputs_file="/tmp/tool_inputs_$$_$RANDOM"
+
+    # Check if we're in an interactive session (has controlling terminal)
+    local interactive=false
+    if [[ -t 1 ]] && [[ -e /dev/tty ]]; then
+        # Additional check: can we actually read from /dev/tty?
+        if timeout 0.01 cat </dev/tty >/dev/null 2>&1 || true; then
+            interactive=true
+        fi
+    fi
 
     # Set up non-blocking keyboard check (save and restore terminal settings)
-    local old_tty_settings
-    old_tty_settings=$(stty -g 2>/dev/null) || true
+    local old_tty_settings=""
+    if [[ "$interactive" == "true" ]]; then
+        old_tty_settings=$(stty -g 2>/dev/null) || true
+    fi
 
-    # Cleanup function to restore terminal
-    cleanup_terminal() {
+    # Cleanup function to restore terminal and remove temp files
+    cleanup_format_progress() {
         [ -n "$old_tty_settings" ] && stty "$old_tty_settings" 2>/dev/null || true
+        rm -f "$tool_names_file" "$tool_inputs_file" 2>/dev/null || true
     }
-    trap cleanup_terminal EXIT
+    trap cleanup_format_progress EXIT
 
     while IFS= read -r line; do
-        # Check for ESC key (non-blocking read from terminal)
-        if [ -t 0 ] || [ -e /dev/tty ]; then
+        # Check for ESC key (non-blocking read from terminal) - only in interactive mode
+        if [[ "$interactive" == "true" ]]; then
             local key=""
             # Try to read a key without blocking
             if read -t 0.01 -n 1 -s key </dev/tty 2>/dev/null; then
@@ -420,8 +434,8 @@ format_progress() {
 
                         if [ -n "$tool_name" ] && [ "$tool_name" != "null" ]; then
                             # Store for later lookup (write to temp file for subshell access)
-                            echo "$tool_id:$tool_name" >> /tmp/tool_names_$$
-                            echo "$tool_id:${tool_input:-working...}" >> /tmp/tool_inputs_$$
+                            echo "$tool_id:$tool_name" >> "$tool_names_file"
+                            echo "$tool_id:${tool_input:-working...}" >> "$tool_inputs_file"
                             printf "${YELLOW}  → %s:${NC} %s\n" "$tool_name" "${tool_input:-working...}" >&2
                         fi
                     done
@@ -439,8 +453,8 @@ format_progress() {
 
                         # Look up tool name from stored mapping
                         tool_name=""
-                        if [ -f /tmp/tool_names_$$ ]; then
-                            tool_name=$(grep "^$tool_use_id:" /tmp/tool_names_$$ 2>/dev/null | cut -d: -f2- | head -1)
+                        if [ -f "$tool_names_file" ]; then
+                            tool_name=$(grep "^$tool_use_id:" "$tool_names_file" 2>/dev/null | cut -d: -f2- | head -1)
                         fi
                         tool_name="${tool_name:-Tool}"
 
@@ -470,8 +484,7 @@ format_progress() {
                 fi
                 ;;
             "result")
-                # Clean up temp files
-                rm -f /tmp/tool_names_$$ /tmp/tool_inputs_$$ 2>/dev/null
+                # Temp files cleaned up by trap handler
 
                 subtype=$(echo "$line" | jq -r '.subtype // empty' 2>/dev/null) || true
                 if [ "$subtype" = "success" ]; then
@@ -489,8 +502,7 @@ format_progress() {
         esac
     done
 
-    # Clean up temp files
-    rm -f /tmp/tool_names_$$ /tmp/tool_inputs_$$ 2>/dev/null
+    # Temp files cleaned up by trap handler (cleanup_format_progress)
 
     # Output the final result for capture
     if [ -n "$final_result" ] && [ "$final_result" != "null" ]; then
@@ -544,7 +556,10 @@ extract_json_from_output() {
             json_part="${content#*$pattern}"
             json_part="$pattern$json_part"
             # Trim any trailing non-JSON content by finding last }
-            json_part="${json_part%\}*}}"
+            # ${var%\}*} removes shortest suffix matching }* (from last } to end)
+            # Then we append } to restore the closing brace
+            json_part="${json_part%\}*}"
+            json_part="${json_part}}"
             if printf '%s' "$json_part" | jq -e . >/dev/null 2>&1; then
                 printf '%s' "$json_part"
                 return 0
@@ -556,7 +571,10 @@ extract_json_from_output() {
     if [[ "$content" == *"{"* ]] && [[ "$content" == *"}"* ]]; then
         local from_brace="${content#*\{}"
         from_brace="{$from_brace"
-        from_brace="${from_brace%\}*}}"
+        # ${var%\}*} removes shortest suffix matching }* (from last } to end)
+        # Then we append } to restore the closing brace
+        from_brace="${from_brace%\}*}"
+        from_brace="${from_brace}}"
         if printf '%s' "$from_brace" | jq -e . >/dev/null 2>&1; then
             printf '%s' "$from_brace"
             return 0
