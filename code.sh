@@ -713,6 +713,80 @@ get_implementation_plan() {
 }
 
 #─────────────────────────────────────────────────────────────────────
+# Check if a PR already exists for an issue
+#─────────────────────────────────────────────────────────────────────
+has_pr_for_issue() {
+    local issue_num=$1
+
+    # Check metadata label first (fastest)
+    local pr_from_label
+    pr_from_label=$(get_metadata "$issue_num" "pr")
+    if [ -n "$pr_from_label" ]; then
+        # Verify the PR still exists
+        if gh pr view "$pr_from_label" --json number >/dev/null 2>&1; then
+            echo "$pr_from_label"
+            return 0
+        fi
+    fi
+
+    # Search for PRs that mention this issue
+    local pr_num
+    pr_num=$(gh pr list --search "issue #$issue_num" --json number -q '.[0].number' 2>/dev/null || echo "")
+    if [ -n "$pr_num" ]; then
+        echo "$pr_num"
+        return 0
+    fi
+
+    return 1
+}
+
+#─────────────────────────────────────────────────────────────────────
+# Check if a PR is already merged
+#─────────────────────────────────────────────────────────────────────
+is_pr_merged() {
+    local pr_num=$1
+
+    local state
+    state=$(gh pr view "$pr_num" --json state -q '.state' 2>/dev/null || echo "")
+    if [ "$state" = "MERGED" ]; then
+        return 0
+    fi
+    return 1
+}
+
+#─────────────────────────────────────────────────────────────────────
+# Check if code review was already approved
+#─────────────────────────────────────────────────────────────────────
+has_review_approved() {
+    local issue_num=$1
+
+    # Check issue comments for an approved review session
+    local comments
+    comments=$(gh issue view "$issue_num" --comments --json comments -q '.comments[].body' 2>/dev/null || echo "")
+
+    if echo "$comments" | grep -qi "Code Review.*APPROVED"; then
+        return 0
+    fi
+    return 1
+}
+
+#─────────────────────────────────────────────────────────────────────
+# Check if documentation was already updated for this issue
+#─────────────────────────────────────────────────────────────────────
+has_docs_updated() {
+    local issue_num=$1
+
+    # Check issue comments for documentation update
+    local comments
+    comments=$(gh issue view "$issue_num" --comments --json comments -q '.comments[].body' 2>/dev/null || echo "")
+
+    if echo "$comments" | grep -qi "Auto-Dev Session: Documentation"; then
+        return 0
+    fi
+    return 1
+}
+
+#─────────────────────────────────────────────────────────────────────
 # SESSION 2: Planning
 # Context: Clean - fresh codebase exploration without selection bias
 # Generates plan and posts as GitHub issue comment
@@ -785,6 +859,18 @@ implement_and_test() {
     local issue_num=$1
 
     header "SESSION 3: Implementation + Testing + PR Creation"
+
+    # Check if PR already exists for this issue (idempotency)
+    local existing_pr
+    if existing_pr=$(has_pr_for_issue "$issue_num"); then
+        log "PR #$existing_pr already exists for issue #$issue_num"
+        set_metadata "$issue_num" "pr" "$existing_pr"
+        set_phase "$issue_num" "pr-waiting"
+        success "Using existing PR #$existing_pr"
+        echo "$existing_pr"
+        return 0
+    fi
+
     set_phase "$issue_num" "implementing"
     log "Implementing and testing issue #$issue_num..."
 
@@ -955,6 +1041,21 @@ review_code() {
     local issue_num=$2
 
     header "SESSION 4: Code Review (Fresh Context)"
+
+    # Check if review was already approved (idempotency)
+    if has_review_approved "$issue_num"; then
+        log "Code review already approved for issue #$issue_num"
+        success "Skipping review - already approved"
+        return 0
+    fi
+
+    # Check if PR is already merged (no review needed)
+    if is_pr_merged "$pr_num"; then
+        log "PR #$pr_num is already merged"
+        success "Skipping review - PR already merged"
+        return 0
+    fi
+
     set_phase "$issue_num" "reviewing"
     log "Reviewing PR #$pr_num with fresh eyes..."
 
@@ -1136,6 +1237,15 @@ merge_and_verify() {
     local issue_num=$2
 
     header "SESSION 6: Merge + Deploy + Verify"
+
+    # Check if PR is already merged (idempotency)
+    if is_pr_merged "$pr_num"; then
+        log "PR #$pr_num is already merged"
+        set_phase "$issue_num" "verifying"
+        success "Skipping merge - PR already merged"
+        return 0
+    fi
+
     set_phase "$issue_num" "merging"
     log "Merging and verifying PR #$pr_num..."
 
@@ -1199,6 +1309,14 @@ update_documentation() {
     local issue_num=$1
 
     header "SESSION 7: Documentation Check"
+
+    # Check if documentation was already updated (idempotency)
+    if has_docs_updated "$issue_num"; then
+        log "Documentation already checked for issue #$issue_num"
+        success "Skipping documentation check - already done"
+        return 0
+    fi
+
     log "Checking if documentation updates are needed..."
 
     local session_start
