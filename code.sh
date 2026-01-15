@@ -356,12 +356,38 @@ SESSION_COST=""
 # Format streaming JSON to show progress to human orchestrator
 # Streams: text responses, tool calls, and captures final result
 # IMPORTANT: Only outputs clean text to stdout, never raw JSON
+# Press ESC to pause, any key to resume
 format_progress() {
     local line type subtype final_result=""
+    local paused=false
     # Tool name mapping stored in temp files (for subshell access)
     rm -f /tmp/tool_names_$$ /tmp/tool_inputs_$$ 2>/dev/null
 
+    # Set up non-blocking keyboard check (save and restore terminal settings)
+    local old_tty_settings
+    old_tty_settings=$(stty -g 2>/dev/null) || true
+
+    # Cleanup function to restore terminal
+    cleanup_terminal() {
+        [ -n "$old_tty_settings" ] && stty "$old_tty_settings" 2>/dev/null || true
+    }
+    trap cleanup_terminal EXIT
+
     while IFS= read -r line; do
+        # Check for ESC key (non-blocking read from terminal)
+        if [ -t 0 ] || [ -e /dev/tty ]; then
+            local key=""
+            # Try to read a key without blocking
+            if read -t 0.01 -n 1 -s key </dev/tty 2>/dev/null; then
+                # ESC key is character 27 (octal 033)
+                if [[ "$key" == $'\x1b' ]]; then
+                    printf "\n${YELLOW}  ⏸ PAUSED${NC} - Press any key to resume...\n" >&2
+                    # Wait for any key to resume
+                    read -n 1 -s </dev/tty 2>/dev/null || true
+                    printf "${GREEN}  ▶ RESUMED${NC}\n\n" >&2
+                fi
+            fi
+        fi
         # Skip non-JSON lines completely
         [[ "$line" != "{"* ]] && continue
 
@@ -418,23 +444,26 @@ format_progress() {
                         fi
                         tool_name="${tool_name:-Tool}"
 
-                        # Get brief preview of result content (clean up for display)
-                        result_preview=$(echo "$result" | jq -r '
+                        # Get preview of result content (first 3 lines, cleaned up)
+                        local result_content
+                        result_content=$(echo "$result" | jq -r '
                             .content |
                             if type == "string" then .
                             elif type == "array" then (.[0].text // .[0].content // "")
                             else ""
-                            end |
-                            gsub("\n"; " ") | gsub("\\s+"; " ") | .[0:60]
+                            end
                         ' 2>/dev/null) || true
 
                         if [ "$is_error" = "true" ]; then
                             printf "${RED}  ✗ %s: error${NC}\n" "$tool_name" >&2
                         else
-                            if [ -n "$result_preview" ] && [ "$result_preview" != "null" ]; then
-                                printf "${GREEN}  ✓ %s:${NC} %.60s\n" "$tool_name" "$result_preview" >&2
-                            else
-                                printf "${GREEN}  ✓ %s${NC}\n" "$tool_name" >&2
+                            printf "${GREEN}  ✓ %s${NC}\n" "$tool_name" >&2
+                            # Show first 3 non-empty lines of output
+                            if [ -n "$result_content" ] && [ "$result_content" != "null" ]; then
+                                echo "$result_content" | grep -v '^$' | head -3 | while IFS= read -r preview_line; do
+                                    # Truncate long lines and add indent
+                                    printf "      ${GREEN}│${NC} %.76s\n" "$preview_line" >&2
+                                done
                             fi
                         fi
                     done
@@ -471,29 +500,65 @@ format_progress() {
 
 # Extract JSON object from mixed text/JSON output
 # Claude sometimes outputs explanatory text before JSON despite instructions
+# Uses printf instead of echo to avoid escape sequence interpretation
 extract_json_from_output() {
     local file="$1"
-    # Try to find a line that is valid JSON
+    local content
+    content=$(cat "$file")
+
+    # Method 1: Try parsing the file directly with jq
+    if jq -e . "$file" >/dev/null 2>&1; then
+        cat "$file"
+        return 0
+    fi
+
+    # Method 2: Try the entire file content as valid JSON (handles variable capture issues)
+    if printf '%s' "$content" | jq -e . >/dev/null 2>&1; then
+        printf '%s' "$content"
+        return 0
+    fi
+
+    # Method 3: Try to find a complete line that is valid JSON
     while IFS= read -r line; do
-        # Skip empty lines
         [ -z "$line" ] && continue
-        # Check if this line is valid JSON
-        if echo "$line" | jq -e . >/dev/null 2>&1; then
-            echo "$line"
+        # Try the line as-is
+        if printf '%s' "$line" | jq -e . >/dev/null 2>&1; then
+            printf '%s' "$line"
             return 0
+        fi
+        # Try extracting JSON starting from first {
+        if [[ "$line" == *"{"* ]]; then
+            local from_brace="${line#*\{}"
+            from_brace="{$from_brace"
+            if printf '%s' "$from_brace" | jq -e . >/dev/null 2>&1; then
+                printf '%s' "$from_brace"
+                return 0
+            fi
         fi
     done < "$file"
 
-    # If no single line is valid JSON, try to extract JSON object from the content
-    # Look for content between first { and last }
-    local content
-    content=$(cat "$file")
+    # Method 4: Whole content - extract JSON starting from known patterns
+    local json_part=""
+    for pattern in '{"number"' '{"status"' '{"needs_update"'; do
+        if [[ "$content" == *"$pattern"* ]]; then
+            json_part="${content#*$pattern}"
+            json_part="$pattern$json_part"
+            # Trim any trailing non-JSON content by finding last }
+            json_part="${json_part%\}*}}"
+            if printf '%s' "$json_part" | jq -e . >/dev/null 2>&1; then
+                printf '%s' "$json_part"
+                return 0
+            fi
+        fi
+    done
+
+    # Method 5: Generic - find first { to last }
     if [[ "$content" == *"{"* ]] && [[ "$content" == *"}"* ]]; then
-        # Extract from first { to last }
-        local json_part
-        json_part=$(echo "$content" | sed -n 's/.*\({.*}\).*/\1/p' | tail -1)
-        if [ -n "$json_part" ] && echo "$json_part" | jq -e . >/dev/null 2>&1; then
-            echo "$json_part"
+        local from_brace="${content#*\{}"
+        from_brace="{$from_brace"
+        from_brace="${from_brace%\}*}}"
+        if printf '%s' "$from_brace" | jq -e . >/dev/null 2>&1; then
+            printf '%s' "$from_brace"
             return 0
         fi
     fi
@@ -519,6 +584,9 @@ run_claude() {
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] CLAUDE SESSION START" >> "$LOG_FILE"
     echo "Prompt: ${prompt_preview}..." >> "$LOG_FILE"
     echo "═══════════════════════════════════════════════════════════════════" >> "$LOG_FILE"
+
+    # Show hint about pause functionality
+    printf "${BLUE}  [Press ESC to pause]${NC}\n" >&2
 
     # All sessions use print mode with streaming JSON for progress display
     claude --dangerously-skip-permissions --model opus --verbose -p --output-format stream-json "$@" 2>&1 | tee -a "$LOG_FILE" | format_progress
