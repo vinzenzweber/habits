@@ -15,18 +15,18 @@ export type NanoWorkout = {
 export const NANO_WEEKLY_LIMIT = 2;
 
 /**
- * The nano workout is a 3-minute minimal workout for maintaining streaks
+ * The nano workout is a 2.5-minute minimal workout for maintaining streaks
  * on days when motivation is low, traveling, or feeling unwell.
  *
  * Consists of: 10 squats, 10 push-ups, 10 crunches
- * With short rests between exercises.
+ * No rest periods between exercises for better flow.
  */
 export const NANO_WORKOUT: NanoWorkout = {
   slug: "nano",
   title: "Nano Workout",
   focus: "Streak saver",
-  description: "A quick 3-minute workout to maintain your streak on tough days. Just 10 squats, 10 push-ups, and 10 crunches.",
-  totalSeconds: 180,
+  description: "A quick 2.5-minute workout to maintain your streak on tough days. Just 10 squats, 10 push-ups, and 10 crunches.",
+  totalSeconds: 150,
   segments: [
     {
       id: "nano-prep",
@@ -43,25 +43,11 @@ export const NANO_WORKOUT: NanoWorkout = {
       category: "main",
     },
     {
-      id: "nano-rest-1",
-      title: "Rest",
-      durationSeconds: 15,
-      detail: "Breathe",
-      category: "rest",
-    },
-    {
       id: "nano-pushups",
       title: "Push-ups",
       durationSeconds: 45,
       detail: "10 reps - hands wide, chest to floor, push up strong",
       category: "main",
-    },
-    {
-      id: "nano-rest-2",
-      title: "Rest",
-      durationSeconds: 15,
-      detail: "Breathe",
-      category: "rest",
     },
     {
       id: "nano-crunches",
