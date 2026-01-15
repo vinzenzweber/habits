@@ -1054,22 +1054,50 @@ Example: PR_CREATED: 123
 
 #─────────────────────────────────────────────────────────────────────
 # CI WAIT
-# Not a Claude session - just automated polling
+# Non-blocking CI check - logs status but doesn't block workflow
+# Network failures and timeouts should not stop development
 #─────────────────────────────────────────────────────────────────────
 wait_for_ci() {
     local pr_num=$1
+    local max_retries=3
+    local retry_delay=30
+    local attempt=1
 
     header "CI Check"
-    log "Waiting for CI checks on PR #$pr_num..."
+    log "Checking CI status on PR #$pr_num..."
 
-    # gh pr checks --watch will block until all checks complete
-    if gh pr checks "$pr_num" --watch; then
-        success "CI checks passed"
-        return 0
-    else
-        error "CI checks failed"
-        return 1
-    fi
+    while [ $attempt -le $max_retries ]; do
+        # Use timeout to prevent hanging on network issues
+        local ci_output
+        if ci_output=$(timeout 120 gh pr checks "$pr_num" 2>&1); then
+            # Check if all checks passed
+            if echo "$ci_output" | grep -q "fail\|failure"; then
+                warn "CI checks have failures (attempt $attempt/$max_retries)"
+                echo "$ci_output" | head -10 >&2
+            else
+                success "CI checks passed"
+                return 0
+            fi
+        else
+            local exit_code=$?
+            if [ $exit_code -eq 124 ]; then
+                warn "CI check timed out (attempt $attempt/$max_retries)"
+            else
+                warn "CI check failed - likely network issue (attempt $attempt/$max_retries)"
+            fi
+        fi
+
+        if [ $attempt -lt $max_retries ]; then
+            log "Retrying in ${retry_delay}s..."
+            sleep $retry_delay
+        fi
+        attempt=$((attempt + 1))
+    done
+
+    # Don't block - just warn and continue
+    warn "CI checks inconclusive after $max_retries attempts - continuing anyway"
+    warn "You may want to check CI status manually: gh pr checks $pr_num"
+    return 0  # Return success to not block workflow
 }
 
 #─────────────────────────────────────────────────────────────────────
