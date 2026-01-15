@@ -1175,9 +1175,11 @@ Be thorough but fair. Only request changes for real issues, not style preference
 
     log "Review Summary: $review_summary"
 
-    # Post session memory
+    # Post session memory (use tr for uppercase - bash 3.x compatible)
+    local review_status_upper
+    review_status_upper=$(printf '%s' "$review_status" | tr '[:lower:]' '[:upper:]')
     post_session_memory "$issue_num" "Code Review" "$session_start" "$session_end" "${SESSION_COST:-0}" \
-        "Review result: **${review_status^^}**
+        "Review result: **${review_status_upper}**
 
 $review_summary"
 
