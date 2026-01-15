@@ -1290,17 +1290,28 @@ Execute these phases from CLAUDE.md:
 3. **Update Local**
    git checkout main && git pull
 
-4. **Wait for Deployment**
-   Railway auto-deploys on merge to main (~3 minutes)
+4. **Wait for Railway Build & Deploy**
+   Railway auto-deploys on merge to main. Use Railway CLI to monitor:
 
-5. **Check Deployment Logs**
-   Use Bash to check: railway logs 2>&1 | head -50
-   (Look for successful startup messages)
+   a. Check deployment status (poll until complete):
+      railway status
 
-6. **Verify in Production**
+   b. Watch build logs for errors:
+      railway logs --build 2>&1 | tail -100
+      (Look for 'Build successful' or build errors)
+
+   c. Watch deploy logs for startup:
+      railway logs 2>&1 | tail -50
+      (Look for 'Ready on port' or 'Listening on' messages)
+
+   d. If build/deploy fails, check full logs:
+      railway logs --build 2>&1 | head -200
+      railway logs 2>&1 | head -200
+
+5. **Verify in Production**
    Use Playwright MCP to test production:
-   a. Navigate to https://fitstreak.app/register
-   b. Create a NEW test user (unique email with timestamp)
+   a. Navigate to https://fitstreak.app/login
+   b. Log in with QA account (zubzone+qa@gmail.com / 3294sdzadsg\$&\$§)
    c. Test that the new feature works in production
    d. Check browser console for errors
 
