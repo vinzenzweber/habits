@@ -27,10 +27,14 @@
 #   ./code.sh --resume     # Resume in-progress work only
 #   ./code.sh --status     # Show status of in-progress issues
 #
+# Note: Script operates on current working directory, so you can run it
+# from any project: cd /path/to/project && /path/to/code.sh
+#
 set -euo pipefail
 
 # Configuration
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Use current working directory as project root (allows running from any project)
+REPO_ROOT="$(pwd)"
 STATE_DIR="$REPO_ROOT/.auto-dev"
 LOG_FILE="$STATE_DIR/auto-dev.log"
 SINGLE_CYCLE=false
@@ -342,6 +346,10 @@ SESSION_COST=""
 # IMPORTANT: Only outputs clean text to stdout, never raw JSON
 format_progress() {
     local line type subtype final_result=""
+    # Associative array to track tool names by their IDs
+    declare -A tool_names
+    declare -A tool_inputs
+
     while IFS= read -r line; do
         # Skip non-JSON lines completely
         [[ "$line" != "{"* ]] && continue
@@ -362,25 +370,62 @@ format_progress() {
                     printf "${CYAN}Claude:${NC} %s\n" "$text" >&2
                 fi
 
-                # Check for tool use
-                local tool_name tool_input
-                tool_name=$(echo "$line" | jq -r '.message.content[]? | select(.type == "tool_use") | .name // empty' 2>/dev/null) || true
-                if [ -n "$tool_name" ] && [ "$tool_name" != "null" ]; then
-                    tool_input=$(echo "$line" | jq -r '.message.content[]? | select(.type == "tool_use") | .input | (.description // .command // .pattern // .query // .file_path // .prompt // "working...") | tostring | .[0:100]' 2>/dev/null) || true
-                    printf "${YELLOW}  → %s:${NC} %s\n" "$tool_name" "${tool_input:-working...}" >&2
+                # Check for tool use - extract all tools from the message
+                local tools_json
+                tools_json=$(echo "$line" | jq -c '[.message.content[]? | select(.type == "tool_use") | {id, name, input}]' 2>/dev/null) || true
+                if [ -n "$tools_json" ] && [ "$tools_json" != "[]" ]; then
+                    # Process each tool
+                    echo "$tools_json" | jq -c '.[]' 2>/dev/null | while read -r tool; do
+                        local tool_id tool_name tool_input
+                        tool_id=$(echo "$tool" | jq -r '.id // empty')
+                        tool_name=$(echo "$tool" | jq -r '.name // empty')
+                        tool_input=$(echo "$tool" | jq -r '.input | (.description // .command // .pattern // .query // .file_path // .prompt // "working...") | tostring | .[0:100]' 2>/dev/null) || true
+
+                        if [ -n "$tool_name" ] && [ "$tool_name" != "null" ]; then
+                            # Store for later lookup (write to temp file for subshell access)
+                            echo "$tool_id:$tool_name" >> /tmp/tool_names_$$
+                            echo "$tool_id:${tool_input:-working...}" >> /tmp/tool_inputs_$$
+                            printf "${YELLOW}  → %s:${NC} %s\n" "$tool_name" "${tool_input:-working...}" >&2
+                        fi
+                    done
                 fi
                 ;;
             "user")
-                # Tool result - show brief summary
-                local is_error
-                is_error=$(echo "$line" | jq -r '.message.content[]?.is_error // false' 2>/dev/null) || true
-                if [ "$is_error" = "true" ]; then
-                    printf "${RED}  ✗ Tool error${NC}\n" >&2
-                else
-                    printf "${GREEN}  ✓ Tool completed${NC}\n" >&2
+                # Tool result - show tool name and brief summary
+                local results_json
+                results_json=$(echo "$line" | jq -c '[.message.content[]? | select(.type == "tool_result") | {tool_use_id, is_error, content}]' 2>/dev/null) || true
+                if [ -n "$results_json" ] && [ "$results_json" != "[]" ]; then
+                    echo "$results_json" | jq -c '.[]' 2>/dev/null | while read -r result; do
+                        local tool_use_id is_error tool_name result_preview
+                        tool_use_id=$(echo "$result" | jq -r '.tool_use_id // empty')
+                        is_error=$(echo "$result" | jq -r '.is_error // false')
+
+                        # Look up tool name from stored mapping
+                        tool_name=""
+                        if [ -f /tmp/tool_names_$$ ]; then
+                            tool_name=$(grep "^$tool_use_id:" /tmp/tool_names_$$ 2>/dev/null | cut -d: -f2- | head -1)
+                        fi
+                        tool_name="${tool_name:-Tool}"
+
+                        # Get brief preview of result content
+                        result_preview=$(echo "$result" | jq -r '.content | if type == "string" then .[0:80] elif type == "array" then (.[0].text // .[0].content // "done") | .[0:80] else "done" end' 2>/dev/null | tr '\n' ' ' | head -c 80) || true
+
+                        if [ "$is_error" = "true" ]; then
+                            printf "${RED}  ✗ %s: error${NC}\n" "$tool_name" >&2
+                        else
+                            if [ -n "$result_preview" ] && [ "$result_preview" != "done" ] && [ "$result_preview" != "null" ]; then
+                                printf "${GREEN}  ✓ %s:${NC} %s\n" "$tool_name" "${result_preview:0:60}" >&2
+                            else
+                                printf "${GREEN}  ✓ %s${NC}\n" "$tool_name" >&2
+                            fi
+                        fi
+                    done
                 fi
                 ;;
             "result")
+                # Clean up temp files
+                rm -f /tmp/tool_names_$$ /tmp/tool_inputs_$$ 2>/dev/null
+
                 subtype=$(echo "$line" | jq -r '.subtype // empty' 2>/dev/null) || true
                 if [ "$subtype" = "success" ]; then
                     final_result=$(echo "$line" | jq -r '.result // empty' 2>/dev/null) || true
@@ -397,21 +442,52 @@ format_progress() {
         esac
     done
 
-    # Output only the final result for capture (only if it's clean text, not JSON)
+    # Clean up temp files
+    rm -f /tmp/tool_names_$$ /tmp/tool_inputs_$$ 2>/dev/null
+
+    # Output the final result for capture
     if [ -n "$final_result" ] && [ "$final_result" != "null" ]; then
-        # Safety check: don't output if it looks like JSON
-        if [[ "$final_result" != "{"* ]]; then
-            printf "%s" "$final_result"
+        printf "%s" "$final_result"
+    fi
+}
+
+# Extract JSON object from mixed text/JSON output
+# Claude sometimes outputs explanatory text before JSON despite instructions
+extract_json_from_output() {
+    local file="$1"
+    # Try to find a line that is valid JSON
+    while IFS= read -r line; do
+        # Skip empty lines
+        [ -z "$line" ] && continue
+        # Check if this line is valid JSON
+        if echo "$line" | jq -e . >/dev/null 2>&1; then
+            echo "$line"
+            return 0
+        fi
+    done < "$file"
+
+    # If no single line is valid JSON, try to extract JSON object from the content
+    # Look for content between first { and last }
+    local content
+    content=$(cat "$file")
+    if [[ "$content" == *"{"* ]] && [[ "$content" == *"}"* ]]; then
+        # Extract from first { to last }
+        local json_part
+        json_part=$(echo "$content" | sed -n 's/.*\({.*}\).*/\1/p' | tail -1)
+        if [ -n "$json_part" ] && echo "$json_part" | jq -e . >/dev/null 2>&1; then
+            echo "$json_part"
+            return 0
         fi
     fi
+
+    return 1
 }
 
 # Wrapper for claude command
 # Always runs with --dangerously-skip-permissions and --model opus
+# Uses streaming JSON output for progress display
 # Logs all raw JSON output to LOG_FILE for debugging
 run_claude() {
-    local mode="$1"
-    shift
     local prompt_preview
     prompt_preview=$(echo "$1" | head -c 100 | tr '\n' ' ')
 
@@ -423,21 +499,11 @@ run_claude() {
     echo "" >> "$LOG_FILE"
     echo "═══════════════════════════════════════════════════════════════════" >> "$LOG_FILE"
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] CLAUDE SESSION START" >> "$LOG_FILE"
-    echo "Mode: $mode" >> "$LOG_FILE"
     echo "Prompt: ${prompt_preview}..." >> "$LOG_FILE"
     echo "═══════════════════════════════════════════════════════════════════" >> "$LOG_FILE"
 
-    case "$mode" in
-        "-p")
-            # Print mode with streaming progress
-            # Tee raw JSON to log file while also formatting for terminal
-            claude --dangerously-skip-permissions --model opus --verbose -p --output-format stream-json "$@" 2>&1 | tee -a "$LOG_FILE" | format_progress
-            ;;
-        *)
-            # Interactive mode - capture output to log
-            claude --dangerously-skip-permissions --model opus "$@" 2>&1 | tee -a "$LOG_FILE"
-            ;;
-    esac
+    # All sessions use print mode with streaming JSON for progress display
+    claude --dangerously-skip-permissions --model opus --verbose -p --output-format stream-json "$@" 2>&1 | tee -a "$LOG_FILE" | format_progress
 
     local exit_code=${PIPESTATUS[0]}
 
@@ -480,7 +546,7 @@ select_issue() {
     local session_start
     session_start=$(date +%s)
 
-    run_claude "-p" "
+    run_claude "
 You are selecting a GitHub issue to work on for the habits/fitstreak project.
 
 1. Fetch open issues: gh issue list --state open --json number,title,body,labels,assignees
@@ -497,20 +563,24 @@ If there are no suitable open issues (after excluding skipped ones), output: {\"
 
 Output ONLY a JSON object (no markdown, no explanation, no code blocks):
 {\"number\": 123, \"title\": \"Issue title\", \"body\": \"Issue description\"}
-" > "$STATE_DIR/selected_issue.json"
+" > "$STATE_DIR/selected_issue_raw.txt"
 
     local session_end
     session_end=$(date +%s)
 
-    # Validate JSON output
-    if ! jq -e . "$STATE_DIR/selected_issue.json" > /dev/null 2>&1; then
-        error "Failed to parse issue selection output as JSON"
-        cat "$STATE_DIR/selected_issue.json" >&2
+    # Extract JSON from output (Claude may include explanatory text)
+    local extracted_json
+    if ! extracted_json=$(extract_json_from_output "$STATE_DIR/selected_issue_raw.txt"); then
+        error "Failed to extract JSON from issue selection output"
+        cat "$STATE_DIR/selected_issue_raw.txt" >&2
         return 1
     fi
 
+    # Save cleaned JSON
+    echo "$extracted_json" > "$STATE_DIR/selected_issue.json"
+
     local issue_num
-    issue_num=$(jq -r '.number' "$STATE_DIR/selected_issue.json")
+    issue_num=$(echo "$extracted_json" | jq -r '.number')
 
     if [ "$issue_num" = "null" ] || [ -z "$issue_num" ]; then
         warn "No suitable issues found"
@@ -584,7 +654,7 @@ plan_implementation() {
 
     # Generate plan using print mode (non-interactive)
     local plan
-    plan=$(run_claude "-p" "
+    plan=$(run_claude "
 Plan the implementation for GitHub issue #$issue_num
 
 **Issue Title:** $issue_title
@@ -635,7 +705,7 @@ implement_and_test() {
     local session_start
     session_start=$(date +%s)
 
-    run_claude "-p" "
+    run_claude "
 Implement GitHub issue #$issue_num following your approved plan.
 
 Execute these phases from CLAUDE.md:
@@ -800,7 +870,7 @@ review_code() {
     pr_title=$(gh pr view "$pr_num" --json title -q '.title' 2>/dev/null || echo "")
     pr_body=$(gh pr view "$pr_num" --json body -q '.body' 2>/dev/null || echo "")
 
-    run_claude "-p" "
+    run_claude "
 You are a senior code reviewer examining PR #$pr_num with COMPLETELY FRESH EYES.
 
 **CRITICAL**: You did NOT write this code. You have NO prior context about it.
@@ -866,21 +936,25 @@ Provide your review as a JSON object ONLY (no markdown, no explanation):
 }
 
 Be thorough but fair. Only request changes for real issues, not style preferences.
-" > "$STATE_DIR/review_result.json"
+" > "$STATE_DIR/review_result_raw.txt"
 
     local session_end
     session_end=$(date +%s)
 
-    # Validate JSON
-    if ! jq -e . "$STATE_DIR/review_result.json" > /dev/null 2>&1; then
-        error "Failed to parse review output as JSON"
-        cat "$STATE_DIR/review_result.json"
+    # Extract JSON from output (Claude may include explanatory text)
+    local extracted_json
+    if ! extracted_json=$(extract_json_from_output "$STATE_DIR/review_result_raw.txt"); then
+        error "Failed to extract JSON from review output"
+        cat "$STATE_DIR/review_result_raw.txt"
         return 1
     fi
 
+    # Save cleaned JSON
+    echo "$extracted_json" > "$STATE_DIR/review_result.json"
+
     local review_status review_summary
-    review_status=$(jq -r '.status' "$STATE_DIR/review_result.json")
-    review_summary=$(jq -r '.summary' "$STATE_DIR/review_result.json")
+    review_status=$(echo "$extracted_json" | jq -r '.status')
+    review_summary=$(echo "$extracted_json" | jq -r '.summary')
 
     log "Review Summary: $review_summary"
 
@@ -920,7 +994,7 @@ fix_review_feedback() {
     local review_comments
     review_comments=$(jq -c '.comments' "$STATE_DIR/review_result.json")
 
-    run_claude "-p" "
+    run_claude "
 Fix the code review feedback for PR #$pr_num.
 
 **Review Comments to Address:**
@@ -970,7 +1044,7 @@ merge_and_verify() {
     local session_start
     session_start=$(date +%s)
 
-    run_claude "-p" "
+    run_claude "
 Merge and verify PR #$pr_num in production.
 
 Execute these phases from CLAUDE.md:
@@ -1032,7 +1106,7 @@ update_documentation() {
     local session_start
     session_start=$(date +%s)
 
-    run_claude "-p" "
+    run_claude "
 Analyze if documentation updates are needed after implementing issue #$issue_num.
 
 Check if CLAUDE.md should be updated for:
@@ -1047,28 +1121,33 @@ Be conservative - only suggest updates for significant changes.
 
 Output JSON ONLY (no markdown):
 {\"needs_update\": true|false, \"reason\": \"Brief explanation\"}
-" > "$STATE_DIR/docs_check.json"
+" > "$STATE_DIR/docs_check_raw.txt"
 
     local session_end
     session_end=$(date +%s)
 
-    if ! jq -e . "$STATE_DIR/docs_check.json" > /dev/null 2>&1; then
+    # Extract JSON from output (Claude may include explanatory text)
+    local extracted_json
+    if ! extracted_json=$(extract_json_from_output "$STATE_DIR/docs_check_raw.txt"); then
         warn "Could not determine if docs need update"
         return 0
     fi
 
+    # Save cleaned JSON
+    echo "$extracted_json" > "$STATE_DIR/docs_check.json"
+
     local needs_update
-    needs_update=$(jq -r '.needs_update' "$STATE_DIR/docs_check.json")
+    needs_update=$(echo "$extracted_json" | jq -r '.needs_update')
 
     if [ "$needs_update" = "true" ]; then
         local reason
-        reason=$(jq -r '.reason' "$STATE_DIR/docs_check.json")
+        reason=$(echo "$extracted_json" | jq -r '.reason')
         log "Documentation update needed: $reason"
 
         local doc_session_start
         doc_session_start=$(date +%s)
 
-        run_claude "-p" "
+        run_claude "
 Update CLAUDE.md based on changes from issue #$issue_num.
 
 **Reason for update:** $reason
@@ -1300,9 +1379,6 @@ main() {
     else
         log "Continuous mode - Press Ctrl+C to stop"
     fi
-
-    # Change to repo root
-    cd "$REPO_ROOT"
 
     while true; do
         echo ""
