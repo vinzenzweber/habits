@@ -48,3 +48,6 @@ public/videos/
 .mcp.json
 .playwright-mcp/
 data/
+
+# Auto-dev state
+.auto-dev/
