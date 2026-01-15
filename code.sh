@@ -24,6 +24,8 @@
 # Usage:
 #   ./code.sh              # Run continuous loop
 #   ./code.sh --once       # Run single cycle
+#   ./code.sh -i 42        # Work on specific issue (implies --once)
+#   ./code.sh --issue 42   # Same as above
 #   ./code.sh --resume     # Resume in-progress work only
 #   ./code.sh --status     # Show status of in-progress issues
 #
@@ -40,6 +42,7 @@ LOG_FILE="$STATE_DIR/auto-dev.log"
 SINGLE_CYCLE=false
 RESUME_ONLY=false
 SHOW_STATUS=false
+TARGET_ISSUE=""
 MAX_REVIEW_ROUNDS=3
 
 # Parse arguments
@@ -48,6 +51,15 @@ while [[ $# -gt 0 ]]; do
         --once)
             SINGLE_CYCLE=true
             shift
+            ;;
+        --issue|-i)
+            if [ -z "${2:-}" ] || [[ "$2" == -* ]]; then
+                echo "Error: --issue requires an issue number"
+                exit 1
+            fi
+            TARGET_ISSUE="$2"
+            SINGLE_CYCLE=true  # Implies --once
+            shift 2
             ;;
         --resume)
             RESUME_ONLY=true
@@ -59,7 +71,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--once] [--resume] [--status]"
+            echo "Usage: $0 [--once] [-i|--issue <number>] [--resume] [--status]"
             exit 1
             ;;
     esac
@@ -126,12 +138,12 @@ set_phase() {
     for old_label in $existing_labels; do
         # Keep metadata labels (pr:, branch:, round:, cost:), remove phase labels
         if [[ "$old_label" =~ ^auto-dev:(selecting|planning|implementing|pr-waiting|reviewing|fixing|merging|verifying|complete|blocked|ci-failed)$ ]]; then
-            gh issue edit "$issue_num" --remove-label "$old_label" 2>/dev/null || true
+            gh issue edit "$issue_num" --remove-label "$old_label" >/dev/null 2>&1 || true
         fi
     done
 
     # Add new phase label
-    gh issue edit "$issue_num" --add-label "auto-dev:$phase" 2>/dev/null || true
+    gh issue edit "$issue_num" --add-label "auto-dev:$phase" >/dev/null 2>&1 || true
     log "Phase → ${MAGENTA}$phase${NC} for issue #$issue_num"
 }
 
@@ -160,13 +172,13 @@ set_metadata() {
     local existing
     existing=$(gh issue view "$issue_num" --json labels -q ".labels[].name" 2>/dev/null | grep "^auto-dev:$key:" || true)
     if [ -n "$existing" ]; then
-        gh issue edit "$issue_num" --remove-label "$existing" 2>/dev/null || true
+        gh issue edit "$issue_num" --remove-label "$existing" >/dev/null 2>&1 || true
     fi
 
     # Create and add new label
     local label_name="auto-dev:$key:$value"
     gh label create "$label_name" --color "CCCCCC" 2>/dev/null || true
-    gh issue edit "$issue_num" --add-label "$label_name" 2>/dev/null || true
+    gh issue edit "$issue_num" --add-label "$label_name" >/dev/null 2>&1 || true
 }
 
 # Get metadata value from labels
@@ -229,7 +241,7 @@ $extra_info"
 ---
 <sub>🤖 Automated by auto-dev</sub>"
 
-    gh issue comment "$issue_num" --body "$comment" 2>/dev/null || warn "Failed to post session memory"
+    gh issue comment "$issue_num" --body "$comment" >/dev/null 2>&1 || warn "Failed to post session memory"
 }
 
 # Get accumulated cost from all session comments
@@ -328,7 +340,7 @@ mark_blocked() {
    - etc.
 
 ---
-<sub>🤖 Automated by auto-dev</sub>" 2>/dev/null || true
+<sub>🤖 Automated by auto-dev</sub>" >/dev/null 2>&1 || true
 
     error "Issue #$issue_num blocked: $reason"
 }
@@ -346,9 +358,8 @@ SESSION_COST=""
 # IMPORTANT: Only outputs clean text to stdout, never raw JSON
 format_progress() {
     local line type subtype final_result=""
-    # Associative array to track tool names by their IDs
-    declare -A tool_names
-    declare -A tool_inputs
+    # Tool name mapping stored in temp files (for subshell access)
+    rm -f /tmp/tool_names_$$ /tmp/tool_inputs_$$ 2>/dev/null
 
     while IFS= read -r line; do
         # Skip non-JSON lines completely
@@ -407,14 +418,21 @@ format_progress() {
                         fi
                         tool_name="${tool_name:-Tool}"
 
-                        # Get brief preview of result content
-                        result_preview=$(echo "$result" | jq -r '.content | if type == "string" then .[0:80] elif type == "array" then (.[0].text // .[0].content // "done") | .[0:80] else "done" end' 2>/dev/null | tr '\n' ' ' | head -c 80) || true
+                        # Get brief preview of result content (clean up for display)
+                        result_preview=$(echo "$result" | jq -r '
+                            .content |
+                            if type == "string" then .
+                            elif type == "array" then (.[0].text // .[0].content // "")
+                            else ""
+                            end |
+                            gsub("\n"; " ") | gsub("\\s+"; " ") | .[0:60]
+                        ' 2>/dev/null) || true
 
                         if [ "$is_error" = "true" ]; then
                             printf "${RED}  ✗ %s: error${NC}\n" "$tool_name" >&2
                         else
-                            if [ -n "$result_preview" ] && [ "$result_preview" != "done" ] && [ "$result_preview" != "null" ]; then
-                                printf "${GREEN}  ✓ %s:${NC} %s\n" "$tool_name" "${result_preview:0:60}" >&2
+                            if [ -n "$result_preview" ] && [ "$result_preview" != "null" ]; then
+                                printf "${GREEN}  ✓ %s:${NC} %.60s\n" "$tool_name" "$result_preview" >&2
                             else
                                 printf "${GREEN}  ✓ %s${NC}\n" "$tool_name" >&2
                             fi
@@ -679,9 +697,9 @@ Start with '## Implementation Plan' as the header.
     # Save plan locally
     echo "$plan" > "$STATE_DIR/plan-$issue_num.md"
 
-    # Post plan as comment on the GitHub issue
+    # Post plan as comment on the GitHub issue (primary storage)
     log "Posting plan to GitHub issue #$issue_num..."
-    gh issue comment "$issue_num" --body "$plan"
+    gh issue comment "$issue_num" --body "$plan" >/dev/null 2>&1 || warn "Failed to post plan to GitHub"
 
     # Post session memory
     post_session_memory "$issue_num" "Planning" "$session_start" "$session_end" "${SESSION_COST:-0}" \
@@ -702,11 +720,23 @@ implement_and_test() {
     set_phase "$issue_num" "implementing"
     log "Implementing and testing issue #$issue_num..."
 
+    # Fetch the implementation plan from GitHub (primary source of truth)
+    local implementation_plan
+    implementation_plan=$(get_implementation_plan "$issue_num")
+    if [ -z "$implementation_plan" ]; then
+        error "No implementation plan found for issue #$issue_num"
+        mark_blocked "$issue_num" "No implementation plan found in issue comments"
+        return 1
+    fi
+    log "Fetched implementation plan from GitHub issue #$issue_num"
+
     local session_start
     session_start=$(date +%s)
 
     run_claude "
-Implement GitHub issue #$issue_num following your approved plan.
+Implement GitHub issue #$issue_num following the approved plan below.
+
+$implementation_plan
 
 Execute these phases from CLAUDE.md:
 - Phase 2: Implementation (use TodoWrite to track progress)
@@ -1206,7 +1236,7 @@ complete_issue() {
 See comments above for detailed session logs.
 
 ---
-<sub>🤖 Automated by auto-dev</sub>" 2>/dev/null || warn "Failed to close issue"
+<sub>🤖 Automated by auto-dev</sub>" >/dev/null 2>&1 || warn "Failed to close issue"
 
     success "Issue #$issue_num completed! Total cost: \$$total_cost"
 }
@@ -1372,7 +1402,9 @@ main() {
     # Ensure labels exist
     ensure_labels_exist
 
-    if [ "$SINGLE_CYCLE" = true ]; then
+    if [ -n "$TARGET_ISSUE" ]; then
+        log "Target issue mode - working on issue #$TARGET_ISSUE"
+    elif [ "$SINGLE_CYCLE" = true ]; then
         log "Single cycle mode - will exit after one issue"
     elif [ "$RESUME_ONLY" = true ]; then
         log "Resume mode - will only resume in-progress work"
@@ -1386,53 +1418,87 @@ main() {
         log "Starting development cycle at $(date)"
         log "═══════════════════════════════════════════════════════════"
 
-        # Check for in-progress work first (RESUME)
-        local resume_issue_num
-        resume_issue_num=$(find_resumable_issue)
+        local issue_num="" issue_title="" issue_body=""
 
-        if [ -n "$resume_issue_num" ]; then
-            local resume_phase
-            resume_phase=$(get_phase "$resume_issue_num")
-            log "Found in-progress issue #$resume_issue_num in phase: $resume_phase"
+        # If target issue specified, use it directly
+        if [ -n "$TARGET_ISSUE" ]; then
+            issue_num="$TARGET_ISSUE"
 
-            resume_from_phase "$resume_issue_num" "$resume_phase"
+            # Check if this issue is already in-progress
+            local existing_phase
+            existing_phase=$(get_phase "$issue_num")
+            if [ -n "$existing_phase" ] && [ "$existing_phase" != "complete" ] && [ "$existing_phase" != "blocked" ]; then
+                log "Issue #$issue_num is already in-progress (phase: $existing_phase)"
+                resume_from_phase "$issue_num" "$existing_phase"
 
-            # Check if we completed or blocked
-            local new_phase
-            new_phase=$(get_phase "$resume_issue_num")
-            if [ "$new_phase" = "complete" ] || [ "$new_phase" = "blocked" ]; then
-                if [ "$SINGLE_CYCLE" = true ]; then
-                    log "Single cycle complete. Exiting."
+                local new_phase
+                new_phase=$(get_phase "$issue_num")
+                if [ "$new_phase" = "complete" ] || [ "$new_phase" = "blocked" ]; then
+                    log "Issue #$issue_num finished. Exiting."
                     exit 0
                 fi
+                sleep 5
+                continue
             fi
 
-            # Continue to next iteration
-            sleep 5
-            continue
-        fi
+            # Fetch issue details from GitHub
+            log "Fetching issue #$issue_num from GitHub..."
+            local issue_json
+            if ! issue_json=$(gh issue view "$issue_num" --json title,body 2>/dev/null); then
+                error "Failed to fetch issue #$issue_num"
+                exit 1
+            fi
+            issue_title=$(echo "$issue_json" | jq -r '.title')
+            issue_body=$(echo "$issue_json" | jq -r '.body')
 
-        # No in-progress work
-        if [ "$RESUME_ONLY" = true ]; then
-            log "No in-progress issues found. Exiting resume mode."
-            exit 0
-        fi
+            success "Working on: $issue_title"
+        else
+            # Check for in-progress work first (RESUME)
+            local resume_issue_num
+            resume_issue_num=$(find_resumable_issue)
 
-        # Select new issue
-        local issue_num=""
-        if ! issue_num=$(select_issue); then
-            if [ "$SINGLE_CYCLE" = true ]; then
-                warn "No issues to work on. Exiting."
+            if [ -n "$resume_issue_num" ]; then
+                local resume_phase
+                resume_phase=$(get_phase "$resume_issue_num")
+                log "Found in-progress issue #$resume_issue_num in phase: $resume_phase"
+
+                resume_from_phase "$resume_issue_num" "$resume_phase"
+
+                # Check if we completed or blocked
+                local new_phase
+                new_phase=$(get_phase "$resume_issue_num")
+                if [ "$new_phase" = "complete" ] || [ "$new_phase" = "blocked" ]; then
+                    if [ "$SINGLE_CYCLE" = true ]; then
+                        log "Single cycle complete. Exiting."
+                        exit 0
+                    fi
+                fi
+
+                # Continue to next iteration
+                sleep 5
+                continue
+            fi
+
+            # No in-progress work
+            if [ "$RESUME_ONLY" = true ]; then
+                log "No in-progress issues found. Exiting resume mode."
                 exit 0
             fi
-            warn "No suitable issues found. Waiting 30 minutes..."
-            sleep 1800
-            continue
-        fi
 
-        local issue_title issue_body
-        issue_title=$(jq -r '.title' "$STATE_DIR/selected_issue.json")
-        issue_body=$(jq -r '.body' "$STATE_DIR/selected_issue.json")
+            # Select new issue
+            if ! issue_num=$(select_issue); then
+                if [ "$SINGLE_CYCLE" = true ]; then
+                    warn "No issues to work on. Exiting."
+                    exit 0
+                fi
+                warn "No suitable issues found. Waiting 30 minutes..."
+                sleep 1800
+                continue
+            fi
+
+            issue_title=$(jq -r '.title' "$STATE_DIR/selected_issue.json")
+            issue_body=$(jq -r '.body' "$STATE_DIR/selected_issue.json")
+        fi
 
         # Run the full workflow
         plan_implementation "$issue_num" "$issue_title" "$issue_body"
