@@ -24,18 +24,25 @@
 # Usage:
 #   ./code.sh              # Run continuous loop
 #   ./code.sh --once       # Run single cycle
+#   ./code.sh -i 42        # Work on specific issue (implies --once)
+#   ./code.sh --issue 42   # Same as above
 #   ./code.sh --resume     # Resume in-progress work only
 #   ./code.sh --status     # Show status of in-progress issues
+#
+# Note: Script operates on current working directory, so you can run it
+# from any project: cd /path/to/project && /path/to/code.sh
 #
 set -euo pipefail
 
 # Configuration
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Use current working directory as project root (allows running from any project)
+REPO_ROOT="$(pwd)"
 STATE_DIR="$REPO_ROOT/.auto-dev"
 LOG_FILE="$STATE_DIR/auto-dev.log"
 SINGLE_CYCLE=false
 RESUME_ONLY=false
 SHOW_STATUS=false
+TARGET_ISSUE=""
 MAX_REVIEW_ROUNDS=3
 
 # Parse arguments
@@ -44,6 +51,15 @@ while [[ $# -gt 0 ]]; do
         --once)
             SINGLE_CYCLE=true
             shift
+            ;;
+        --issue|-i)
+            if [ -z "${2:-}" ] || [[ "$2" == -* ]]; then
+                echo "Error: --issue requires an issue number"
+                exit 1
+            fi
+            TARGET_ISSUE="$2"
+            SINGLE_CYCLE=true  # Implies --once
+            shift 2
             ;;
         --resume)
             RESUME_ONLY=true
@@ -55,7 +71,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--once] [--resume] [--status]"
+            echo "Usage: $0 [--once] [-i|--issue <number>] [--resume] [--status]"
             exit 1
             ;;
     esac
@@ -122,12 +138,12 @@ set_phase() {
     for old_label in $existing_labels; do
         # Keep metadata labels (pr:, branch:, round:, cost:), remove phase labels
         if [[ "$old_label" =~ ^auto-dev:(selecting|planning|implementing|pr-waiting|reviewing|fixing|merging|verifying|complete|blocked|ci-failed)$ ]]; then
-            gh issue edit "$issue_num" --remove-label "$old_label" 2>/dev/null || true
+            gh issue edit "$issue_num" --remove-label "$old_label" >/dev/null 2>&1 || true
         fi
     done
 
     # Add new phase label
-    gh issue edit "$issue_num" --add-label "auto-dev:$phase" 2>/dev/null || true
+    gh issue edit "$issue_num" --add-label "auto-dev:$phase" >/dev/null 2>&1 || true
     log "Phase → ${MAGENTA}$phase${NC} for issue #$issue_num"
 }
 
@@ -156,13 +172,13 @@ set_metadata() {
     local existing
     existing=$(gh issue view "$issue_num" --json labels -q ".labels[].name" 2>/dev/null | grep "^auto-dev:$key:" || true)
     if [ -n "$existing" ]; then
-        gh issue edit "$issue_num" --remove-label "$existing" 2>/dev/null || true
+        gh issue edit "$issue_num" --remove-label "$existing" >/dev/null 2>&1 || true
     fi
 
     # Create and add new label
     local label_name="auto-dev:$key:$value"
     gh label create "$label_name" --color "CCCCCC" 2>/dev/null || true
-    gh issue edit "$issue_num" --add-label "$label_name" 2>/dev/null || true
+    gh issue edit "$issue_num" --add-label "$label_name" >/dev/null 2>&1 || true
 }
 
 # Get metadata value from labels
@@ -225,7 +241,7 @@ $extra_info"
 ---
 <sub>🤖 Automated by auto-dev</sub>"
 
-    gh issue comment "$issue_num" --body "$comment" 2>/dev/null || warn "Failed to post session memory"
+    gh issue comment "$issue_num" --body "$comment" >/dev/null 2>&1 || warn "Failed to post session memory"
 }
 
 # Get accumulated cost from all session comments
@@ -324,7 +340,7 @@ mark_blocked() {
    - etc.
 
 ---
-<sub>🤖 Automated by auto-dev</sub>" 2>/dev/null || true
+<sub>🤖 Automated by auto-dev</sub>" >/dev/null 2>&1 || true
 
     error "Issue #$issue_num blocked: $reason"
 }
@@ -340,9 +356,52 @@ SESSION_COST=""
 # Format streaming JSON to show progress to human orchestrator
 # Streams: text responses, tool calls, and captures final result
 # IMPORTANT: Only outputs clean text to stdout, never raw JSON
+# Press ESC to pause, any key to resume (only in interactive sessions)
 format_progress() {
     local line type subtype final_result=""
+    # Tool name mapping stored in temp files (for subshell access)
+    # Use mktemp for safer temp file creation (avoids PID conflicts)
+    local tool_names_file tool_inputs_file
+    tool_names_file=$(mktemp -t tool_names.XXXXXX) || tool_names_file="/tmp/tool_names_$$_$RANDOM"
+    tool_inputs_file=$(mktemp -t tool_inputs.XXXXXX) || tool_inputs_file="/tmp/tool_inputs_$$_$RANDOM"
+
+    # Check if we're in an interactive session (has controlling terminal)
+    local interactive=false
+    if [[ -t 1 ]] && [[ -e /dev/tty ]]; then
+        # Additional check: can we actually read from /dev/tty?
+        if timeout 0.01 cat </dev/tty >/dev/null 2>&1 || true; then
+            interactive=true
+        fi
+    fi
+
+    # Set up non-blocking keyboard check (save and restore terminal settings)
+    local old_tty_settings=""
+    if [[ "$interactive" == "true" ]]; then
+        old_tty_settings=$(stty -g 2>/dev/null) || true
+    fi
+
+    # Cleanup function to restore terminal and remove temp files
+    cleanup_format_progress() {
+        [ -n "$old_tty_settings" ] && stty "$old_tty_settings" 2>/dev/null || true
+        rm -f "$tool_names_file" "$tool_inputs_file" 2>/dev/null || true
+    }
+    trap cleanup_format_progress EXIT
+
     while IFS= read -r line; do
+        # Check for ESC key (non-blocking read from terminal) - only in interactive mode
+        if [[ "$interactive" == "true" ]]; then
+            local key=""
+            # Try to read a key without blocking
+            if read -t 0.01 -n 1 -s key </dev/tty 2>/dev/null; then
+                # ESC key is character 27 (octal 033)
+                if [[ "$key" == $'\x1b' ]]; then
+                    printf "\n${YELLOW}  ⏸ PAUSED${NC} - Press any key to resume...\n" >&2
+                    # Wait for any key to resume
+                    read -n 1 -s </dev/tty 2>/dev/null || true
+                    printf "${GREEN}  ▶ RESUMED${NC}\n\n" >&2
+                fi
+            fi
+        fi
         # Skip non-JSON lines completely
         [[ "$line" != "{"* ]] && continue
 
@@ -362,25 +421,71 @@ format_progress() {
                     printf "${CYAN}Claude:${NC} %s\n" "$text" >&2
                 fi
 
-                # Check for tool use
-                local tool_name tool_input
-                tool_name=$(echo "$line" | jq -r '.message.content[]? | select(.type == "tool_use") | .name // empty' 2>/dev/null) || true
-                if [ -n "$tool_name" ] && [ "$tool_name" != "null" ]; then
-                    tool_input=$(echo "$line" | jq -r '.message.content[]? | select(.type == "tool_use") | .input | (.description // .command // .pattern // .query // .file_path // .prompt // "working...") | tostring | .[0:100]' 2>/dev/null) || true
-                    printf "${YELLOW}  → %s:${NC} %s\n" "$tool_name" "${tool_input:-working...}" >&2
+                # Check for tool use - extract all tools from the message
+                local tools_json
+                tools_json=$(echo "$line" | jq -c '[.message.content[]? | select(.type == "tool_use") | {id, name, input}]' 2>/dev/null) || true
+                if [ -n "$tools_json" ] && [ "$tools_json" != "[]" ]; then
+                    # Process each tool
+                    echo "$tools_json" | jq -c '.[]' 2>/dev/null | while read -r tool; do
+                        local tool_id tool_name tool_input
+                        tool_id=$(echo "$tool" | jq -r '.id // empty')
+                        tool_name=$(echo "$tool" | jq -r '.name // empty')
+                        tool_input=$(echo "$tool" | jq -r '.input | (.description // .command // .pattern // .query // .file_path // .prompt // "working...") | tostring | .[0:100]' 2>/dev/null) || true
+
+                        if [ -n "$tool_name" ] && [ "$tool_name" != "null" ]; then
+                            # Store for later lookup (write to temp file for subshell access)
+                            echo "$tool_id:$tool_name" >> "$tool_names_file"
+                            echo "$tool_id:${tool_input:-working...}" >> "$tool_inputs_file"
+                            printf "${YELLOW}  → %s:${NC} %s\n" "$tool_name" "${tool_input:-working...}" >&2
+                        fi
+                    done
                 fi
                 ;;
             "user")
-                # Tool result - show brief summary
-                local is_error
-                is_error=$(echo "$line" | jq -r '.message.content[]?.is_error // false' 2>/dev/null) || true
-                if [ "$is_error" = "true" ]; then
-                    printf "${RED}  ✗ Tool error${NC}\n" >&2
-                else
-                    printf "${GREEN}  ✓ Tool completed${NC}\n" >&2
+                # Tool result - show tool name and brief summary
+                local results_json
+                results_json=$(echo "$line" | jq -c '[.message.content[]? | select(.type == "tool_result") | {tool_use_id, is_error, content}]' 2>/dev/null) || true
+                if [ -n "$results_json" ] && [ "$results_json" != "[]" ]; then
+                    echo "$results_json" | jq -c '.[]' 2>/dev/null | while read -r result; do
+                        local tool_use_id is_error tool_name result_preview
+                        tool_use_id=$(echo "$result" | jq -r '.tool_use_id // empty')
+                        is_error=$(echo "$result" | jq -r '.is_error // false')
+
+                        # Look up tool name from stored mapping
+                        tool_name=""
+                        if [ -f "$tool_names_file" ]; then
+                            tool_name=$(grep "^$tool_use_id:" "$tool_names_file" 2>/dev/null | cut -d: -f2- | head -1)
+                        fi
+                        tool_name="${tool_name:-Tool}"
+
+                        # Get preview of result content (first 3 lines, cleaned up)
+                        local result_content
+                        result_content=$(echo "$result" | jq -r '
+                            .content |
+                            if type == "string" then .
+                            elif type == "array" then (.[0].text // .[0].content // "")
+                            else ""
+                            end
+                        ' 2>/dev/null) || true
+
+                        if [ "$is_error" = "true" ]; then
+                            printf "${RED}  ✗ %s: error${NC}\n" "$tool_name" >&2
+                        else
+                            printf "${GREEN}  ✓ %s${NC}\n" "$tool_name" >&2
+                            # Show first 3 non-empty lines of output
+                            if [ -n "$result_content" ] && [ "$result_content" != "null" ]; then
+                                echo "$result_content" | grep -v '^$' | head -3 | while IFS= read -r preview_line; do
+                                    # Truncate long lines and add indent
+                                    printf "      ${GREEN}│${NC} %.76s\n" "$preview_line" >&2
+                                done
+                            fi
+                        fi
+                    done
                 fi
                 ;;
             "result")
+                # Temp files cleaned up by trap handler
+
                 subtype=$(echo "$line" | jq -r '.subtype // empty' 2>/dev/null) || true
                 if [ "$subtype" = "success" ]; then
                     final_result=$(echo "$line" | jq -r '.result // empty' 2>/dev/null) || true
@@ -397,21 +502,93 @@ format_progress() {
         esac
     done
 
-    # Output only the final result for capture (only if it's clean text, not JSON)
+    # Temp files cleaned up by trap handler (cleanup_format_progress)
+
+    # Output the final result for capture
     if [ -n "$final_result" ] && [ "$final_result" != "null" ]; then
-        # Safety check: don't output if it looks like JSON
-        if [[ "$final_result" != "{"* ]]; then
-            printf "%s" "$final_result"
+        printf "%s" "$final_result"
+    fi
+}
+
+# Extract JSON object from mixed text/JSON output
+# Claude sometimes outputs explanatory text before JSON despite instructions
+# Uses printf instead of echo to avoid escape sequence interpretation
+extract_json_from_output() {
+    local file="$1"
+    local content
+    content=$(cat "$file")
+
+    # Method 1: Try parsing the file directly with jq
+    if jq -e . "$file" >/dev/null 2>&1; then
+        cat "$file"
+        return 0
+    fi
+
+    # Method 2: Try the entire file content as valid JSON (handles variable capture issues)
+    if printf '%s' "$content" | jq -e . >/dev/null 2>&1; then
+        printf '%s' "$content"
+        return 0
+    fi
+
+    # Method 3: Try to find a complete line that is valid JSON
+    while IFS= read -r line; do
+        [ -z "$line" ] && continue
+        # Try the line as-is
+        if printf '%s' "$line" | jq -e . >/dev/null 2>&1; then
+            printf '%s' "$line"
+            return 0
+        fi
+        # Try extracting JSON starting from first {
+        if [[ "$line" == *"{"* ]]; then
+            local from_brace="${line#*\{}"
+            from_brace="{$from_brace"
+            if printf '%s' "$from_brace" | jq -e . >/dev/null 2>&1; then
+                printf '%s' "$from_brace"
+                return 0
+            fi
+        fi
+    done < "$file"
+
+    # Method 4: Whole content - extract JSON starting from known patterns
+    local json_part=""
+    for pattern in '{"number"' '{"status"' '{"needs_update"'; do
+        if [[ "$content" == *"$pattern"* ]]; then
+            json_part="${content#*$pattern}"
+            json_part="$pattern$json_part"
+            # Trim any trailing non-JSON content by finding last }
+            # ${var%\}*} removes shortest suffix matching }* (from last } to end)
+            # Then we append } to restore the closing brace
+            json_part="${json_part%\}*}"
+            json_part="${json_part}}"
+            if printf '%s' "$json_part" | jq -e . >/dev/null 2>&1; then
+                printf '%s' "$json_part"
+                return 0
+            fi
+        fi
+    done
+
+    # Method 5: Generic - find first { to last }
+    if [[ "$content" == *"{"* ]] && [[ "$content" == *"}"* ]]; then
+        local from_brace="${content#*\{}"
+        from_brace="{$from_brace"
+        # ${var%\}*} removes shortest suffix matching }* (from last } to end)
+        # Then we append } to restore the closing brace
+        from_brace="${from_brace%\}*}"
+        from_brace="${from_brace}}"
+        if printf '%s' "$from_brace" | jq -e . >/dev/null 2>&1; then
+            printf '%s' "$from_brace"
+            return 0
         fi
     fi
+
+    return 1
 }
 
 # Wrapper for claude command
 # Always runs with --dangerously-skip-permissions and --model opus
+# Uses streaming JSON output for progress display
 # Logs all raw JSON output to LOG_FILE for debugging
 run_claude() {
-    local mode="$1"
-    shift
     local prompt_preview
     prompt_preview=$(echo "$1" | head -c 100 | tr '\n' ' ')
 
@@ -423,21 +600,14 @@ run_claude() {
     echo "" >> "$LOG_FILE"
     echo "═══════════════════════════════════════════════════════════════════" >> "$LOG_FILE"
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] CLAUDE SESSION START" >> "$LOG_FILE"
-    echo "Mode: $mode" >> "$LOG_FILE"
     echo "Prompt: ${prompt_preview}..." >> "$LOG_FILE"
     echo "═══════════════════════════════════════════════════════════════════" >> "$LOG_FILE"
 
-    case "$mode" in
-        "-p")
-            # Print mode with streaming progress
-            # Tee raw JSON to log file while also formatting for terminal
-            claude --dangerously-skip-permissions --model opus --verbose -p --output-format stream-json "$@" 2>&1 | tee -a "$LOG_FILE" | format_progress
-            ;;
-        *)
-            # Interactive mode - capture output to log
-            claude --dangerously-skip-permissions --model opus "$@" 2>&1 | tee -a "$LOG_FILE"
-            ;;
-    esac
+    # Show hint about pause functionality
+    printf "${BLUE}  [Press ESC to pause]${NC}\n" >&2
+
+    # All sessions use print mode with streaming JSON for progress display
+    claude --dangerously-skip-permissions --model opus --verbose -p --output-format stream-json "$@" 2>&1 | tee -a "$LOG_FILE" | format_progress
 
     local exit_code=${PIPESTATUS[0]}
 
@@ -480,7 +650,7 @@ select_issue() {
     local session_start
     session_start=$(date +%s)
 
-    run_claude "-p" "
+    run_claude "
 You are selecting a GitHub issue to work on for the habits/fitstreak project.
 
 1. Fetch open issues: gh issue list --state open --json number,title,body,labels,assignees
@@ -497,20 +667,24 @@ If there are no suitable open issues (after excluding skipped ones), output: {\"
 
 Output ONLY a JSON object (no markdown, no explanation, no code blocks):
 {\"number\": 123, \"title\": \"Issue title\", \"body\": \"Issue description\"}
-" > "$STATE_DIR/selected_issue.json"
+" > "$STATE_DIR/selected_issue_raw.txt"
 
     local session_end
     session_end=$(date +%s)
 
-    # Validate JSON output
-    if ! jq -e . "$STATE_DIR/selected_issue.json" > /dev/null 2>&1; then
-        error "Failed to parse issue selection output as JSON"
-        cat "$STATE_DIR/selected_issue.json" >&2
+    # Extract JSON from output (Claude may include explanatory text)
+    local extracted_json
+    if ! extracted_json=$(extract_json_from_output "$STATE_DIR/selected_issue_raw.txt"); then
+        error "Failed to extract JSON from issue selection output"
+        cat "$STATE_DIR/selected_issue_raw.txt" >&2
         return 1
     fi
 
+    # Save cleaned JSON
+    echo "$extracted_json" > "$STATE_DIR/selected_issue.json"
+
     local issue_num
-    issue_num=$(jq -r '.number' "$STATE_DIR/selected_issue.json")
+    issue_num=$(echo "$extracted_json" | jq -r '.number')
 
     if [ "$issue_num" = "null" ] || [ -z "$issue_num" ]; then
         warn "No suitable issues found"
@@ -557,6 +731,80 @@ get_implementation_plan() {
 }
 
 #─────────────────────────────────────────────────────────────────────
+# Check if a PR already exists for an issue
+#─────────────────────────────────────────────────────────────────────
+has_pr_for_issue() {
+    local issue_num=$1
+
+    # Check metadata label first (fastest)
+    local pr_from_label
+    pr_from_label=$(get_metadata "$issue_num" "pr")
+    if [ -n "$pr_from_label" ]; then
+        # Verify the PR still exists
+        if gh pr view "$pr_from_label" --json number >/dev/null 2>&1; then
+            echo "$pr_from_label"
+            return 0
+        fi
+    fi
+
+    # Search for PRs that mention this issue
+    local pr_num
+    pr_num=$(gh pr list --search "issue #$issue_num" --json number -q '.[0].number' 2>/dev/null || echo "")
+    if [ -n "$pr_num" ]; then
+        echo "$pr_num"
+        return 0
+    fi
+
+    return 1
+}
+
+#─────────────────────────────────────────────────────────────────────
+# Check if a PR is already merged
+#─────────────────────────────────────────────────────────────────────
+is_pr_merged() {
+    local pr_num=$1
+
+    local state
+    state=$(gh pr view "$pr_num" --json state -q '.state' 2>/dev/null || echo "")
+    if [ "$state" = "MERGED" ]; then
+        return 0
+    fi
+    return 1
+}
+
+#─────────────────────────────────────────────────────────────────────
+# Check if code review was already approved
+#─────────────────────────────────────────────────────────────────────
+has_review_approved() {
+    local issue_num=$1
+
+    # Check issue comments for an approved review session
+    local comments
+    comments=$(gh issue view "$issue_num" --comments --json comments -q '.comments[].body' 2>/dev/null || echo "")
+
+    if echo "$comments" | grep -qi "Code Review.*APPROVED"; then
+        return 0
+    fi
+    return 1
+}
+
+#─────────────────────────────────────────────────────────────────────
+# Check if documentation was already updated for this issue
+#─────────────────────────────────────────────────────────────────────
+has_docs_updated() {
+    local issue_num=$1
+
+    # Check issue comments for documentation update
+    local comments
+    comments=$(gh issue view "$issue_num" --comments --json comments -q '.comments[].body' 2>/dev/null || echo "")
+
+    if echo "$comments" | grep -qi "Auto-Dev Session: Documentation"; then
+        return 0
+    fi
+    return 1
+}
+
+#─────────────────────────────────────────────────────────────────────
 # SESSION 2: Planning
 # Context: Clean - fresh codebase exploration without selection bias
 # Generates plan and posts as GitHub issue comment
@@ -584,7 +832,7 @@ plan_implementation() {
 
     # Generate plan using print mode (non-interactive)
     local plan
-    plan=$(run_claude "-p" "
+    plan=$(run_claude "
 Plan the implementation for GitHub issue #$issue_num
 
 **Issue Title:** $issue_title
@@ -609,9 +857,9 @@ Start with '## Implementation Plan' as the header.
     # Save plan locally
     echo "$plan" > "$STATE_DIR/plan-$issue_num.md"
 
-    # Post plan as comment on the GitHub issue
+    # Post plan as comment on the GitHub issue (primary storage)
     log "Posting plan to GitHub issue #$issue_num..."
-    gh issue comment "$issue_num" --body "$plan"
+    gh issue comment "$issue_num" --body "$plan" >/dev/null 2>&1 || warn "Failed to post plan to GitHub"
 
     # Post session memory
     post_session_memory "$issue_num" "Planning" "$session_start" "$session_end" "${SESSION_COST:-0}" \
@@ -629,14 +877,38 @@ implement_and_test() {
     local issue_num=$1
 
     header "SESSION 3: Implementation + Testing + PR Creation"
+
+    # Check if PR already exists for this issue (idempotency)
+    local existing_pr
+    if existing_pr=$(has_pr_for_issue "$issue_num"); then
+        log "PR #$existing_pr already exists for issue #$issue_num"
+        set_metadata "$issue_num" "pr" "$existing_pr"
+        set_phase "$issue_num" "pr-waiting"
+        success "Using existing PR #$existing_pr"
+        echo "$existing_pr"
+        return 0
+    fi
+
     set_phase "$issue_num" "implementing"
     log "Implementing and testing issue #$issue_num..."
+
+    # Fetch the implementation plan from GitHub (primary source of truth)
+    local implementation_plan
+    implementation_plan=$(get_implementation_plan "$issue_num")
+    if [ -z "$implementation_plan" ]; then
+        error "No implementation plan found for issue #$issue_num"
+        mark_blocked "$issue_num" "No implementation plan found in issue comments"
+        return 1
+    fi
+    log "Fetched implementation plan from GitHub issue #$issue_num"
 
     local session_start
     session_start=$(date +%s)
 
-    run_claude "-p" "
-Implement GitHub issue #$issue_num following your approved plan.
+    run_claude "
+Implement GitHub issue #$issue_num following the approved plan below.
+
+$implementation_plan
 
 Execute these phases from CLAUDE.md:
 - Phase 2: Implementation (use TodoWrite to track progress)
@@ -787,6 +1059,21 @@ review_code() {
     local issue_num=$2
 
     header "SESSION 4: Code Review (Fresh Context)"
+
+    # Check if review was already approved (idempotency)
+    if has_review_approved "$issue_num"; then
+        log "Code review already approved for issue #$issue_num"
+        success "Skipping review - already approved"
+        return 0
+    fi
+
+    # Check if PR is already merged (no review needed)
+    if is_pr_merged "$pr_num"; then
+        log "PR #$pr_num is already merged"
+        success "Skipping review - PR already merged"
+        return 0
+    fi
+
     set_phase "$issue_num" "reviewing"
     log "Reviewing PR #$pr_num with fresh eyes..."
 
@@ -800,7 +1087,7 @@ review_code() {
     pr_title=$(gh pr view "$pr_num" --json title -q '.title' 2>/dev/null || echo "")
     pr_body=$(gh pr view "$pr_num" --json body -q '.body' 2>/dev/null || echo "")
 
-    run_claude "-p" "
+    run_claude "
 You are a senior code reviewer examining PR #$pr_num with COMPLETELY FRESH EYES.
 
 **CRITICAL**: You did NOT write this code. You have NO prior context about it.
@@ -866,27 +1153,33 @@ Provide your review as a JSON object ONLY (no markdown, no explanation):
 }
 
 Be thorough but fair. Only request changes for real issues, not style preferences.
-" > "$STATE_DIR/review_result.json"
+" > "$STATE_DIR/review_result_raw.txt"
 
     local session_end
     session_end=$(date +%s)
 
-    # Validate JSON
-    if ! jq -e . "$STATE_DIR/review_result.json" > /dev/null 2>&1; then
-        error "Failed to parse review output as JSON"
-        cat "$STATE_DIR/review_result.json"
+    # Extract JSON from output (Claude may include explanatory text)
+    local extracted_json
+    if ! extracted_json=$(extract_json_from_output "$STATE_DIR/review_result_raw.txt"); then
+        error "Failed to extract JSON from review output"
+        cat "$STATE_DIR/review_result_raw.txt"
         return 1
     fi
 
+    # Save cleaned JSON
+    echo "$extracted_json" > "$STATE_DIR/review_result.json"
+
     local review_status review_summary
-    review_status=$(jq -r '.status' "$STATE_DIR/review_result.json")
-    review_summary=$(jq -r '.summary' "$STATE_DIR/review_result.json")
+    review_status=$(echo "$extracted_json" | jq -r '.status')
+    review_summary=$(echo "$extracted_json" | jq -r '.summary')
 
     log "Review Summary: $review_summary"
 
-    # Post session memory
+    # Post session memory (use tr for uppercase - bash 3.x compatible)
+    local review_status_upper
+    review_status_upper=$(printf '%s' "$review_status" | tr '[:lower:]' '[:upper:]')
     post_session_memory "$issue_num" "Code Review" "$session_start" "$session_end" "${SESSION_COST:-0}" \
-        "Review result: **${review_status^^}**
+        "Review result: **${review_status_upper}**
 
 $review_summary"
 
@@ -920,7 +1213,7 @@ fix_review_feedback() {
     local review_comments
     review_comments=$(jq -c '.comments' "$STATE_DIR/review_result.json")
 
-    run_claude "-p" "
+    run_claude "
 Fix the code review feedback for PR #$pr_num.
 
 **Review Comments to Address:**
@@ -964,13 +1257,22 @@ merge_and_verify() {
     local issue_num=$2
 
     header "SESSION 6: Merge + Deploy + Verify"
+
+    # Check if PR is already merged (idempotency)
+    if is_pr_merged "$pr_num"; then
+        log "PR #$pr_num is already merged"
+        set_phase "$issue_num" "verifying"
+        success "Skipping merge - PR already merged"
+        return 0
+    fi
+
     set_phase "$issue_num" "merging"
     log "Merging and verifying PR #$pr_num..."
 
     local session_start
     session_start=$(date +%s)
 
-    run_claude "-p" "
+    run_claude "
 Merge and verify PR #$pr_num in production.
 
 Execute these phases from CLAUDE.md:
@@ -1027,12 +1329,20 @@ update_documentation() {
     local issue_num=$1
 
     header "SESSION 7: Documentation Check"
+
+    # Check if documentation was already updated (idempotency)
+    if has_docs_updated "$issue_num"; then
+        log "Documentation already checked for issue #$issue_num"
+        success "Skipping documentation check - already done"
+        return 0
+    fi
+
     log "Checking if documentation updates are needed..."
 
     local session_start
     session_start=$(date +%s)
 
-    run_claude "-p" "
+    run_claude "
 Analyze if documentation updates are needed after implementing issue #$issue_num.
 
 Check if CLAUDE.md should be updated for:
@@ -1047,28 +1357,33 @@ Be conservative - only suggest updates for significant changes.
 
 Output JSON ONLY (no markdown):
 {\"needs_update\": true|false, \"reason\": \"Brief explanation\"}
-" > "$STATE_DIR/docs_check.json"
+" > "$STATE_DIR/docs_check_raw.txt"
 
     local session_end
     session_end=$(date +%s)
 
-    if ! jq -e . "$STATE_DIR/docs_check.json" > /dev/null 2>&1; then
+    # Extract JSON from output (Claude may include explanatory text)
+    local extracted_json
+    if ! extracted_json=$(extract_json_from_output "$STATE_DIR/docs_check_raw.txt"); then
         warn "Could not determine if docs need update"
         return 0
     fi
 
+    # Save cleaned JSON
+    echo "$extracted_json" > "$STATE_DIR/docs_check.json"
+
     local needs_update
-    needs_update=$(jq -r '.needs_update' "$STATE_DIR/docs_check.json")
+    needs_update=$(echo "$extracted_json" | jq -r '.needs_update')
 
     if [ "$needs_update" = "true" ]; then
         local reason
-        reason=$(jq -r '.reason' "$STATE_DIR/docs_check.json")
+        reason=$(echo "$extracted_json" | jq -r '.reason')
         log "Documentation update needed: $reason"
 
         local doc_session_start
         doc_session_start=$(date +%s)
 
-        run_claude "-p" "
+        run_claude "
 Update CLAUDE.md based on changes from issue #$issue_num.
 
 **Reason for update:** $reason
@@ -1127,7 +1442,7 @@ complete_issue() {
 See comments above for detailed session logs.
 
 ---
-<sub>🤖 Automated by auto-dev</sub>" 2>/dev/null || warn "Failed to close issue"
+<sub>🤖 Automated by auto-dev</sub>" >/dev/null 2>&1 || warn "Failed to close issue"
 
     success "Issue #$issue_num completed! Total cost: \$$total_cost"
 }
@@ -1293,7 +1608,9 @@ main() {
     # Ensure labels exist
     ensure_labels_exist
 
-    if [ "$SINGLE_CYCLE" = true ]; then
+    if [ -n "$TARGET_ISSUE" ]; then
+        log "Target issue mode - working on issue #$TARGET_ISSUE"
+    elif [ "$SINGLE_CYCLE" = true ]; then
         log "Single cycle mode - will exit after one issue"
     elif [ "$RESUME_ONLY" = true ]; then
         log "Resume mode - will only resume in-progress work"
@@ -1301,62 +1618,93 @@ main() {
         log "Continuous mode - Press Ctrl+C to stop"
     fi
 
-    # Change to repo root
-    cd "$REPO_ROOT"
-
     while true; do
         echo ""
         log "═══════════════════════════════════════════════════════════"
         log "Starting development cycle at $(date)"
         log "═══════════════════════════════════════════════════════════"
 
-        # Check for in-progress work first (RESUME)
-        local resume_issue_num
-        resume_issue_num=$(find_resumable_issue)
+        local issue_num="" issue_title="" issue_body=""
 
-        if [ -n "$resume_issue_num" ]; then
-            local resume_phase
-            resume_phase=$(get_phase "$resume_issue_num")
-            log "Found in-progress issue #$resume_issue_num in phase: $resume_phase"
+        # If target issue specified, use it directly
+        if [ -n "$TARGET_ISSUE" ]; then
+            issue_num="$TARGET_ISSUE"
 
-            resume_from_phase "$resume_issue_num" "$resume_phase"
+            # Check if this issue is already in-progress
+            local existing_phase
+            existing_phase=$(get_phase "$issue_num")
+            if [ -n "$existing_phase" ] && [ "$existing_phase" != "complete" ] && [ "$existing_phase" != "blocked" ]; then
+                log "Issue #$issue_num is already in-progress (phase: $existing_phase)"
+                resume_from_phase "$issue_num" "$existing_phase"
 
-            # Check if we completed or blocked
-            local new_phase
-            new_phase=$(get_phase "$resume_issue_num")
-            if [ "$new_phase" = "complete" ] || [ "$new_phase" = "blocked" ]; then
-                if [ "$SINGLE_CYCLE" = true ]; then
-                    log "Single cycle complete. Exiting."
+                local new_phase
+                new_phase=$(get_phase "$issue_num")
+                if [ "$new_phase" = "complete" ] || [ "$new_phase" = "blocked" ]; then
+                    log "Issue #$issue_num finished. Exiting."
                     exit 0
                 fi
+                sleep 5
+                continue
             fi
 
-            # Continue to next iteration
-            sleep 5
-            continue
-        fi
+            # Fetch issue details from GitHub
+            log "Fetching issue #$issue_num from GitHub..."
+            local issue_json
+            if ! issue_json=$(gh issue view "$issue_num" --json title,body 2>/dev/null); then
+                error "Failed to fetch issue #$issue_num"
+                exit 1
+            fi
+            issue_title=$(echo "$issue_json" | jq -r '.title')
+            issue_body=$(echo "$issue_json" | jq -r '.body')
 
-        # No in-progress work
-        if [ "$RESUME_ONLY" = true ]; then
-            log "No in-progress issues found. Exiting resume mode."
-            exit 0
-        fi
+            success "Working on: $issue_title"
+        else
+            # Check for in-progress work first (RESUME)
+            local resume_issue_num
+            resume_issue_num=$(find_resumable_issue)
 
-        # Select new issue
-        local issue_num=""
-        if ! issue_num=$(select_issue); then
-            if [ "$SINGLE_CYCLE" = true ]; then
-                warn "No issues to work on. Exiting."
+            if [ -n "$resume_issue_num" ]; then
+                local resume_phase
+                resume_phase=$(get_phase "$resume_issue_num")
+                log "Found in-progress issue #$resume_issue_num in phase: $resume_phase"
+
+                resume_from_phase "$resume_issue_num" "$resume_phase"
+
+                # Check if we completed or blocked
+                local new_phase
+                new_phase=$(get_phase "$resume_issue_num")
+                if [ "$new_phase" = "complete" ] || [ "$new_phase" = "blocked" ]; then
+                    if [ "$SINGLE_CYCLE" = true ]; then
+                        log "Single cycle complete. Exiting."
+                        exit 0
+                    fi
+                fi
+
+                # Continue to next iteration
+                sleep 5
+                continue
+            fi
+
+            # No in-progress work
+            if [ "$RESUME_ONLY" = true ]; then
+                log "No in-progress issues found. Exiting resume mode."
                 exit 0
             fi
-            warn "No suitable issues found. Waiting 30 minutes..."
-            sleep 1800
-            continue
-        fi
 
-        local issue_title issue_body
-        issue_title=$(jq -r '.title' "$STATE_DIR/selected_issue.json")
-        issue_body=$(jq -r '.body' "$STATE_DIR/selected_issue.json")
+            # Select new issue
+            if ! issue_num=$(select_issue); then
+                if [ "$SINGLE_CYCLE" = true ]; then
+                    warn "No issues to work on. Exiting."
+                    exit 0
+                fi
+                warn "No suitable issues found. Waiting 30 minutes..."
+                sleep 1800
+                continue
+            fi
+
+            issue_title=$(jq -r '.title' "$STATE_DIR/selected_issue.json")
+            issue_body=$(jq -r '.body' "$STATE_DIR/selected_issue.json")
+        fi
 
         # Run the full workflow
         plan_implementation "$issue_num" "$issue_title" "$issue_body"

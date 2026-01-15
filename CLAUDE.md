@@ -447,11 +447,19 @@ npm run build     # Verify production build
 npm run dev       # Start dev server
 ```
 
-**Important: Always register a new test user first before testing the feature.**
+**Test User Authentication:**
+- For **onboarding/registration features**: Register a new unique test user
+- For **authenticated user features**: Use the standard QA account:
+  - Name: `zubzone`
+  - Email: `zubzone+qa@gmail.com`
+  - Password: `3294sdzadsg$&$§`
+  - If account doesn't exist, register it first at `/register`
 
-1. Navigate to `/register` and create a new account
-2. Then test the feature being built
-3. Use Playwright MCP tools:
+**Testing Steps:**
+1. Navigate to `/login` (or `/register` if testing onboarding)
+2. Log in with QA account (or register if needed)
+3. Test the feature being built
+4. Use Playwright MCP tools:
    - `mcp__playwright__browser_navigate` to open app
    - `mcp__playwright__browser_resize` for responsive testing
    - `mcp__playwright__browser_click` to interact
@@ -580,11 +588,18 @@ railway logs 2>&1 | head -100   # Check for errors
 
 **8.3 Test Production with Playwright MCP**
 
-**Important: Always register a new test user first before testing the feature.**
+**Test User Authentication:**
+- For **onboarding/registration features**: Register a new unique test user
+- For **authenticated user features**: Use the standard QA account:
+  - Name: `zubzone`
+  - Email: `zubzone+qa@gmail.com`
+  - Password: `3294sdzadsg$&$§`
+  - If account doesn't exist, register it first
 
-1. Navigate to https://fitstreak.app/register
-2. Create a new test account
-3. Then test the feature being built:
+**Testing Steps:**
+1. Navigate to https://fitstreak.app/login (or /register if testing onboarding)
+2. Log in with QA account (or register if needed)
+3. Test the feature being built:
    - `mcp__playwright__browser_navigate` → production URL
    - `mcp__playwright__browser_snapshot` → verify page state
    - `mcp__playwright__browser_console_messages` → check for errors
