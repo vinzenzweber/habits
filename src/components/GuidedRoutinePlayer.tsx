@@ -385,7 +385,7 @@ export function GuidedRoutinePlayer({
                 {hasFinished ? "Workout complete" : currentSegment?.title}
               </h1>
               {!hasFinished && currentSegment?.detail ? (
-                <p className="text-sm text-slate-200 sm:text-base">
+                <p className="text-xl text-slate-200 sm:text-2xl">
                   {currentSegment.detail}
                 </p>
               ) : null}

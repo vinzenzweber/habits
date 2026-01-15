@@ -174,7 +174,7 @@ export default async function WorkoutDetailPage({ params }: WorkoutPageProps) {
                             </span>
                           </div>
                           {segment.detail ? (
-                            <p className="text-sm text-slate-300">
+                            <p className="text-base text-slate-300 sm:text-lg">
                               {segment.detail}
                             </p>
                           ) : null}

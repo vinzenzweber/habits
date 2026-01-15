@@ -1,6 +1,6 @@
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
+import { query } from '@/lib/db';
 import { OnboardingClient } from './OnboardingClient';
 
 export default async function OnboardingPage() {
@@ -11,10 +11,12 @@ export default async function OnboardingPage() {
     redirect('/login');
   }
 
-  // Check if user already completed onboarding
-  const cookieStore = await cookies();
-  const onboardingCookie = cookieStore.get('onboarding_complete');
-  const isComplete = onboardingCookie?.value === 'true';
+  // Check if user already completed onboarding (database is authoritative)
+  const result = await query<{ onboarding_completed: boolean }>(
+    `SELECT onboarding_completed FROM users WHERE id = $1`,
+    [session.user.id]
+  );
+  const isComplete = result.rows[0]?.onboarding_completed === true;
 
   if (isComplete) {
     redirect('/');

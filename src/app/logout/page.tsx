@@ -5,6 +5,8 @@ import { signOut } from 'next-auth/react';
 
 export default function LogoutPage() {
   useEffect(() => {
+    // Clear onboarding cookie to prevent stale state for next user
+    document.cookie = 'onboarding_complete=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     // Use NextAuth's signOut for proper session cleanup
     signOut({ callbackUrl: '/login' });
   }, []);
