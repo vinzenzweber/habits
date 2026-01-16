@@ -3,7 +3,8 @@
  * Serve a recipe image
  */
 
-import { readRecipeImage, recipeImageExists } from "@/lib/recipe-image-storage";
+import { auth } from "@/lib/auth";
+import { readRecipeImage, recipeImageExists, isValidPathComponent } from "@/lib/recipe-image-storage";
 import path from "path";
 
 export const runtime = "nodejs";
@@ -12,21 +13,21 @@ type RouteParams = { params: Promise<{ userId: string; imageId: string }> };
 
 export async function GET(request: Request, { params }: RouteParams) {
   try {
-    const { userId, imageId } = await params;
-
-    // Validate userId and imageId don't contain path traversal
-    if (
-      userId.includes("..") ||
-      userId.includes("/") ||
-      imageId.includes("..") ||
-      imageId.includes("/")
-    ) {
-      return new Response("Invalid path", { status: 400 });
+    // Authenticate and verify the user owns this image
+    const session = await auth();
+    if (!session?.user?.id) {
+      return new Response("Unauthorized", { status: 401 });
     }
 
-    // Validate format (alphanumeric, dashes, underscores only)
-    const validPattern = /^[a-zA-Z0-9_-]+$/;
-    if (!validPattern.test(userId) || !validPattern.test(imageId)) {
+    const { userId, imageId } = await params;
+
+    // Verify the userId matches the current session user
+    if (session.user.id !== userId) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+
+    // Validate format using shared validation function
+    if (!isValidPathComponent(userId) || !isValidPathComponent(imageId)) {
       return new Response("Invalid path format", { status: 400 });
     }
 

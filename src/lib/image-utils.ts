@@ -43,8 +43,15 @@ export function validateImageFile(file: File): ImageValidationResult {
 }
 
 /**
- * Resize an image to fit within max dimensions while maintaining aspect ratio
- * Returns a JPEG blob
+ * Resize an image to fit within max dimensions while maintaining aspect ratio.
+ * Returns a JPEG blob.
+ *
+ * Note: This always outputs JPEG format regardless of input format.
+ * This means PNG transparency will be lost (replaced with white background).
+ * This is intentional for recipe images as:
+ * 1. Recipe photos rarely need transparency
+ * 2. JPEG provides better compression for photographs
+ * 3. Consistent output format simplifies storage and serving
  */
 export async function resizeImage(file: File): Promise<Blob> {
   return new Promise((resolve, reject) => {
@@ -78,6 +85,10 @@ export async function resizeImage(file: File): Promise<Blob> {
         return;
       }
 
+      // Fill with white background first (for transparent PNGs)
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, width, height);
+
       ctx.drawImage(img, 0, 0, width, height);
 
       // Convert to JPEG blob
@@ -104,10 +115,9 @@ export async function resizeImage(file: File): Promise<Blob> {
 }
 
 /**
- * Generate a unique image ID
+ * Generate a unique image ID using cryptographically secure random values
  */
 export function generateImageId(): string {
-  const timestamp = Date.now().toString(36);
-  const random = Math.random().toString(36).substring(2, 8);
-  return `${timestamp}-${random}`;
+  // Use crypto.randomUUID() for robust, collision-resistant ID generation
+  return crypto.randomUUID();
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 
 interface TagInputProps {
   tags: string[];
@@ -26,11 +26,19 @@ export function TagInput({
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Filter suggestions based on input
-  const filteredSuggestions = suggestions.filter(
-    (s) =>
-      s.toLowerCase().includes(input.toLowerCase()) &&
-      !tags.includes(s)
-  );
+  // Note: Tags are stored in lowercase, so we filter and display suggestions in lowercase
+  // to provide consistent UX (what you see is what you get)
+  const filteredSuggestions = useMemo(() => {
+    const lowerInput = input.toLowerCase();
+    return suggestions
+      .map(s => s.toLowerCase())
+      .filter(
+        (s, index, arr) =>
+          s.includes(lowerInput) &&
+          !tags.includes(s) &&
+          arr.indexOf(s) === index // dedupe after lowercase conversion
+      );
+  }, [suggestions, input, tags]);
 
   // Close suggestions when clicking outside
   useEffect(() => {

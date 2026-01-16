@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { RecipeImageUpload } from './RecipeImageUpload';
 import { TagInput } from './TagInput';
@@ -82,23 +82,11 @@ export function RecipeForm({ initialRecipe, slug, existingTags = [] }: RecipeFor
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Reset form when initialRecipe changes
-  useEffect(() => {
-    if (initialRecipe) {
-      setForm({
-        title: initialRecipe.title,
-        description: initialRecipe.description,
-        tags: initialRecipe.tags,
-        servings: initialRecipe.servings,
-        prepTimeMinutes: initialRecipe.prepTimeMinutes ?? null,
-        cookTimeMinutes: initialRecipe.cookTimeMinutes ?? null,
-        nutrition: initialRecipe.nutrition,
-        ingredientGroups: initialRecipe.ingredientGroups,
-        steps: initialRecipe.steps,
-        images: initialRecipe.images,
-      });
-    }
-  }, [initialRecipe]);
+  // Note: We intentionally do NOT use a useEffect to sync form state with initialRecipe.
+  // The initialRecipe prop is only used once during initial state creation (via useState's
+  // initializer function). This prevents potential data loss if the prop updates unexpectedly
+  // while the user has unsaved changes. If initialRecipe changes (e.g., route transition),
+  // React will remount the component anyway, re-running the useState initializer.
 
   const updateField = useCallback(<K extends keyof FormState>(field: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -166,6 +154,9 @@ export function RecipeForm({ initialRecipe, slug, existingTags = [] }: RecipeFor
         .map((s, i) => ({ ...s, number: i + 1 }));
 
       // Build recipe JSON
+      // Note: When editing, we preserve the original slug for URL stability.
+      // This means the URL won't change even if the title changes significantly.
+      // This is intentional to prevent broken bookmarks/links.
       const recipeJson: RecipeJson = {
         slug: slug || generateSlug(form.title),
         title: form.title.trim(),

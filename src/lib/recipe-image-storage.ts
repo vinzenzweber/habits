@@ -29,15 +29,27 @@ async function ensureStorageDir(dir: string): Promise<void> {
   }
 }
 
+/** Pattern for valid path components: alphanumeric, dashes, underscores only */
+const VALID_PATH_PATTERN = /^[a-zA-Z0-9_-]+$/;
+
 /**
- * Validate path components to prevent path traversal attacks
+ * Check if a path component is valid (does not throw, returns boolean)
+ * Use this for validation checks in route handlers
+ */
+export function isValidPathComponent(component: string): boolean {
+  if (component.includes('..') || path.isAbsolute(component)) {
+    return false;
+  }
+  return VALID_PATH_PATTERN.test(component);
+}
+
+/**
+ * Validate path components to prevent path traversal attacks (throws on invalid)
+ * Use this in internal storage functions where invalid input is a programming error
  */
 function validatePathComponent(component: string, name: string): void {
-  if (component.includes('..') || path.isAbsolute(component)) {
-    throw new Error(`Invalid ${name}: path traversal detected`);
-  }
-  if (!/^[a-zA-Z0-9_-]+$/.test(component)) {
-    throw new Error(`Invalid ${name}: contains invalid characters`);
+  if (!isValidPathComponent(component)) {
+    throw new Error(`Invalid ${name}: contains invalid characters or path traversal`);
   }
 }
 

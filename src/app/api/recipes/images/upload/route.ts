@@ -78,10 +78,9 @@ export async function POST(request: Request) {
 }
 
 /**
- * Generate a unique image ID
+ * Generate a unique image ID using cryptographically secure random values
  */
 function generateImageId(): string {
-  const timestamp = Date.now().toString(36);
-  const random = Math.random().toString(36).substring(2, 8);
-  return `${timestamp}-${random}`;
+  // Use crypto.randomUUID() for robust, collision-resistant ID generation
+  return crypto.randomUUID();
 }

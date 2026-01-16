@@ -1,5 +1,20 @@
 'use client';
 
+/**
+ * Recipe image upload component with drag-and-drop support.
+ *
+ * Note on orphaned images: If an upload succeeds but the recipe is never saved,
+ * the uploaded image will remain on the server without being referenced by any recipe.
+ * This is acceptable for now as:
+ * 1. Images are small (resized to max 2048px, JPEG compressed)
+ * 2. Image URLs are not publicly accessible (require auth + user ID match)
+ * 3. A future cleanup job could remove unreferenced images if storage becomes a concern
+ *
+ * Alternative approaches considered but not implemented:
+ * - Store images in a "pending" state until recipe is saved (adds complexity)
+ * - Client-side image storage until form submit (would require re-upload, poor UX)
+ */
+
 import { useState, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { validateImageFile, resizeImage, generateImageId } from '@/lib/image-utils';
