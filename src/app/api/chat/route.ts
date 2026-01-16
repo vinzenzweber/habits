@@ -3,6 +3,12 @@ import { auth } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { getAllWorkoutsTool, getWorkoutTool, updateWorkoutTool, getWorkoutStatsTool } from "@/lib/workout-tools";
 import {
+  searchRecipesTool,
+  getRecipeTool,
+  createRecipeTool,
+  updateRecipeTool
+} from "@/lib/recipe-tools";
+import {
   saveMemory,
   getMemories,
   deleteMemory,
@@ -120,6 +126,39 @@ Use get_workout_stats to access the user's complete workout history and statisti
 - Days since last workout
 
 Call this tool when discussing motivation, progress, consistency, or when the user asks about their history. Use the data to provide personalized encouragement and insights.
+
+**Recipe Management:**
+You can help users manage their recipe collection using these tools:
+- search_recipes: Search recipes by text or tags
+- get_recipe: Get full recipe details by slug
+- create_recipe: Add a new recipe
+- update_recipe: Modify an existing recipe (creates new version)
+
+### Recipe Guidelines
+
+**Creating Recipes:**
+- Always include accurate nutrition information per serving
+- Group ingredients logically (e.g., "Dairy", "Proteins", "Vegetables")
+- Write clear, numbered steps
+- Use appropriate tags for categorization (e.g., "breakfast", "high-protein", "vegetarian")
+- Set locale based on recipe language (e.g., "de-DE", "en-US")
+
+**Modifying Recipes:**
+- ALWAYS call get_recipe first to see current state
+- Modifications create new versions - old versions are preserved
+- When user asks to change ingredients or steps, update the entire recipe
+- Recalculate nutrition when ingredients change
+- Ask for confirmation before making significant changes
+
+**Recipe Translation:**
+- Can translate recipes between languages
+- Adapt measurements to locale (cups → ml, oz → g)
+- Consider local ingredient substitutions
+
+**Nutrition Calculations:**
+- Provide per-serving values
+- Calculate from ingredients when possible
+- Be transparent about estimates
 
 **Exercise Library:**
 You have access to a global exercise library with AI-generated illustrations. When creating or modifying workouts:
@@ -442,6 +481,187 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         properties: {}
       }
     }
+  },
+  {
+    type: "function",
+    function: {
+      name: "search_recipes",
+      description: "Search user's recipes by text query or tags. Returns recipe summaries for list display.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "Search term (title, description)"
+          },
+          tags: {
+            type: "array",
+            items: { type: "string" },
+            description: "Filter by tags (e.g., 'breakfast', 'high-protein')"
+          },
+          limit: {
+            type: "number",
+            description: "Max results (default 10)"
+          }
+        }
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_recipe",
+      description: "Get full recipe details by slug. Use this before modifying a recipe to see its current state.",
+      parameters: {
+        type: "object",
+        properties: {
+          slug: {
+            type: "string",
+            description: "The recipe slug (URL-friendly identifier)"
+          }
+        },
+        required: ["slug"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_recipe",
+      description: "Create a new recipe. Requires complete recipe data including title, ingredients, steps, and nutrition.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: {
+            type: "string",
+            description: "Recipe title"
+          },
+          description: {
+            type: "string",
+            description: "Brief description of the recipe"
+          },
+          locale: {
+            type: "string",
+            description: "Locale for the recipe (e.g., 'de-DE', 'en-US')"
+          },
+          tags: {
+            type: "array",
+            items: { type: "string" },
+            description: "Recipe tags (e.g., 'breakfast', 'high-protein', 'vegetarian')"
+          },
+          recipeJson: {
+            type: "object",
+            description: "Complete recipe data",
+            properties: {
+              slug: { type: "string" },
+              title: { type: "string" },
+              description: { type: "string" },
+              tags: { type: "array", items: { type: "string" } },
+              servings: { type: "number" },
+              prepTimeMinutes: { type: "number" },
+              cookTimeMinutes: { type: "number" },
+              nutrition: {
+                type: "object",
+                properties: {
+                  calories: { type: "number" },
+                  protein: { type: "number" },
+                  carbohydrates: { type: "number" },
+                  fat: { type: "number" },
+                  fiber: { type: "number" }
+                },
+                required: ["calories", "protein", "carbohydrates", "fat"]
+              },
+              ingredientGroups: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    name: { type: "string" },
+                    ingredients: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          name: { type: "string" },
+                          quantity: { type: "number" },
+                          unit: { type: "string" }
+                        },
+                        required: ["name", "quantity", "unit"]
+                      }
+                    }
+                  },
+                  required: ["name", "ingredients"]
+                }
+              },
+              steps: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    number: { type: "number" },
+                    instruction: { type: "string" }
+                  },
+                  required: ["number", "instruction"]
+                }
+              },
+              images: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    url: { type: "string" },
+                    caption: { type: "string" },
+                    isPrimary: { type: "boolean" }
+                  },
+                  required: ["url"]
+                }
+              },
+              locale: { type: "string" }
+            },
+            required: ["slug", "title", "description", "tags", "servings", "nutrition", "ingredientGroups", "steps", "images", "locale"]
+          }
+        },
+        required: ["title", "recipeJson"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_recipe",
+      description: "Update an existing recipe. Creates a new version - old versions are preserved. ALWAYS call get_recipe first to see current state.",
+      parameters: {
+        type: "object",
+        properties: {
+          slug: {
+            type: "string",
+            description: "The recipe slug to update"
+          },
+          title: {
+            type: "string",
+            description: "New title (optional)"
+          },
+          description: {
+            type: "string",
+            description: "New description (optional)"
+          },
+          locale: {
+            type: "string",
+            description: "New locale (optional)"
+          },
+          tags: {
+            type: "array",
+            items: { type: "string" },
+            description: "New tags (optional)"
+          },
+          recipeJson: {
+            type: "object",
+            description: "Updated recipe data (optional - provide full recipeJson to update)"
+          }
+        },
+        required: ["slug"]
+      }
+    }
   }
 ];
 
@@ -599,6 +819,63 @@ async function executeTool(
       }
       break;
 
+    case "search_recipes":
+      try {
+        const recipes = await searchRecipesTool(
+          userId,
+          args.query,
+          args.tags,
+          args.limit ?? 10
+        );
+        result = {
+          recipes,
+          count: recipes.length,
+          message: recipes.length > 0 ? `Found ${recipes.length} recipe(s)` : "No recipes found"
+        };
+      } catch (error) {
+        result = { error: "Failed to search recipes", message: error instanceof Error ? error.message : "Unknown error" };
+      }
+      break;
+
+    case "get_recipe":
+      try {
+        const recipe = await getRecipeTool(userId, args.slug);
+        result = recipe || { error: "Recipe not found" };
+      } catch (error) {
+        result = { error: "Failed to get recipe", message: error instanceof Error ? error.message : "Unknown error" };
+      }
+      break;
+
+    case "create_recipe":
+      try {
+        const createResult = await createRecipeTool(userId, {
+          title: args.title,
+          description: args.description,
+          locale: args.locale,
+          tags: args.tags,
+          recipeJson: args.recipeJson
+        });
+        result = createResult;
+      } catch (error) {
+        result = { error: "Failed to create recipe", message: error instanceof Error ? error.message : "Unknown error" };
+      }
+      break;
+
+    case "update_recipe":
+      try {
+        const updateResult = await updateRecipeTool(userId, args.slug, {
+          title: args.title,
+          description: args.description,
+          locale: args.locale,
+          tags: args.tags,
+          recipeJson: args.recipeJson
+        });
+        result = updateResult;
+      } catch (error) {
+        result = { error: "Failed to update recipe", message: error instanceof Error ? error.message : "Unknown error" };
+      }
+      break;
+
     default:
       result = { error: `Unknown tool: ${toolCall.function.name}` };
   }
@@ -664,6 +941,10 @@ export async function POST(request: Request) {
         pageContextSection = `\n\n**Current Screen:**\nThe user is on the home page viewing their weekly workout schedule.`;
       } else if (pageContext.page === 'player' && pageContext.workoutSlug) {
         pageContextSection = `\n\n**Current Screen:**\nThe user is currently doing the ${pageContext.workoutTitle || pageContext.workoutSlug} workout in the guided player.`;
+      } else if (pageContext.page === 'recipe' && pageContext.recipeSlug) {
+        pageContextSection = `\n\n**Current Screen:**\nThe user is viewing the "${pageContext.recipeTitle || pageContext.recipeSlug}" recipe. When they reference "this recipe" or want to modify it, they mean this recipe. You can use get_recipe with slug "${pageContext.recipeSlug}" to see the full details.`;
+      } else if (pageContext.page === 'recipes') {
+        pageContextSection = `\n\n**Current Screen:**\nThe user is on the recipes page viewing their recipe collection. You can use search_recipes to help them find recipes.`;
       }
     }
 
@@ -697,7 +978,11 @@ ${memoryContext}${pageContextSection}${instructionSection}`;
       search_exercises: "Searching exercises",
       create_exercise: "Creating exercise",
       get_exercise_images: "Checking exercise images",
-      get_workout_stats: "Analyzing workout history"
+      get_workout_stats: "Analyzing workout history",
+      search_recipes: "Searching recipes",
+      get_recipe: "Fetching recipe",
+      create_recipe: "Creating recipe",
+      update_recipe: "Updating recipe"
     };
 
     const readableStream = new ReadableStream({
