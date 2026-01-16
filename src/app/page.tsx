@@ -56,7 +56,7 @@ export default async function Home() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="mx-auto flex max-w-3xl flex-col gap-8 px-5 pb-16 pt-12 sm:px-8">
+      <div className="mx-auto flex max-w-3xl flex-col gap-8 px-5 pb-24 pt-12 sm:px-8">
         {/* Header */}
         <header className="flex items-center justify-between">
           <p className="text-xs font-semibold uppercase tracking-[0.4em] text-emerald-400">
