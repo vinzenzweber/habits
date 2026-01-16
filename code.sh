@@ -102,28 +102,41 @@ mkdir -p "$STATE_DIR"
 # Uses labels for phase tracking, comments for session memory
 #═══════════════════════════════════════════════════════════════════════════════
 
-# Label definitions: name:color:description
+# Label definitions: name|color|description (using | as delimiter since : is in label names)
 PHASE_LABELS=(
-    "auto-dev:selecting:0E8A16:Being selected for development"
-    "auto-dev:planning:1D76DB:Creating implementation plan"
-    "auto-dev:implementing:5319E7:Writing code and testing"
-    "auto-dev:pr-waiting:FBCA04:PR created, waiting for CI"
-    "auto-dev:reviewing:D93F0B:Under code review"
-    "auto-dev:fixing:F9D0C4:Addressing review feedback"
-    "auto-dev:merging:0052CC:Being merged and deployed"
-    "auto-dev:verifying:BFD4F2:Production verification"
-    "auto-dev:complete:0E8A16:Successfully completed"
-    "auto-dev:blocked:B60205:Needs manual intervention"
-    "auto-dev:ci-failed:B60205:CI checks failing"
+    "auto-dev:selecting|0E8A16|Being selected for development"
+    "auto-dev:planning|1D76DB|Creating implementation plan"
+    "auto-dev:implementing|5319E7|Writing code and testing"
+    "auto-dev:pr-waiting|FBCA04|PR created, waiting for CI"
+    "auto-dev:reviewing|D93F0B|Under code review"
+    "auto-dev:fixing|F9D0C4|Addressing review feedback"
+    "auto-dev:merging|0052CC|Being merged and deployed"
+    "auto-dev:verifying|BFD4F2|Production verification"
+    "auto-dev:complete|0E8A16|Successfully completed"
+    "auto-dev:blocked|B60205|Needs manual intervention"
+    "auto-dev:ci-failed|B60205|CI checks failing"
 )
 
-# Ensure all required labels exist in the repo
+# Ensure all required labels exist in the repo with correct colors and descriptions
 ensure_labels_exist() {
     log "Ensuring GitHub labels exist..."
+    local created=0
+    local updated=0
+
     for label_spec in "${PHASE_LABELS[@]}"; do
-        IFS=':' read -r name color desc <<< "$label_spec"
-        gh label create "$name" --color "$color" --description "$desc" 2>/dev/null || true
+        IFS='|' read -r name color desc <<< "$label_spec"
+        # Try to create the label
+        if gh label create "$name" --color "$color" --description "$desc" 2>/dev/null; then
+            created=$((created + 1))
+        else
+            # Label exists - update it to ensure correct color and description
+            gh label edit "$name" --color "$color" --description "$desc" 2>/dev/null && updated=$((updated + 1))
+        fi
     done
+
+    if [ $created -gt 0 ] || [ $updated -gt 0 ]; then
+        log "Labels: $created created, $updated updated"
+    fi
 }
 
 # Set workflow phase for an issue (removes old phase, adds new)
