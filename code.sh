@@ -653,17 +653,20 @@ select_issue() {
     run_claude "
 You are selecting a GitHub issue to work on for the habits/fitstreak project.
 
-1. Fetch open issues: gh issue list --state open --json number,title,body,labels,assignees
+1. Fetch open issues: gh issue list --state open --json number,title,body,labels,assignees --limit 50
 2. SKIP these issues (in-progress or have open PRs): $skip_issues
 3. SKIP issues with any 'auto-dev:' labels (they are being worked on)
-4. From remaining issues, analyze for:
-   - Priority (bugs > features > enhancements)
-   - Complexity (prefer issues you can complete in one session)
-   - Dependencies (skip if blocked by other issues)
-   - Labels (look for 'good first issue', 'priority', etc.)
-5. Select the BEST issue to work on now
+4. SKIP issues titled 'Epic:' (they are parent tracking issues)
+5. From remaining issues, prioritize by labels:
+   - P0-foundation (highest priority - do these first)
+   - P1-core (high priority)
+   - P2-enhancement (medium priority)
+   - P3-future (lower priority)
+   - bugs > features > enhancements
+6. Select ONE issue to work on - prefer smaller, well-defined issues
 
-If there are no suitable open issues (after excluding skipped ones), output: {\"number\": null, \"title\": null, \"body\": null}
+IMPORTANT: There are many valid issues to choose from. Pick the highest priority one that is actionable.
+Do NOT return null unless there are literally zero open issues after filtering.
 
 Output ONLY a JSON object (no markdown, no explanation, no code blocks):
 {\"number\": 123, \"title\": \"Issue title\", \"body\": \"Issue description\"}
