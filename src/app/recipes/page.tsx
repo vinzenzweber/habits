@@ -7,6 +7,22 @@ import { LogoutButton } from "@/components/LogoutButton";
 
 export const dynamic = "force-dynamic";
 
+const PlusIcon = () => (
+  <svg
+    className="h-4 w-4"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M12 4v16m8-8H4"
+    />
+  </svg>
+);
+
 export default async function RecipesPage() {
   const session = await auth();
   if (!session?.user) {
@@ -32,22 +48,10 @@ export default async function RecipesPage() {
             Recipes
           </h1>
           <Link
-            href="#"
+            href="/recipes/new"
             className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-emerald-400"
           >
-            <svg
-              className="h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
+            <PlusIcon />
             Add Recipe
           </Link>
         </section>
@@ -66,22 +70,10 @@ export default async function RecipesPage() {
                 the web or create your own.
               </p>
               <Link
-                href="#"
+                href="/recipes/new"
                 className="mt-2 inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-medium text-slate-950 transition hover:bg-emerald-400"
               >
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4v16m8-8H4"
-                  />
-                </svg>
+                <PlusIcon />
                 Add your first recipe
               </Link>
             </div>
@@ -89,7 +81,19 @@ export default async function RecipesPage() {
         ) : (
           /* Recipe list placeholder - will be implemented in future issue */
           <section className="grid gap-3">
-            {/* Recipe cards will be rendered here */}
+            {recipes.map((recipe) => (
+              <div
+                key={recipe.slug}
+                className="rounded-xl border border-slate-800 bg-slate-900/50 p-4"
+              >
+                <h3 className="font-medium text-white">{recipe.title}</h3>
+                {recipe.description && (
+                  <p className="mt-1 text-sm text-slate-400 line-clamp-2">
+                    {recipe.description}
+                  </p>
+                )}
+              </div>
+            ))}
           </section>
         )}
       </div>
