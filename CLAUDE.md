@@ -206,9 +206,10 @@ Uses PostgreSQL with the following tables:
 - `exercises` - Global exercise library with metadata
 - `exercise_images` - AI-generated exercise illustrations (2 per exercise)
 - `image_generation_jobs` - Background job queue for image generation
+- `recipes` - User-scoped recipes with JSONB content and versioning
 - `_migrations` - Migration tracking
 
-All workout and chat data is scoped per user (user_id foreign key).
+All workout, chat, and recipe data is scoped per user (user_id foreign key).
 Exercise library is global (shared across all users).
 
 ## Environment Variables
