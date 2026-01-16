@@ -28,6 +28,8 @@ export function TagInput({
   // Filter suggestions based on input
   // Note: Tags are stored in lowercase, so we filter and display suggestions in lowercase
   // to provide consistent UX (what you see is what you get)
+  // Performance note: This computation runs on every render even when dropdown is hidden.
+  // This is acceptable as the filter operation is O(n) on a small array and negligible overhead.
   const filteredSuggestions = useMemo(() => {
     const lowerInput = input.toLowerCase();
     return suggestions

@@ -43,13 +43,15 @@ export function IngredientGroupEditor({
     onChange(newGroups);
   }, [groups, onChange]);
 
+  // Note: When the last ingredient is removed from a group, the entire group is auto-deleted.
+  // This prevents empty groups from cluttering the UI. Users can easily re-add groups if needed.
   const removeIngredient = useCallback((groupIndex: number, ingredientIndex: number) => {
     const newGroups = [...groups];
     newGroups[groupIndex] = {
       ...newGroups[groupIndex],
       ingredients: newGroups[groupIndex].ingredients.filter((_, i) => i !== ingredientIndex),
     };
-    // Remove group if no ingredients left
+    // Auto-delete group if no ingredients left
     if (newGroups[groupIndex].ingredients.length === 0) {
       onChange(newGroups.filter((_, i) => i !== groupIndex));
     } else {

@@ -81,6 +81,7 @@ export function RecipeForm({ initialRecipe, slug, existingTags = [] }: RecipeFor
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Note: We intentionally do NOT use a useEffect to sync form state with initialRecipe.
   // The initialRecipe prop is only used once during initial state creation (via useState's
@@ -273,6 +274,7 @@ export function RecipeForm({ initialRecipe, slug, existingTags = [] }: RecipeFor
           images={form.images}
           onChange={(images) => updateField('images', images)}
           disabled={loading}
+          onUploadingChange={setIsUploading}
         />
       </section>
 
@@ -451,10 +453,10 @@ export function RecipeForm({ initialRecipe, slug, existingTags = [] }: RecipeFor
         </button>
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || isUploading}
           className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 py-3 rounded font-medium transition disabled:opacity-50"
         >
-          {loading ? 'Saving...' : isEditing ? 'Save Changes' : 'Create Recipe'}
+          {loading ? 'Saving...' : isUploading ? 'Uploading images...' : isEditing ? 'Save Changes' : 'Create Recipe'}
         </button>
       </div>
     </form>

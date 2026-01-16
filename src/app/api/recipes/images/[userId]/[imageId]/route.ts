@@ -1,6 +1,11 @@
 /**
  * GET /api/recipes/images/[userId]/[imageId]
  * Serve a recipe image
+ *
+ * Privacy note: Users can only access their own images. This is intentional
+ * for privacy - recipe images are personal content. If recipe sharing is
+ * implemented in the future, this endpoint should be extended to also allow
+ * access to images for recipes that have been explicitly shared with the user.
  */
 
 import { auth } from "@/lib/auth";

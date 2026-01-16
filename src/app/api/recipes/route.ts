@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import { getUserRecipeSummaries, createRecipe } from "@/lib/recipes";
-import { CreateRecipeInput } from "@/lib/recipe-types";
+import { CreateRecipeInput, isValidRecipeJson } from "@/lib/recipe-types";
 
 export const runtime = "nodejs";
 
@@ -42,6 +42,14 @@ export async function POST(request: Request) {
     if (!body.title || !body.recipeJson) {
       return Response.json(
         { error: "Missing required fields: title and recipeJson" },
+        { status: 400 }
+      );
+    }
+
+    // Validate recipeJson structure to prevent malformed data
+    if (!isValidRecipeJson(body.recipeJson)) {
+      return Response.json(
+        { error: "Invalid recipeJson structure" },
         { status: 400 }
       );
     }

@@ -89,11 +89,24 @@ export function getRecipeImagePath(storagePath: string): string {
 
 /**
  * Read a recipe image from storage
+ * @param storagePath - Expected format: "recipes/{userId}/{imageId}.jpg"
  */
 export async function readRecipeImage(storagePath: string): Promise<Buffer> {
   // Validate storagePath doesn't contain path traversal
   if (storagePath.includes('..') || path.isAbsolute(storagePath)) {
     throw new Error('Invalid storagePath: path traversal detected');
+  }
+
+  // Validate individual path components for consistent security with saveRecipeImage
+  // Expected format: "recipes/{userId}/{imageId}.jpg"
+  const parts = storagePath.split('/');
+  if (parts.length !== 3 || parts[0] !== RECIPES_DIR) {
+    throw new Error('Invalid storagePath format');
+  }
+  const [, userId, filename] = parts;
+  const imageId = filename.replace(/\.jpg$/, '');
+  if (!isValidPathComponent(userId) || !isValidPathComponent(imageId)) {
+    throw new Error('Invalid storagePath: contains invalid characters');
   }
 
   const fullPath = getRecipeImagePath(storagePath);

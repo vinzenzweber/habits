@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import { getRecipeBySlug, updateRecipe, deleteRecipe, updateRecipeInPlace } from "@/lib/recipes";
-import { UpdateRecipeInput } from "@/lib/recipe-types";
+import { UpdateRecipeInput, isValidRecipeJson } from "@/lib/recipe-types";
 
 export const runtime = "nodejs";
 
@@ -47,6 +47,20 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   try {
     const { slug } = await params;
     const body = await request.json() as UpdateRecipeInput;
+
+    // Validate recipeJson structure if provided
+    if (body.recipeJson && !isValidRecipeJson(body.recipeJson)) {
+      return Response.json(
+        { error: "Invalid recipeJson structure" },
+        { status: 400 }
+      );
+    }
+
+    // Ensure recipeJson.slug matches the URL slug to maintain consistency
+    // This is important because the URL slug is the source of truth for routing
+    if (body.recipeJson && body.recipeJson.slug !== slug) {
+      body.recipeJson = { ...body.recipeJson, slug };
+    }
 
     const recipe = await updateRecipe(slug, body);
     return Response.json({ recipe });

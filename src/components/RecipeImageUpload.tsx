@@ -25,6 +25,8 @@ interface RecipeImageUploadProps {
   onChange: (images: RecipeImage[]) => void;
   maxImages?: number;
   disabled?: boolean;
+  /** Callback to notify parent when upload state changes */
+  onUploadingChange?: (isUploading: boolean) => void;
 }
 
 interface UploadingImage {
@@ -38,8 +40,21 @@ export function RecipeImageUpload({
   onChange,
   maxImages = 10,
   disabled = false,
+  onUploadingChange,
 }: RecipeImageUploadProps) {
   const [uploading, setUploading] = useState<UploadingImage[]>([]);
+
+  // Notify parent when upload state changes
+  const updateUploading = useCallback((updater: (prev: UploadingImage[]) => UploadingImage[]) => {
+    setUploading(prev => {
+      const next = updater(prev);
+      // Notify parent of upload state change
+      if (onUploadingChange) {
+        onUploadingChange(next.length > 0);
+      }
+      return next;
+    });
+  }, [onUploadingChange]);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -47,35 +62,47 @@ export function RecipeImageUpload({
   const handleFiles = useCallback(async (files: FileList | File[]) => {
     setError(null);
     const fileArray = Array.from(files);
+    const errors: string[] = [];
 
-    // Check total count
+    // Check total count upfront
+    // Note: If uploads fail, users could potentially add more images than initially blocked.
+    // This is acceptable behavior - the UI updates to reflect available slots after failures.
     const totalCount = images.length + uploading.length + fileArray.length;
     if (totalCount > maxImages) {
       setError(`Maximum ${maxImages} images allowed`);
       return;
     }
 
-    // Process each file
+    // First pass: validate all files and collect errors
+    const validFiles: File[] = [];
     for (const file of fileArray) {
-      // Validate file
       const validation = validateImageFile(file);
       if (!validation.valid) {
-        setError(validation.error || 'Invalid file');
-        continue;
+        errors.push(`${file.name}: ${validation.error || 'Invalid file'}`);
+      } else {
+        validFiles.push(file);
       }
+    }
 
+    // Display all validation errors at once
+    if (errors.length > 0) {
+      setError(errors.join('. '));
+    }
+
+    // Process valid files
+    for (const file of validFiles) {
       const uploadId = generateImageId();
       const preview = URL.createObjectURL(file);
 
       // Add to uploading state
-      setUploading(prev => [...prev, { id: uploadId, preview, progress: 0 }]);
+      updateUploading(prev => [...prev, { id: uploadId, preview, progress: 0 }]);
 
       try {
         // Resize image client-side
         const resizedBlob = await resizeImage(file);
 
         // Update progress
-        setUploading(prev =>
+        updateUploading(prev =>
           prev.map(u => u.id === uploadId ? { ...u, progress: 50 } : u)
         );
 
@@ -104,16 +131,17 @@ export function RecipeImageUpload({
         onChange([...images, newImage]);
 
         // Remove from uploading state
-        setUploading(prev => prev.filter(u => u.id !== uploadId));
+        updateUploading(prev => prev.filter(u => u.id !== uploadId));
         URL.revokeObjectURL(preview);
       } catch (err) {
         console.error('Upload error:', err);
-        setError(err instanceof Error ? err.message : 'Upload failed');
-        setUploading(prev => prev.filter(u => u.id !== uploadId));
+        const uploadError = err instanceof Error ? err.message : 'Upload failed';
+        setError(prev => prev ? `${prev}. ${file.name}: ${uploadError}` : `${file.name}: ${uploadError}`);
+        updateUploading(prev => prev.filter(u => u.id !== uploadId));
         URL.revokeObjectURL(preview);
       }
     }
-  }, [images, uploading.length, maxImages, onChange]);
+  }, [images, uploading.length, maxImages, onChange, updateUploading]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
