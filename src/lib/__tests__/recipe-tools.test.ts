@@ -1,10 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import {
-  searchRecipesTool,
-  getRecipeTool,
-  createRecipeTool,
-  updateRecipeTool,
-} from '../recipe-tools'
 import type { RecipeJson, CreateRecipeInput } from '../recipe-types'
 
 // Mock the database module
@@ -13,11 +7,26 @@ vi.mock('../db', () => ({
   transaction: vi.fn(),
 }))
 
-// Import the mocked module
+// Mock the recipes module to avoid auth import
+vi.mock('../recipes', () => ({
+  getUniqueSlug: vi.fn(),
+}))
+
+// Import the mocked modules
 import { query, transaction } from '../db'
+import { getUniqueSlug } from '../recipes'
+
+// Import the module under test after mocks are set up
+import {
+  searchRecipesTool,
+  getRecipeTool,
+  createRecipeTool,
+  updateRecipeTool,
+} from '../recipe-tools'
 
 const mockQuery = vi.mocked(query)
 const mockTransaction = vi.mocked(transaction)
+const mockGetUniqueSlug = vi.mocked(getUniqueSlug)
 
 // Sample valid RecipeJson for testing
 const createValidRecipeJson = (overrides: Partial<RecipeJson> = {}): RecipeJson => ({
@@ -281,8 +290,8 @@ describe('recipe-tools', () => {
         updated_at: new Date(),
       }
 
-      // Mock slug check (called from getUniqueSlug)
-      mockQuery.mockResolvedValueOnce({ rows: [{ count: '0' }] } as never)
+      // Mock getUniqueSlug to return the expected slug
+      mockGetUniqueSlug.mockResolvedValueOnce('new-recipe')
 
       // Mock transaction to properly execute the callback and return the recipe
       mockTransaction.mockImplementationOnce(async (callback) => {

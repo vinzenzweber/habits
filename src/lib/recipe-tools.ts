@@ -12,6 +12,7 @@ import {
   rowToRecipe,
   isValidRecipeJson,
 } from "./recipe-types";
+import { getUniqueSlug } from "./recipes";
 
 // ============================================
 // Tool Response Types
@@ -184,46 +185,6 @@ export async function getRecipeTool(
   }
 
   return rowToRecipe(result.rows[0]);
-}
-
-/**
- * Generate a URL-friendly slug from a title
- */
-function generateSlug(title: string): string {
-  return title
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // Remove diacritics
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .substring(0, 200);
-}
-
-/**
- * Check if a slug exists for a user
- */
-async function slugExists(userId: number, slug: string): Promise<boolean> {
-  const result = await query<{ count: string }>(
-    `SELECT COUNT(*) as count FROM recipes WHERE user_id = $1 AND slug = $2`,
-    [userId, slug]
-  );
-  return parseInt(result.rows[0].count, 10) > 0;
-}
-
-/**
- * Get a unique slug for a recipe
- */
-async function getUniqueSlug(userId: number, title: string): Promise<string> {
-  const baseSlug = generateSlug(title);
-  let slug = baseSlug;
-  let counter = 2;
-
-  while (await slugExists(userId, slug)) {
-    slug = `${baseSlug}-${counter}`;
-    counter++;
-  }
-
-  return slug;
 }
 
 /**
