@@ -584,80 +584,6 @@ format_progress() {
     fi
 }
 
-# Extract JSON object from mixed text/JSON output
-# Claude sometimes outputs explanatory text before JSON despite instructions
-# Uses printf instead of echo to avoid escape sequence interpretation
-extract_json_from_output() {
-    local file="$1"
-    local content
-    content=$(cat "$file")
-
-    # Method 1: Try parsing the file directly with jq
-    if jq -e . "$file" >/dev/null 2>&1; then
-        cat "$file"
-        return 0
-    fi
-
-    # Method 2: Try the entire file content as valid JSON (handles variable capture issues)
-    if printf '%s' "$content" | jq -e . >/dev/null 2>&1; then
-        printf '%s' "$content"
-        return 0
-    fi
-
-    # Method 3: Try to find a complete line that is valid JSON
-    while IFS= read -r line; do
-        [ -z "$line" ] && continue
-        # Try the line as-is
-        if printf '%s' "$line" | jq -e . >/dev/null 2>&1; then
-            printf '%s' "$line"
-            return 0
-        fi
-        # Try extracting JSON starting from first {
-        if [[ "$line" == *"{"* ]]; then
-            local from_brace="${line#*\{}"
-            from_brace="{$from_brace"
-            if printf '%s' "$from_brace" | jq -e . >/dev/null 2>&1; then
-                printf '%s' "$from_brace"
-                return 0
-            fi
-        fi
-    done < "$file"
-
-    # Method 4: Whole content - extract JSON starting from known patterns
-    local json_part=""
-    for pattern in '{"number"' '{"status"' '{"needs_update"'; do
-        if [[ "$content" == *"$pattern"* ]]; then
-            json_part="${content#*$pattern}"
-            json_part="$pattern$json_part"
-            # Trim any trailing non-JSON content by finding last }
-            # ${var%\}*} removes shortest suffix matching }* (from last } to end)
-            # Then we append } to restore the closing brace
-            json_part="${json_part%\}*}"
-            json_part="${json_part}}"
-            if printf '%s' "$json_part" | jq -e . >/dev/null 2>&1; then
-                printf '%s' "$json_part"
-                return 0
-            fi
-        fi
-    done
-
-    # Method 5: Generic - find first { to last }
-    if [[ "$content" == *"{"* ]] && [[ "$content" == *"}"* ]]; then
-        local from_brace="${content#*\{}"
-        from_brace="{$from_brace"
-        # ${var%\}*} removes shortest suffix matching }* (from last } to end)
-        # Then we append } to restore the closing brace
-        from_brace="${from_brace%\}*}"
-        from_brace="${from_brace}}"
-        if printf '%s' "$from_brace" | jq -e . >/dev/null 2>&1; then
-            printf '%s' "$from_brace"
-            return 0
-        fi
-    fi
-
-    return 1
-}
-
 # Wrapper for claude command
 # Always runs with --dangerously-skip-permissions and --model opus
 # Uses streaming JSON output for progress display
@@ -789,7 +715,8 @@ Follow the user's instruction above when selecting which issue to work on.
         log "Using selection hint: $SELECTION_HINT"
     fi
 
-    run_claude "
+    local raw_output
+    raw_output=$(run_claude "
 You are selecting a GitHub issue to work on for the habits/fitstreak project.
 $hint_section
 1. Fetch open issues: gh issue list --state open --json number,title,body,labels,assignees --limit 50
@@ -809,21 +736,23 @@ Do NOT return null unless there are literally zero open issues after filtering.
 
 Output ONLY a JSON object (no markdown, no explanation, no code blocks):
 {\"number\": 123, \"title\": \"Issue title\", \"body\": \"Issue description\"}
-" > "$STATE_DIR/selected_issue_raw.txt"
+")
 
     local session_end
     session_end=$(date +%s)
 
     # Extract JSON from output (Claude may include explanatory text)
     local extracted_json
-    if ! extracted_json=$(extract_json_from_output "$STATE_DIR/selected_issue_raw.txt"); then
-        error "Failed to extract JSON from issue selection output"
-        cat "$STATE_DIR/selected_issue_raw.txt" >&2
-        return 1
+    if ! extracted_json=$(echo "$raw_output" | grep -E '^\{.*\}$' | head -1); then
+        # Try to find JSON anywhere in output
+        extracted_json=$(echo "$raw_output" | tr '\n' ' ' | grep -oE '\{[^{}]*"number"[^{}]*\}' | head -1) || true
     fi
 
-    # Save cleaned JSON
-    echo "$extracted_json" > "$STATE_DIR/selected_issue.json"
+    if [ -z "$extracted_json" ]; then
+        error "Failed to extract JSON from issue selection output"
+        echo "$raw_output" >&2
+        return 1
+    fi
 
     local issue_num
     issue_num=$(echo "$extracted_json" | jq -r '.number // empty' 2>/dev/null) || issue_num=""
@@ -834,7 +763,7 @@ Output ONLY a JSON object (no markdown, no explanation, no code blocks):
     fi
 
     local issue_title
-    issue_title=$(jq -r '.title // "Unknown"' "$STATE_DIR/selected_issue.json" 2>/dev/null) || issue_title="Unknown"
+    issue_title=$(echo "$extracted_json" | jq -r '.title // "Unknown"' 2>/dev/null) || issue_title="Unknown"
 
     # Set phase and post memory
     set_phase "$issue_num" "selecting"
@@ -961,10 +890,9 @@ plan_implementation() {
     header "SESSION 2: Planning"
     set_phase "$issue_num" "planning"
 
-    # Check if plan already exists
+    # Check if plan already exists (stored in GitHub issue comments)
     if has_implementation_plan "$issue_num"; then
         log "Implementation plan already exists for issue #$issue_num"
-        get_implementation_plan "$issue_num" > "$STATE_DIR/plan-$issue_num.md"
         success "Using existing plan from issue comments"
         return 0
     fi
@@ -1034,10 +962,7 @@ Start with '## Implementation Plan' as the header.
     local session_end
     session_end=$(date +%s)
 
-    # Save plan locally
-    echo "$plan" > "$STATE_DIR/plan-$issue_num.md"
-
-    # Post plan as comment on the GitHub issue (primary storage)
+    # Post plan as comment on the GitHub issue (this is the only storage)
     log "Posting plan to GitHub issue #$issue_num..."
     gh issue comment "$issue_num" --body "$plan" >/dev/null 2>&1 || warn "Failed to post plan to GitHub"
 
@@ -1446,7 +1371,8 @@ $review_history
 "
     fi
 
-    run_claude "
+    local raw_output
+    raw_output=$(run_claude "
 You are a senior code reviewer examining PR #$pr_num (Review Round $next_round).
 
 **CRITICAL**: You did NOT write this code. Review it with fresh eyes.
@@ -1533,21 +1459,24 @@ Be thorough but fair. Only request changes for real issues, not style preference
 $(echo "$NEW_ISSUE_INSTRUCTIONS" | sed "s/CURRENT_ISSUE/$issue_num/g")
 
 **IMPORTANT:** Create any discovered issues BEFORE outputting the JSON review result.
-" > "$STATE_DIR/review_result_raw.txt"
+")
 
     local session_end
     session_end=$(date +%s)
 
     # Extract JSON from output (Claude may include explanatory text)
     local extracted_json
-    if ! extracted_json=$(extract_json_from_output "$STATE_DIR/review_result_raw.txt"); then
-        error "Failed to extract JSON from review output"
-        cat "$STATE_DIR/review_result_raw.txt"
-        return 1
+    extracted_json=$(echo "$raw_output" | grep -E '^\{.*\}$' | tail -1) || true
+    if [ -z "$extracted_json" ]; then
+        # Try to find JSON object with status field
+        extracted_json=$(echo "$raw_output" | tr '\n' ' ' | grep -oE '\{[^{}]*"status"[^{}]*\}' | tail -1) || true
     fi
 
-    # Save cleaned JSON
-    echo "$extracted_json" > "$STATE_DIR/review_result.json"
+    if [ -z "$extracted_json" ]; then
+        error "Failed to extract JSON from review output"
+        echo "$raw_output" >&2
+        return 1
+    fi
 
     local review_status review_summary
     review_status=$(echo "$extracted_json" | jq -r '.status // "changes_requested"' 2>/dev/null) || review_status="changes_requested"
@@ -1566,7 +1495,7 @@ $(echo "$NEW_ISSUE_INSTRUCTIONS" | sed "s/CURRENT_ISSUE/$issue_num/g")
 
     # Format review comments for GitHub
     local formatted_comments=""
-    formatted_comments=$(jq -r '.comments[]? | "- **[\(.severity)]** `\(.file):\(.line)` - \(.issue)\n  - 💡 \(.suggestion // "No suggestion")"' "$STATE_DIR/review_result.json" 2>/dev/null) || formatted_comments=""
+    formatted_comments=$(echo "$extracted_json" | jq -r '.comments[]? | "- **[\(.severity)]** `\(.file):\(.line)` - \(.issue)\n  - 💡 \(.suggestion // "No suggestion")"' 2>/dev/null) || formatted_comments=""
 
     # Post FULL review result to GitHub issue (this is the persistent memory!)
     local review_body="## 🔍 Code Review Round $review_round
@@ -1588,7 +1517,7 @@ $formatted_comments
     else
         warn "Code review: CHANGES REQUESTED"
         echo ""
-        jq -r '.comments[]? | "  [\(.severity)] \(.file):\(.line) - \(.issue)"' "$STATE_DIR/review_result.json" 2>/dev/null || true
+        echo "$extracted_json" | jq -r '.comments[]? | "  [\(.severity)] \(.file):\(.line) - \(.issue)"' 2>/dev/null || true
         echo ""
         return 1
     fi
@@ -1619,36 +1548,18 @@ fix_review_feedback() {
     local review_history
     review_history=$(gh issue view "$issue_num" --comments --json comments -q '.comments[].body' 2>/dev/null | grep -A 100 "Code Review Round" | head -200) || review_history=""
 
-    # Also get latest review from local file
-    local review_comments="[]"
-    local review_testing="{}"
-    if [ -f "$STATE_DIR/review_result.json" ]; then
-        review_comments=$(jq -c '.comments // []' "$STATE_DIR/review_result.json" 2>/dev/null) || review_comments="[]"
-        review_testing=$(jq -c '.testing // {}' "$STATE_DIR/review_result.json" 2>/dev/null) || review_testing="{}"
-    fi
-
     run_claude "
 Fix the code review feedback for PR #$pr_num (Review Round $review_round).
 
 ## IMPORTANT: Review History Context
 
-This is review round $review_round. Below is the FULL HISTORY of previous reviews.
+This is review round $review_round. Below is the FULL HISTORY of previous reviews from GitHub.
 **If the same issue appears multiple times, you MUST try a DIFFERENT approach than before.**
 
-### Previous Review History (from GitHub issue):
+### Review History (from GitHub issue comments):
 $review_history
 
----
-
-## Current Review to Fix:
-
-**Latest Review Comments:**
-$review_comments
-
-**Testing Feedback:**
-$review_testing
-
-If the review comments above are empty, fetch them from GitHub:
+If no review history is shown above, fetch the latest review from GitHub:
   gh pr view $pr_num --json reviews,comments
   gh api repos/\$(gh repo view --json nameWithOwner -q .nameWithOwner)/pulls/$pr_num/comments
 
@@ -1834,7 +1745,8 @@ update_documentation() {
     local session_start
     session_start=$(date +%s)
 
-    run_claude "
+    local raw_output
+    raw_output=$(run_claude "
 Analyze if documentation updates are needed after implementing issue #$issue_num.
 
 Check if CLAUDE.md should be updated for:
@@ -1849,20 +1761,22 @@ Be conservative - only suggest updates for significant changes.
 
 Output JSON ONLY (no markdown):
 {\"needs_update\": true|false, \"reason\": \"Brief explanation\"}
-" > "$STATE_DIR/docs_check_raw.txt"
+")
 
     local session_end
     session_end=$(date +%s)
 
     # Extract JSON from output (Claude may include explanatory text)
     local extracted_json
-    if ! extracted_json=$(extract_json_from_output "$STATE_DIR/docs_check_raw.txt"); then
+    extracted_json=$(echo "$raw_output" | grep -E '^\{.*\}$' | head -1) || true
+    if [ -z "$extracted_json" ]; then
+        extracted_json=$(echo "$raw_output" | tr '\n' ' ' | grep -oE '\{[^{}]*"needs_update"[^{}]*\}' | head -1) || true
+    fi
+
+    if [ -z "$extracted_json" ]; then
         warn "Could not determine if docs need update"
         return 0
     fi
-
-    # Save cleaned JSON
-    echo "$extracted_json" > "$STATE_DIR/docs_check.json"
 
     local needs_update
     needs_update=$(echo "$extracted_json" | jq -r '.needs_update')
@@ -2199,8 +2113,11 @@ main() {
                 continue
             fi
 
-            issue_title=$(jq -r '.title // "Unknown"' "$STATE_DIR/selected_issue.json" 2>/dev/null) || issue_title="Unknown"
-            issue_body=$(jq -r '.body // ""' "$STATE_DIR/selected_issue.json" 2>/dev/null) || issue_body=""
+            # Fetch issue details from GitHub
+            local issue_json
+            issue_json=$(gh issue view "$issue_num" --json title,body 2>/dev/null) || issue_json="{}"
+            issue_title=$(echo "$issue_json" | jq -r '.title // "Unknown"' 2>/dev/null) || issue_title="Unknown"
+            issue_body=$(echo "$issue_json" | jq -r '.body // ""' 2>/dev/null) || issue_body=""
         fi
 
         # Run the full workflow
