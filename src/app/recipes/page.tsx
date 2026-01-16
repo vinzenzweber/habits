@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getUserRecipeSummaries } from "@/lib/recipes";
 import { LogoutButton } from "@/components/LogoutButton";
+import { RecipeCard } from "@/components/RecipeCard";
 
 export const dynamic = "force-dynamic";
 
@@ -79,20 +80,10 @@ export default async function RecipesPage() {
             </div>
           </section>
         ) : (
-          /* Recipe list placeholder - will be implemented in future issue */
+          /* Recipe list */
           <section className="grid gap-3">
             {recipes.map((recipe) => (
-              <div
-                key={recipe.slug}
-                className="rounded-xl border border-slate-800 bg-slate-900/50 p-4"
-              >
-                <h3 className="font-medium text-white">{recipe.title}</h3>
-                {recipe.description && (
-                  <p className="mt-1 text-sm text-slate-400 line-clamp-2">
-                    {recipe.description}
-                  </p>
-                )}
-              </div>
+              <RecipeCard key={recipe.slug} recipe={recipe} />
             ))}
           </section>
         )}
