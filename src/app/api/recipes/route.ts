@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { getUserRecipes, createRecipe } from "@/lib/recipes";
+import { getUserRecipeSummaries, createRecipe } from "@/lib/recipes";
 import { CreateRecipeInput } from "@/lib/recipe-types";
 
 export const runtime = "nodejs";
@@ -15,7 +15,7 @@ export async function GET() {
   }
 
   try {
-    const recipes = await getUserRecipes();
+    const recipes = await getUserRecipeSummaries();
     return Response.json({ recipes });
   } catch (error) {
     console.error("Error fetching recipes:", error);
