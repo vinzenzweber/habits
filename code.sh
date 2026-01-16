@@ -780,17 +780,32 @@ Output ONLY a JSON object (no markdown, no explanation, no code blocks):
     echo "$issue_num"
 }
 
+# Implementation Plan Format
+# ===========================
+# All implementation plans MUST follow this exact structure:
+#
+# <!-- AUTODEV-PLAN-START -->
+# ## Implementation Plan for Issue #<num>
+# ... plan content ...
+# <!-- AUTODEV-PLAN-END -->
+#
+# This strict format ensures reliable detection and parsing.
+PLAN_START_MARKER="<!-- AUTODEV-PLAN-START -->"
+PLAN_END_MARKER="<!-- AUTODEV-PLAN-END -->"
+
 #─────────────────────────────────────────────────────────────────────
 # Check if issue already has an implementation plan
+# Uses strict marker-based detection
 #─────────────────────────────────────────────────────────────────────
 has_implementation_plan() {
     local issue_num=$1
 
-    # Check issue comments for an implementation plan
+    # Check issue comments for the plan start marker
     local comments
     comments=$(gh issue view "$issue_num" --comments --json comments -q '.comments[].body' 2>/dev/null || echo "")
 
-    if echo "$comments" | grep -qi "## Implementation Plan"; then
+    # Strict check: look for our specific marker
+    if echo "$comments" | grep -qF "$PLAN_START_MARKER"; then
         return 0  # Has plan
     fi
     return 1  # No plan
@@ -799,14 +814,28 @@ has_implementation_plan() {
 #─────────────────────────────────────────────────────────────────────
 # Get existing implementation plan from issue comments
 # Returns empty string if no plan found (safe with set -eo pipefail)
+# Uses strict marker-based extraction
 #─────────────────────────────────────────────────────────────────────
 get_implementation_plan() {
     local issue_num=$1
 
-    # Get the comment containing the implementation plan
+    # Get all comments from the issue
     local comments
     comments=$(gh issue view "$issue_num" --comments --json comments -q '.comments[].body' 2>/dev/null) || true
-    echo "$comments" | grep -A 1000 "## Implementation Plan" | head -100 || true
+
+    # Extract content between markers using sed
+    # 1. Find line with AUTODEV-PLAN-START
+    # 2. Print until AUTODEV-PLAN-END
+    local plan
+    plan=$(echo "$comments" | sed -n '/AUTODEV-PLAN-START/,/AUTODEV-PLAN-END/p') || true
+
+    if [ -n "$plan" ]; then
+        echo "$plan"
+        return 0
+    fi
+
+    # Nothing found
+    echo ""
 }
 
 #─────────────────────────────────────────────────────────────────────
@@ -918,6 +947,13 @@ Plan the implementation for GitHub issue #$issue_num
 **Issue Description:**
 $issue_body
 
+**CRITICAL: You are running in PRINT MODE (non-interactive). Do NOT use these tools:**
+- EnterPlanMode - will not work in print mode
+- ExitPlanMode - will not work in print mode
+- Write tool for plan files - the plan must be output as text
+
+**Your task is to OUTPUT the plan as markdown text, not write it to a file.**
+
 Follow the Planning phase from CLAUDE.md:
 1. Explore the codebase to understand relevant areas
 2. Identify files that need modification
@@ -961,8 +997,41 @@ The development loop handles all testing automatically - no human testers needed
 - Test images or assets
 - Database seed data for specific test cases
 
-Output a well-structured markdown plan that can be posted as a GitHub comment.
-Start with '## Implementation Plan' as the header.
+**OUTPUT FORMAT - CRITICAL:**
+Your final output MUST be a well-structured markdown plan wrapped in specific markers.
+The output MUST follow this EXACT structure:
+
+\`\`\`
+<!-- AUTODEV-PLAN-START -->
+## Implementation Plan for Issue #$issue_num
+
+### Summary
+[Brief description of what will be implemented]
+
+### Files to Modify
+- \`path/to/file1.ts\` - [description]
+- \`path/to/file2.ts\` - [description]
+
+### Implementation Steps
+1. [Step 1]
+2. [Step 2]
+...
+
+### Testing Plan
+#### Unit Tests
+- [Test file and what it tests]
+
+#### E2E Tests
+- [Test file and user flows covered]
+
+<!-- AUTODEV-PLAN-END -->
+\`\`\`
+
+**REQUIREMENTS:**
+1. The markers <!-- AUTODEV-PLAN-START --> and <!-- AUTODEV-PLAN-END --> are MANDATORY
+2. Do NOT output anything before the start marker
+3. Do NOT output anything after the end marker
+4. Use ## for section headers (h2), not # (h1)
 ")
 
     local session_end
