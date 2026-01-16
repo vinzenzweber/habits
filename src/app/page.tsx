@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { LogoutButton } from "@/components/LogoutButton";
@@ -13,6 +14,8 @@ import {
   getTodaySlug,
   getUserStreakStats,
 } from "@/lib/workoutPlan";
+import { auth } from "@/lib/auth";
+import { query } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -34,12 +37,26 @@ export default async function Home() {
   const hasCompletedToday = completions[todaySlug] ?? false;
 
   if (!nextWorkout || allWorkouts.length === 0) {
-    throw new Error("Workout plan missing.");
+    // No workouts found - check if user needs to complete onboarding
+    const session = await auth();
+    if (session?.user?.id) {
+      const result = await query<{ onboarding_completed: boolean }>(
+        `SELECT onboarding_completed FROM users WHERE id = $1`,
+        [session.user.id]
+      );
+      const onboardingComplete = result.rows[0]?.onboarding_completed === true;
+      if (!onboardingComplete) {
+        // User hasn't completed onboarding yet
+        redirect("/onboarding");
+      }
+    }
+    // Onboarding complete but no workouts - show error
+    throw new Error("Workout plan missing. Please contact support.");
   }
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="mx-auto flex max-w-3xl flex-col gap-8 px-5 pb-16 pt-12 sm:px-8">
+      <div className="mx-auto flex max-w-3xl flex-col gap-8 px-5 pb-24 pt-12 sm:px-8">
         {/* Header */}
         <header className="flex items-center justify-between">
           <p className="text-xs font-semibold uppercase tracking-[0.4em] text-emerald-400">

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { BottomNav } from "@/components/BottomNav";
 import { ChatButton } from "@/components/ChatButton";
 import { ChatProvider } from "@/contexts/ChatContext";
 import { MainContentWrapper } from "@/components/MainContentWrapper";
@@ -62,6 +63,7 @@ export default async function RootLayout({
           <MainContentWrapper>
             {children}
           </MainContentWrapper>
+          {session?.user && <BottomNav />}
           {session?.user && <ChatButton />}
         </ChatProvider>
       </body>

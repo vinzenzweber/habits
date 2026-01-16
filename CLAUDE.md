@@ -52,6 +52,8 @@ Applied migrations are tracked in the `_migrations` table.
   - `/workouts/[slug]/play` — Full-screen guided workout player
   - `/workouts/nano` — Nano workout preview
   - `/workouts/nano/play` — Nano workout player
+  - `/recipes` — Recipe list page with search and empty state
+  - `/recipes/[slug]` — Recipe detail page with image gallery and nutrition info
 
 ### Core Data Model
 
@@ -90,6 +92,11 @@ Key functions:
 
 **InstallPrompt** (src/components/InstallPrompt.tsx):
 - Prompts users to install the PWA on supported platforms
+
+**BottomNav** (src/components/BottomNav.tsx):
+- Fixed bottom navigation bar for mobile-first navigation
+- Tabs: Home (today's workout) and Recipes (recipe list)
+- Active state styling based on current route
 
 ### Styling
 
@@ -206,9 +213,10 @@ Uses PostgreSQL with the following tables:
 - `exercises` - Global exercise library with metadata
 - `exercise_images` - AI-generated exercise illustrations (2 per exercise)
 - `image_generation_jobs` - Background job queue for image generation
+- `recipes` - User-scoped recipes with JSONB content and versioning
 - `_migrations` - Migration tracking
 
-All workout and chat data is scoped per user (user_id foreign key).
+All workout, chat, and recipe data is scoped per user (user_id foreign key).
 Exercise library is global (shared across all users).
 
 ## Environment Variables
@@ -447,11 +455,19 @@ npm run build     # Verify production build
 npm run dev       # Start dev server
 ```
 
-**Important: Always register a new test user first before testing the feature.**
+**Test User Authentication:**
+- For **onboarding/registration features**: Register a new unique test user
+- For **authenticated user features**: Use the standard QA account:
+  - Name: `zubzone`
+  - Email: `zubzone+qa@gmail.com`
+  - Password: `3294sdzadsg$&$§`
+  - If account doesn't exist, register it first at `/register`
 
-1. Navigate to `/register` and create a new account
-2. Then test the feature being built
-3. Use Playwright MCP tools:
+**Testing Steps:**
+1. Navigate to `/login` (or `/register` if testing onboarding)
+2. Log in with QA account (or register if needed)
+3. Test the feature being built
+4. Use Playwright MCP tools:
    - `mcp__playwright__browser_navigate` to open app
    - `mcp__playwright__browser_resize` for responsive testing
    - `mcp__playwright__browser_click` to interact
@@ -580,11 +596,18 @@ railway logs 2>&1 | head -100   # Check for errors
 
 **8.3 Test Production with Playwright MCP**
 
-**Important: Always register a new test user first before testing the feature.**
+**Test User Authentication:**
+- For **onboarding/registration features**: Register a new unique test user
+- For **authenticated user features**: Use the standard QA account:
+  - Name: `zubzone`
+  - Email: `zubzone+qa@gmail.com`
+  - Password: `3294sdzadsg$&$§`
+  - If account doesn't exist, register it first
 
-1. Navigate to https://fitstreak.app/register
-2. Create a new test account
-3. Then test the feature being built:
+**Testing Steps:**
+1. Navigate to https://fitstreak.app/login (or /register if testing onboarding)
+2. Log in with QA account (or register if needed)
+3. Test the feature being built:
    - `mcp__playwright__browser_navigate` → production URL
    - `mcp__playwright__browser_snapshot` → verify page state
    - `mcp__playwright__browser_console_messages` → check for errors
