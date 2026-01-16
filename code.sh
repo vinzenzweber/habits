@@ -964,12 +964,18 @@ Execute these phases from CLAUDE.md:
    - Keep changes minimal and focused (KISS principle)
    - Mark todo items as complete
 
-3. **Verify Locally**
+3. **Update Issue Progress**
+   - As you complete each task, post a progress comment to the issue:
+     gh issue comment $issue_num --body '✅ Completed: <task description>'
+   - If the implementation plan has checkboxes (- [ ]), update them to checked (- [x])
+     by editing the comment containing the plan
+
+4. **Verify Locally**
    - Run: npm run lint
    - Run: npm run build
    - Run: npm run test:unit
 
-4. **Manual Testing**
+5. **Manual Testing**
    - Start dev server: npm run dev
    - Use Playwright MCP to test:
      a. Navigate to http://localhost:3000/login
@@ -978,16 +984,30 @@ Execute these phases from CLAUDE.md:
      c. Test the feature you implemented
      d. Verify it works correctly
 
-5. **Fix Issues**
+6. **Fix Issues**
    - If tests fail or manual testing reveals bugs, fix them
    - Re-run verification steps
 
-6. **Create PR**
+7. **Post Implementation Summary**
+   - Post a summary comment to the issue:
+     gh issue comment $issue_num --body '## Implementation Summary
+
+     **Files Changed:**
+     - list files modified
+
+     **What was implemented:**
+     - brief description
+
+     **Testing Done:**
+     - what was tested and verified'
+
+8. **Create PR**
    - You are already on branch 'feat/issue-$issue_num' (created for you)
    - Stage changes: git add <files>
    - Commit: git commit -m 'feat: <description>'
    - Push: git push -u origin HEAD
    - Create PR: gh pr create --title '<title>' --body '<body>'
+   - Link PR to issue in PR body: 'Closes #$issue_num'
 
 IMPORTANT: After creating the PR, output EXACTLY this format on its own line:
 PR_CREATED: <number>
