@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { getRecipeBySlug } from "@/lib/recipes";
 import { RecipeImageGallery } from "@/components/RecipeImageGallery";
+import { PageContextSetter } from "@/components/PageContextSetter";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,7 @@ export default async function RecipeDetailPage({
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
+      <PageContextSetter page="recipe" recipeSlug={recipe.slug} recipeTitle={recipe.title} />
       <div className="mx-auto flex max-w-3xl flex-col gap-8 px-5 pb-16 pt-12 sm:px-8">
         {/* Header Section */}
         <header className="flex flex-col gap-6">

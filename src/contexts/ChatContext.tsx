@@ -12,6 +12,8 @@ interface PageContext {
   page: string;
   workoutSlug?: string;
   workoutTitle?: string;
+  recipeSlug?: string;
+  recipeTitle?: string;
 }
 
 interface ChatContextType {
