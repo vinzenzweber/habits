@@ -17,7 +17,7 @@ import {
   getRecipeVersions,
   generateSlug,
 } from '../recipes';
-import { createMockRecipeJson, createMockRecipe } from './fixtures/recipe-fixtures';
+import { createMockRecipeJson } from './fixtures/recipe-fixtures';
 import type { RecipeRow } from '../recipe-types';
 
 // Mock auth

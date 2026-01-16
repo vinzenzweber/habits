@@ -2,7 +2,7 @@
  * Tests for IngredientGroupEditor component
  */
 
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { IngredientGroupEditor } from '../IngredientGroupEditor';
@@ -167,19 +167,29 @@ describe('IngredientGroupEditor', () => {
     it('auto-deletes group when last ingredient is removed', async () => {
       const user = userEvent.setup();
       const onChange = vi.fn();
+      // Set up a scenario with 2 groups where one has 2 ingredients (so remove buttons are visible)
       render(
         <IngredientGroupEditor
           groups={[
-            { name: 'Group 1', ingredients: [{ name: 'Only Item', quantity: 1, unit: 'g' }] },
+            { name: 'Group 1', ingredients: [
+              { name: 'First Item', quantity: 1, unit: 'g' },
+              { name: 'Second Item', quantity: 2, unit: 'ml' },
+            ] },
             { name: 'Group 2', ingredients: [{ name: 'Item 2', quantity: 2, unit: 'ml' }] },
           ]}
           onChange={onChange}
         />
       );
 
-      // When there's only one ingredient in a group, the remove button is hidden
-      // But if we have 2 groups, each with 1 ingredient, we need at least 2 ingredients
-      // to see remove buttons. Let's test with a group that has 2 ingredients.
+      // Remove the first ingredient from Group 1
+      const removeIngredientButtons = screen.getAllByTitle('Remove ingredient');
+      await user.click(removeIngredientButtons[0]);
+
+      // Verify onChange was called with Group 1 having only the second ingredient
+      expect(onChange).toHaveBeenCalledWith([
+        { name: 'Group 1', ingredients: [{ name: 'Second Item', quantity: 2, unit: 'ml' }] },
+        { name: 'Group 2', ingredients: [{ name: 'Item 2', quantity: 2, unit: 'ml' }] },
+      ]);
     });
 
     it('hides remove button when group has only one ingredient', () => {

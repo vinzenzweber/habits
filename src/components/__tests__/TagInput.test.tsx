@@ -2,7 +2,7 @@
  * Tests for TagInput component
  */
 
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { TagInput } from '../TagInput';
@@ -81,10 +81,8 @@ describe('TagInput', () => {
       expect(onChange).not.toHaveBeenCalled();
     });
 
-    it('prevents adding tags when maxTags reached', async () => {
-      const user = userEvent.setup();
-      const onChange = vi.fn();
-      render(<TagInput tags={['a', 'b', 'c']} onChange={onChange} maxTags={3} />);
+    it('prevents adding tags when maxTags reached', () => {
+      render(<TagInput tags={['a', 'b', 'c']} onChange={() => {}} maxTags={3} />);
 
       // Input should not be visible when max reached
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
