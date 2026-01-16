@@ -1017,16 +1017,18 @@ Execute these phases from CLAUDE.md:
    - Run: npm run build
    - Run: npm run test:unit
 
-5. **Manual Testing**
+5. **Manual Testing** (OPTIONAL - skip if Playwright tools fail or hang)
    - Start dev server in background: npm run dev &
    - Wait a few seconds for server to start
-   - Use Playwright MCP to test:
+   - Try to use Playwright MCP to test (if available and responsive):
      a. Navigate to http://localhost:3000/login
      b. Log in with QA account (zubzone+qa@gmail.com / 3294sdzadsg\$&\$§)
         - If account doesn't exist, register it first at /register
      c. Test the feature you implemented
      d. Verify it works correctly
-   - IMPORTANT: Stop the dev server after testing:
+   - IMPORTANT: If Playwright MCP tools fail, error, or hang - SKIP manual testing
+     and proceed to the next step. Do NOT wait for unresponsive tools.
+   - ALWAYS stop the dev server after testing (or after skipping):
      pkill -f 'next dev' || lsof -ti:3000 | xargs kill 2>/dev/null || true
 
 6. **Fix Issues**
