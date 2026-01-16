@@ -17,8 +17,9 @@ export function ChatButton() {
     pageContext
   } = useChat();
 
-  // Don't show the chat button on the onboarding page (it has its own chat)
-  if (pathname === '/onboarding') {
+  // Don't show the chat button on auth pages
+  const AUTH_PAGES = ['/login', '/register', '/onboarding'];
+  if (AUTH_PAGES.includes(pathname)) {
     return null;
   }
 
@@ -27,7 +28,7 @@ export function ChatButton() {
       {/* Hide button on desktop when sidebar is open */}
       <button
         onClick={() => openChat()}
-        className={`fixed bottom-6 right-6 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full w-14 h-14 shadow-lg flex items-center justify-center z-40 transition ${
+        className={`fixed bottom-20 right-6 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full w-14 h-14 shadow-lg flex items-center justify-center z-50 transition ${
           isOpen ? 'md:hidden' : ''
         }`}
         aria-label="Personal Trainer"

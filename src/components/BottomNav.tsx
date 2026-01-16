@@ -3,7 +3,9 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-// Only show on these exact paths
+// Only show on main list pages (home and recipes)
+// Note: Auth pages (/login, /register, /onboarding) are already excluded
+// because they're not in VISIBLE_PATHS, but this is documented here for clarity
 const VISIBLE_PATHS = ['/', '/recipes'];
 
 export function BottomNav() {
