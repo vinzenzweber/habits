@@ -1411,6 +1411,19 @@ review_code() {
     local session_start
     session_start=$(date +%s)
 
+    # Get current review round
+    local review_round
+    review_round=$(get_metadata "$issue_num" "round")
+    review_round=${review_round:-0}
+    local next_round=$((review_round + 1))
+
+    # Fetch previous review history from GitHub issue (our persistent memory)
+    local review_history=""
+    if [ "$review_round" -gt 0 ]; then
+        log "Fetching previous review history (round $review_round)..."
+        review_history=$(gh issue view "$issue_num" --comments --json comments -q '.comments[].body' 2>/dev/null | grep -A 50 "Code Review Round" | head -150) || review_history=""
+    fi
+
     # Get PR information for review
     local pr_diff pr_files pr_title pr_body
     pr_diff=$(gh pr diff "$pr_num" 2>/dev/null || echo "Unable to fetch diff")
@@ -1418,11 +1431,30 @@ review_code() {
     pr_title=$(gh pr view "$pr_num" --json title -q '.title' 2>/dev/null || echo "")
     pr_body=$(gh pr view "$pr_num" --json body -q '.body' 2>/dev/null || echo "")
 
-    run_claude "
-You are a senior code reviewer examining PR #$pr_num with COMPLETELY FRESH EYES.
+    # Build review history section
+    local history_section=""
+    if [ -n "$review_history" ]; then
+        history_section="
+## Previous Review History (Round 1-$review_round)
 
-**CRITICAL**: You did NOT write this code. You have NO prior context about it.
-Review it as if you're seeing it for the first time - because you are.
+The following issues were flagged in previous reviews. Check if they are NOW FIXED.
+If an issue was fixed, do NOT flag it again. Only flag issues that STILL exist in the current code.
+
+$review_history
+
+---
+"
+    fi
+
+    run_claude "
+You are a senior code reviewer examining PR #$pr_num (Review Round $next_round).
+
+**CRITICAL**: You did NOT write this code. Review it with fresh eyes.
+$history_section
+**IMPORTANT FOR ROUND $next_round:**
+- If this is round 2+, CHECK if previous issues were fixed before flagging again
+- Do NOT repeat issues that have been addressed
+- If the same issue keeps appearing, suggest a DIFFERENT fix approach
 
 **PR Title:** $pr_title
 
@@ -1523,13 +1555,32 @@ $(echo "$NEW_ISSUE_INSTRUCTIONS" | sed "s/CURRENT_ISSUE/$issue_num/g")
 
     log "Review Summary: $review_summary"
 
+    # Get current review round
+    local review_round
+    review_round=$(get_metadata "$issue_num" "round")
+    review_round=${review_round:-1}
+
     # Post session memory (use tr for uppercase - bash 3.x compatible)
     local review_status_upper
     review_status_upper=$(printf '%s' "$review_status" | tr '[:lower:]' '[:upper:]')
-    post_session_memory "$issue_num" "Code Review" "$session_start" "$session_end" "${SESSION_COST:-0}" \
-        "Review result: **${review_status_upper}**
 
-$review_summary"
+    # Format review comments for GitHub
+    local formatted_comments=""
+    formatted_comments=$(jq -r '.comments[]? | "- **[\(.severity)]** `\(.file):\(.line)` - \(.issue)\n  - 💡 \(.suggestion // "No suggestion")"' "$STATE_DIR/review_result.json" 2>/dev/null) || formatted_comments=""
+
+    # Post FULL review result to GitHub issue (this is the persistent memory!)
+    local review_body="## 🔍 Code Review Round $review_round
+
+**Status:** ${review_status_upper}
+**Summary:** $review_summary
+
+### Review Comments
+$formatted_comments
+
+---
+<sub>🤖 Auto-Dev Code Review | Session cost: \$${SESSION_COST:-0}</sub>"
+
+    gh issue comment "$issue_num" --body "$review_body" >/dev/null 2>&1 || warn "Failed to post review to GitHub"
 
     if [ "$review_status" = "approved" ]; then
         success "Code review: APPROVED"
@@ -1558,26 +1609,46 @@ fix_review_feedback() {
     local session_start
     session_start=$(date +%s)
 
-    # Safely extract review comments (handle missing/invalid JSON)
+    # Get current review round for context
+    local review_round
+    review_round=$(get_metadata "$issue_num" "round")
+    review_round=${review_round:-1}
+
+    # Fetch FULL review history from GitHub issue comments (this is our persistent memory!)
+    log "Fetching review history from GitHub issue #$issue_num..."
+    local review_history
+    review_history=$(gh issue view "$issue_num" --comments --json comments -q '.comments[].body' 2>/dev/null | grep -A 100 "Code Review Round" | head -200) || review_history=""
+
+    # Also get latest review from local file
     local review_comments="[]"
     local review_testing="{}"
     if [ -f "$STATE_DIR/review_result.json" ]; then
         review_comments=$(jq -c '.comments // []' "$STATE_DIR/review_result.json" 2>/dev/null) || review_comments="[]"
         review_testing=$(jq -c '.testing // {}' "$STATE_DIR/review_result.json" 2>/dev/null) || review_testing="{}"
-    else
-        warn "No review_result.json found - will fetch review comments from PR"
     fi
 
     run_claude "
-Fix the code review feedback for PR #$pr_num.
+Fix the code review feedback for PR #$pr_num (Review Round $review_round).
 
-**Review Comments to Address:**
+## IMPORTANT: Review History Context
+
+This is review round $review_round. Below is the FULL HISTORY of previous reviews.
+**If the same issue appears multiple times, you MUST try a DIFFERENT approach than before.**
+
+### Previous Review History (from GitHub issue):
+$review_history
+
+---
+
+## Current Review to Fix:
+
+**Latest Review Comments:**
 $review_comments
 
 **Testing Feedback:**
 $review_testing
 
-If the review comments above are empty ([]), fetch them from GitHub:
+If the review comments above are empty, fetch them from GitHub:
   gh pr view $pr_num --json reviews,comments
   gh api repos/\$(gh repo view --json nameWithOwner -q .nameWithOwner)/pulls/$pr_num/comments
 
