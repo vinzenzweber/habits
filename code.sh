@@ -29,6 +29,7 @@
 #   ./code.sh --resume     # Resume in-progress work only
 #   ./code.sh --status     # Show status of in-progress issues
 #   ./code.sh --hint "..." # Provide priority hint for issue selection
+#   ./code.sh --init       # Run initial setup (GitHub labels, etc.) - once per repo
 #
 # Examples with --hint:
 #   ./code.sh --hint "Work on issue #42 first, then #46, then #58"
@@ -48,6 +49,7 @@ LOG_FILE="$STATE_DIR/auto-dev.log"
 SINGLE_CYCLE=false
 RESUME_ONLY=false
 SHOW_STATUS=false
+RUN_INIT=false
 TARGET_ISSUE=""
 SELECTION_HINT=""
 MAX_REVIEW_ROUNDS=10
@@ -76,6 +78,10 @@ while [[ $# -gt 0 ]]; do
             SHOW_STATUS=true
             shift
             ;;
+        --init)
+            RUN_INIT=true
+            shift
+            ;;
         --hint|-h)
             if [ -z "${2:-}" ]; then
                 echo "Error: --hint requires a string argument"
@@ -86,7 +92,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--once] [-i|--issue <number>] [--resume] [--status] [--hint \"...\"]"
+            echo "Usage: $0 [--once] [-i|--issue <number>] [--resume] [--status] [--init] [--hint \"...\"]"
             exit 1
             ;;
     esac
@@ -2012,8 +2018,13 @@ main() {
         exit 0
     fi
 
-    # Ensure labels exist
-    ensure_labels_exist
+    # Handle --init flag
+    if [ "$RUN_INIT" = true ]; then
+        header "Initializing Auto-Dev"
+        ensure_labels_exist
+        success "Setup complete - GitHub labels are ready"
+        exit 0
+    fi
 
     if [ -n "$TARGET_ISSUE" ]; then
         log "Target issue mode - working on issue #$TARGET_ISSUE"
