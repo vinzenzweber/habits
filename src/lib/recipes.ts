@@ -8,10 +8,13 @@ import { auth } from "./auth";
 import {
   Recipe,
   RecipeRow,
+  RecipeSummary,
+  RecipeVersion,
   CreateRecipeInput,
   UpdateRecipeInput,
   rowToRecipe,
   generateSlug,
+  toRecipeSummary,
 } from "./recipe-types";
 
 // Re-export generateSlug for backwards compatibility
@@ -20,7 +23,7 @@ export { generateSlug };
 /**
  * Check if a slug exists for a user
  */
-async function slugExists(userId: number, slug: string): Promise<boolean> {
+export async function slugExists(userId: number, slug: string): Promise<boolean> {
   const result = await query<{ count: string }>(
     `SELECT COUNT(*) as count FROM recipes WHERE user_id = $1 AND slug = $2`,
     [userId, slug]
@@ -273,4 +276,118 @@ export async function getUserTags(): Promise<string[]> {
   );
 
   return result.rows.map((row) => row.tag);
+}
+
+/**
+ * Get all active recipes for the current user as summaries (lightweight)
+ */
+export async function getUserRecipeSummaries(): Promise<RecipeSummary[]> {
+  const recipes = await getUserRecipes();
+  return recipes.map(toRecipeSummary);
+}
+
+/**
+ * Update a recipe in place without creating a new version
+ * Use for minor metadata changes (favorite status, notes, etc.)
+ */
+export async function updateRecipeInPlace(
+  slug: string,
+  input: UpdateRecipeInput
+): Promise<{ success: boolean }> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Not authenticated");
+  }
+  const userId = parseInt(session.user.id, 10);
+
+  // Build dynamic UPDATE query based on provided fields
+  const updates: string[] = [];
+  const values: unknown[] = [userId, slug];
+  let paramIndex = 3;
+
+  if (input.title !== undefined) {
+    updates.push(`title = $${paramIndex++}`);
+    values.push(input.title);
+  }
+  if (input.description !== undefined) {
+    updates.push(`description = $${paramIndex++}`);
+    values.push(input.description);
+  }
+  if (input.locale !== undefined) {
+    updates.push(`locale = $${paramIndex++}`);
+    values.push(input.locale);
+  }
+  if (input.tags !== undefined) {
+    updates.push(`tags = $${paramIndex++}`);
+    values.push(JSON.stringify(input.tags));
+  }
+  if (input.recipeJson !== undefined) {
+    updates.push(`recipe_json = $${paramIndex++}`);
+    values.push(JSON.stringify(input.recipeJson));
+  }
+
+  if (updates.length === 0) {
+    return { success: true }; // Nothing to update
+  }
+
+  updates.push("updated_at = NOW()");
+
+  const result = await query(
+    `UPDATE recipes
+     SET ${updates.join(", ")}
+     WHERE user_id = $1 AND slug = $2 AND is_active = true`,
+    values
+  );
+
+  if (result.rowCount === 0) {
+    throw new Error("Recipe not found");
+  }
+
+  return { success: true };
+}
+
+/**
+ * Save a new version of a recipe (creates new version row)
+ * Alias for updateRecipe with different return type
+ */
+export async function saveRecipeVersion(
+  slug: string,
+  input: UpdateRecipeInput
+): Promise<{ version: number }> {
+  const recipe = await updateRecipe(slug, input);
+  return { version: recipe.version };
+}
+
+/**
+ * Get version history for a recipe
+ * Returns all versions (active and inactive) ordered by version DESC
+ */
+export async function getRecipeVersions(slug: string): Promise<RecipeVersion[]> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Not authenticated");
+  }
+  const userId = parseInt(session.user.id, 10);
+
+  const result = await query<{
+    version: number;
+    title: string;
+    description: string | null;
+    created_at: Date;
+    is_active: boolean;
+  }>(
+    `SELECT version, title, description, created_at, is_active
+     FROM recipes
+     WHERE user_id = $1 AND slug = $2
+     ORDER BY version DESC`,
+    [userId, slug]
+  );
+
+  return result.rows.map((row) => ({
+    version: row.version,
+    title: row.title,
+    description: row.description,
+    createdAt: row.created_at,
+    isActive: row.is_active,
+  }));
 }

@@ -84,6 +84,21 @@ export type RecipeSummary = {
 };
 
 // ============================================
+// Version History Type
+// ============================================
+
+/**
+ * Lightweight type for version history retrieval
+ */
+export type RecipeVersion = {
+  version: number;
+  title: string;
+  description: string | null;
+  createdAt: Date;
+  isActive: boolean;
+};
+
+// ============================================
 // Database Types
 // ============================================
 
