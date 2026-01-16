@@ -11,20 +11,11 @@ import {
   CreateRecipeInput,
   UpdateRecipeInput,
   rowToRecipe,
+  generateSlug,
 } from "./recipe-types";
 
-/**
- * Generate a URL-friendly slug from a recipe title
- */
-export function generateSlug(title: string): string {
-  return title
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // Remove diacritics (ä→a, ü→u, etc.)
-    .replace(/[^a-z0-9]+/g, "-") // Replace non-alphanumeric with hyphens
-    .replace(/^-+|-+$/g, "") // Trim leading/trailing hyphens
-    .substring(0, 200); // Max length
-}
+// Re-export generateSlug for backwards compatibility
+export { generateSlug };
 
 /**
  * Check if a slug exists for a user
