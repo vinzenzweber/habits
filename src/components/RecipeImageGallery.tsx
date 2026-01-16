@@ -81,6 +81,8 @@ export function RecipeImageGallery({ images, title }: RecipeImageGalleryProps) {
             className="object-cover"
             onError={() => handleImageError(currentIndex)}
             priority={currentIndex === 0}
+            // Use unoptimized to avoid SSRF - user-provided URLs bypass Next.js image optimization
+            unoptimized
           />
         )}
 
@@ -139,9 +141,9 @@ export function RecipeImageGallery({ images, title }: RecipeImageGalleryProps) {
       {/* Navigation dots */}
       {hasMultipleImages && (
         <div className="flex justify-center gap-2 py-3">
-          {images.map((_, index) => (
+          {images.map((image, index) => (
             <button
-              key={index}
+              key={image.url}
               onClick={() => setCurrentIndex(index)}
               className={`h-2 w-2 rounded-full transition ${
                 index === currentIndex

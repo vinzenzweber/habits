@@ -8,15 +8,15 @@ import { RecipeImageGallery } from "@/components/RecipeImageGallery";
 export const dynamic = "force-dynamic";
 
 type RecipeDetailPageProps = {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
 };
 
 export async function generateMetadata({
   params,
 }: RecipeDetailPageProps): Promise<Metadata> {
-  const { slug } = await Promise.resolve(params);
+  const { slug } = await params;
   const recipe = await getRecipeBySlug(slug);
 
   if (!recipe) {
@@ -34,8 +34,8 @@ export async function generateMetadata({
 export default async function RecipeDetailPage({
   params,
 }: RecipeDetailPageProps) {
-  const { slug } = await Promise.resolve(params);
-  const recipe = await getRecipeBySlug(slug ?? "");
+  const { slug } = await params;
+  const recipe = await getRecipeBySlug(slug);
 
   if (!recipe) {
     notFound();
@@ -72,12 +72,13 @@ export default async function RecipeDetailPage({
 
             {/* Action buttons */}
             <div className="flex gap-2">
-              <Link
-                href={`/recipes/${recipe.slug}/edit`}
-                className="inline-flex items-center justify-center rounded-full bg-slate-800 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700"
+              <button
+                disabled
+                className="inline-flex cursor-not-allowed items-center justify-center rounded-full bg-slate-800 px-4 py-2 text-sm font-medium text-slate-500"
+                title="Coming soon"
               >
                 Edit
-              </Link>
+              </button>
               <button
                 disabled
                 className="inline-flex cursor-not-allowed items-center justify-center rounded-full bg-slate-800 px-4 py-2 text-sm font-medium text-slate-500"
