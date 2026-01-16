@@ -28,6 +28,12 @@
 #   ./code.sh --issue 42   # Same as above
 #   ./code.sh --resume     # Resume in-progress work only
 #   ./code.sh --status     # Show status of in-progress issues
+#   ./code.sh --hint "..." # Provide priority hint for issue selection
+#
+# Examples with --hint:
+#   ./code.sh --hint "Work on issue #42 first, then #46, then #58"
+#   ./code.sh --hint "Focus on countdown timer bugs before other issues"
+#   ./code.sh --hint "Prioritize issues #42, #46, #58, #97 in that order"
 #
 # Note: Script operates on current working directory, so you can run it
 # from any project: cd /path/to/project && /path/to/code.sh
@@ -43,7 +49,8 @@ SINGLE_CYCLE=false
 RESUME_ONLY=false
 SHOW_STATUS=false
 TARGET_ISSUE=""
-MAX_REVIEW_ROUNDS=3
+SELECTION_HINT=""
+MAX_REVIEW_ROUNDS=10
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -69,9 +76,17 @@ while [[ $# -gt 0 ]]; do
             SHOW_STATUS=true
             shift
             ;;
+        --hint|-h)
+            if [ -z "${2:-}" ]; then
+                echo "Error: --hint requires a string argument"
+                exit 1
+            fi
+            SELECTION_HINT="$2"
+            shift 2
+            ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--once] [-i|--issue <number>] [--resume] [--status]"
+            echo "Usage: $0 [--once] [-i|--issue <number>] [--resume] [--status] [--hint \"...\"]"
             exit 1
             ;;
     esac
@@ -109,13 +124,15 @@ BACKGROUND_PIDS=()
 cleanup_background_processes() {
     log "Cleaning up background processes..."
 
-    # Kill any tracked background PIDs
-    for pid in "${BACKGROUND_PIDS[@]}"; do
-        if kill -0 "$pid" 2>/dev/null; then
-            log "Killing background process $pid"
-            kill "$pid" 2>/dev/null || true
-        fi
-    done
+    # Kill any tracked background PIDs (handle empty array with ${arr[@]+"${arr[@]}"} pattern)
+    if [ ${#BACKGROUND_PIDS[@]} -gt 0 ]; then
+        for pid in "${BACKGROUND_PIDS[@]}"; do
+            if kill -0 "$pid" 2>/dev/null; then
+                log "Killing background process $pid"
+                kill "$pid" 2>/dev/null || true
+            fi
+        done
+    fi
 
     # Kill any dev servers on port 3000 (common testing port)
     local port_pids
@@ -237,11 +254,13 @@ set_metadata() {
 }
 
 # Get metadata value from labels
+# Returns empty string if metadata doesn't exist (safe with set -eo pipefail)
 get_metadata() {
     local issue_num=$1
     local key=$2
-    gh issue view "$issue_num" --json labels -q ".labels[].name" 2>/dev/null | \
-        grep "^auto-dev:$key:" | sed "s/auto-dev:$key://" | head -1
+    local labels
+    labels=$(gh issue view "$issue_num" --json labels -q ".labels[].name" 2>/dev/null) || true
+    echo "$labels" | grep "^auto-dev:$key:" | sed "s/auto-dev:$key://" | head -1 || true
 }
 
 # Post session memory as a structured comment
@@ -679,6 +698,59 @@ run_claude() {
 # WORKFLOW SESSIONS
 #═══════════════════════════════════════════════════════════════════════════════
 
+# Common instruction block for discovering and creating new issues
+# Include this in prompts where Claude is actively working with codebase
+NEW_ISSUE_INSTRUCTIONS='
+## Discovering New Issues
+
+While working, if you discover bugs, technical debt, missing features, or improvements
+that are NOT part of the current task, you MUST create GitHub issues for them.
+
+**Process for each discovered issue:**
+
+1. **Search first** - Check if an issue already exists:
+   ```bash
+   gh issue list --state open --search "keyword from the issue"
+   ```
+
+2. **Only create if not found** - If no matching issue exists:
+   ```bash
+   gh issue create --title "type: brief description" --body "$(cat <<'\''EOF'\''
+   ## Description
+   Clear description of the issue.
+
+   ## Context
+   Where/how this was discovered.
+
+   ## Suggested Fix (optional)
+   Any ideas for resolution.
+
+   ---
+   *Discovered by auto-dev while working on #CURRENT_ISSUE*
+   EOF
+   )"
+   ```
+
+3. **Use appropriate prefixes**: bug:, feat:, refactor:, perf:, docs:, test:, chore:
+
+**Examples of issues to create:**
+- Bugs you notice but are unrelated to current work
+- Security vulnerabilities
+- Performance issues
+- Missing error handling
+- Outdated dependencies
+- Code that should be refactored
+- Missing tests for existing code
+- Documentation gaps
+
+**Do NOT create issues for:**
+- Things that are part of your current task
+- Style preferences or nitpicks
+- Already known issues (check first!)
+
+**Git commands note:** Always use --no-gpg-sign for commits (e.g., git commit --no-gpg-sign -m "message")
+'
+
 #─────────────────────────────────────────────────────────────────────
 # SESSION 1: Issue Selection
 # Context: Clean - focused decision-making
@@ -705,9 +777,21 @@ select_issue() {
     local session_start
     session_start=$(date +%s)
 
+    # Build selection hint section if provided
+    local hint_section=""
+    if [ -n "$SELECTION_HINT" ]; then
+        hint_section="
+**USER PRIORITY INSTRUCTION (OVERRIDE DEFAULT PRIORITIZATION):**
+$SELECTION_HINT
+
+Follow the user's instruction above when selecting which issue to work on.
+"
+        log "Using selection hint: $SELECTION_HINT"
+    fi
+
     run_claude "
 You are selecting a GitHub issue to work on for the habits/fitstreak project.
-
+$hint_section
 1. Fetch open issues: gh issue list --state open --json number,title,body,labels,assignees --limit 50
 2. SKIP these issues (in-progress or have open PRs): $skip_issues
 3. SKIP issues with any 'auto-dev:' labels (they are being worked on)
@@ -742,7 +826,7 @@ Output ONLY a JSON object (no markdown, no explanation, no code blocks):
     echo "$extracted_json" > "$STATE_DIR/selected_issue.json"
 
     local issue_num
-    issue_num=$(echo "$extracted_json" | jq -r '.number')
+    issue_num=$(echo "$extracted_json" | jq -r '.number // empty' 2>/dev/null) || issue_num=""
 
     if [ "$issue_num" = "null" ] || [ -z "$issue_num" ]; then
         warn "No suitable issues found"
@@ -750,7 +834,7 @@ Output ONLY a JSON object (no markdown, no explanation, no code blocks):
     fi
 
     local issue_title
-    issue_title=$(jq -r '.title' "$STATE_DIR/selected_issue.json")
+    issue_title=$(jq -r '.title // "Unknown"' "$STATE_DIR/selected_issue.json" 2>/dev/null) || issue_title="Unknown"
 
     # Set phase and post memory
     set_phase "$issue_num" "selecting"
@@ -779,13 +863,15 @@ has_implementation_plan() {
 
 #─────────────────────────────────────────────────────────────────────
 # Get existing implementation plan from issue comments
+# Returns empty string if no plan found (safe with set -eo pipefail)
 #─────────────────────────────────────────────────────────────────────
 get_implementation_plan() {
     local issue_num=$1
 
     # Get the comment containing the implementation plan
-    gh issue view "$issue_num" --comments --json comments -q '.comments[].body' 2>/dev/null | \
-        grep -A 1000 "## Implementation Plan" | head -100
+    local comments
+    comments=$(gh issue view "$issue_num" --comments --json comments -q '.comments[].body' 2>/dev/null) || true
+    echo "$comments" | grep -A 1000 "## Implementation Plan" | head -100 || true
 }
 
 #─────────────────────────────────────────────────────────────────────
@@ -902,8 +988,44 @@ Follow the Planning phase from CLAUDE.md:
 1. Explore the codebase to understand relevant areas
 2. Identify files that need modification
 3. Create a detailed implementation plan with specific steps
-4. Consider testing strategy (unit tests, E2E tests, manual testing)
-5. Identify potential risks or edge cases
+4. Identify potential risks or edge cases
+
+**CRITICAL: This is a FULLY AUTOMATED workflow. Do NOT include:**
+- Manual/human testing steps (e.g., "Manually verify...", "Ask user to test...")
+- Human review steps (e.g., "Review with team...", "Get approval...")
+- Any task requiring human intervention
+- Phrases like "manually", "visually inspect", "human verification"
+
+All testing is automated:
+- Unit tests (npm run test:unit)
+- E2E tests (npm run test:e2e)
+- Automated browser testing via Playwright MCP (runs during implementation phase)
+
+The development loop handles all testing automatically - no human testers needed.
+
+**For browser-based testing, use this wording:**
+- [ ] Playwright MCP: Test feature X
+- [ ] Playwright MCP: Verify Y works
+
+**MANDATORY: Include a Testing Plan section with:**
+
+## Testing Plan
+
+### Unit Tests (REQUIRED)
+- List specific test files to create (e.g., src/lib/__tests__/feature.test.ts)
+- List test cases needed (describe what each test verifies)
+- Identify mock data or fixtures required
+
+### E2E Tests (REQUIRED for user-facing features)
+- List E2E test files to create or modify (e.g., e2e/feature.spec.ts)
+- List user flows to test end-to-end
+- Identify any new fixtures needed in e2e/fixtures/
+
+### Test Fixtures (if needed)
+- JSON data files for complex test scenarios
+- Mock API responses
+- Test images or assets
+- Database seed data for specific test cases
 
 Output a well-structured markdown plan that can be posted as a GitHub comment.
 Start with '## Implementation Plan' as the header.
@@ -997,8 +1119,27 @@ Execute these phases from CLAUDE.md:
 
 **IMPORTANT: Follow this workflow step by step:**
 
+**Git Configuration (CRITICAL):**
+- Always use --no-gpg-sign for commits: git commit --no-gpg-sign -m "message"
+- For rebase: git -c commit.gpgsign=false rebase <branch>
+- For merge: git -c commit.gpgsign=false merge <branch>
+
+**Handling Merge Conflicts:**
+If you encounter merge conflicts during rebase or merge:
+1. Identify conflicted files: git status
+2. For each conflicted file:
+   - Read the file to understand both versions
+   - Edit the file to resolve conflicts (remove <<<<<<, =======, >>>>>>> markers)
+   - Keep the correct code based on understanding both changes
+   - git add <file>
+3. Continue: git -c commit.gpgsign=false rebase --continue
+4. If conflict is too complex, abort and try a different approach:
+   - git rebase --abort
+   - Consider cherry-picking specific commits instead
+
 1. **Setup Todo List**
    - Use TodoWrite to create tasks for each implementation step
+   - Include tasks for writing tests
    - Update task status as you work
 
 2. **Implement**
@@ -1006,55 +1147,83 @@ Execute these phases from CLAUDE.md:
    - Keep changes minimal and focused (KISS principle)
    - Mark todo items as complete
 
-3. **Update Issue Progress**
+3. **Write Unit Tests (REQUIRED)**
+   - Create test file(s) in src/lib/__tests__/ or next to the source file
+   - Follow existing patterns (see src/lib/__tests__/*.test.ts for examples)
+   - Test: happy path, edge cases, error handling
+   - Use vi.mock() for external dependencies (database, APIs)
+   - Ensure tests are meaningful - not just 'it renders'
+
+4. **Write E2E Tests (REQUIRED for user-facing changes)**
+   - Add test cases to e2e/ directory (e.g., e2e/feature.spec.ts)
+   - Use existing fixtures from e2e/fixtures/auth.fixture.ts
+   - Import: authenticatedPage for logged-in tests, newUserPage for onboarding
+   - Test critical user journeys end-to-end
+   - If no UI changes, document why E2E tests are not needed
+
+5. **Create Test Fixtures (if needed)**
+   - Add mock data objects in test files or shared fixtures
+   - Create JSON fixture files for complex data scenarios
+   - Add test helper functions if patterns repeat
+   - Document any test-only API endpoints needed
+
+6. **Update Issue Progress**
    - As you complete each task, post a progress comment to the issue:
      gh issue comment $issue_num --body '✅ Completed: <task description>'
    - If the implementation plan has checkboxes (- [ ]), update them to checked (- [x])
      by editing the comment containing the plan
 
-4. **Verify Locally**
+7. **Verify Tests Pass**
    - Run: npm run lint
    - Run: npm run build
-   - Run: npm run test:unit
+   - Run: npm run test:unit (must include your new tests)
+   - Run: npm run test:e2e (if you added E2E tests)
+   - All tests MUST pass before proceeding
 
-5. **Manual Testing** (OPTIONAL - skip if Playwright tools fail or hang)
+8. **Automated Browser Testing via Playwright MCP**
    - Start dev server in background: npm run dev &
    - Wait a few seconds for server to start
-   - Try to use Playwright MCP to test (if available and responsive):
+   - Use Playwright MCP tools to test the implemented feature:
      a. Navigate to http://localhost:3000/login
      b. Log in with QA account (zubzone+qa@gmail.com / 3294sdzadsg\$&\$§)
         - If account doesn't exist, register it first at /register
      c. Test the feature you implemented
      d. Verify it works correctly
-   - IMPORTANT: If Playwright MCP tools fail, error, or hang - SKIP manual testing
-     and proceed to the next step. Do NOT wait for unresponsive tools.
-   - ALWAYS stop the dev server after testing (or after skipping):
+   - If Playwright MCP tools fail or hang after 2-3 attempts, proceed to next step
+   - ALWAYS stop the dev server after testing:
      pkill -f 'next dev' || lsof -ti:3000 | xargs kill 2>/dev/null || true
 
-6. **Fix Issues**
-   - If tests fail or manual testing reveals bugs, fix them
-   - Re-run verification steps
+9. **Fix Issues**
+   - If any tests fail (unit, E2E, or browser tests), fix them
+   - Re-run verification steps until all pass
 
-7. **Post Implementation Summary**
-   - Post a summary comment to the issue:
-     gh issue comment $issue_num --body '## Implementation Summary
+10. **Post Implementation Summary**
+    - Post a summary comment to the issue:
+      gh issue comment $issue_num --body '## Implementation Summary
 
-     **Files Changed:**
-     - list files modified
+      **Files Changed:**
+      - list files modified
 
-     **What was implemented:**
-     - brief description
+      **What was implemented:**
+      - brief description
 
-     **Testing Done:**
-     - what was tested and verified'
+      **Tests Added:**
+      - Unit tests: list new test files and what they test
+      - E2E tests: list new test files and user flows covered
+      - Fixtures: list any new test fixtures created
 
-8. **Create PR**
-   - You are already on branch 'feat/issue-$issue_num' (created for you)
-   - Stage changes: git add <files>
-   - Commit: git commit -m 'feat: <description>'
-   - Push: git push -u origin HEAD
-   - Create PR: gh pr create --title '<title>' --body '<body>'
-   - Link PR to issue in PR body: 'Closes #$issue_num'
+      **Testing Done:**
+      - what was tested and verified'
+
+11. **Create PR**
+    - You are already on branch 'feat/issue-$issue_num' (created for you)
+    - Stage changes: git add <files>
+    - Commit: git commit --no-gpg-sign -m 'feat: <description>'
+    - Push: git push -u origin HEAD
+    - Create PR: gh pr create --title '<title>' --body '<body>'
+    - Link PR to issue in PR body: 'Closes #$issue_num'
+
+$(echo "$NEW_ISSUE_INSTRUCTIONS" | sed "s/CURRENT_ISSUE/$issue_num/g")
 
 IMPORTANT: After creating the PR, output EXACTLY this format on its own line:
 PR_CREATED: <number>
@@ -1137,54 +1306,78 @@ Example: PR_CREATED: 123
 
 #─────────────────────────────────────────────────────────────────────
 # CI WAIT
-# Non-blocking CI check - logs status but doesn't block workflow
-# Network failures and timeouts should not stop development
+# Waits for CI checks to complete (pass or fail)
+# Returns 0 on success, 1 on failure
 #─────────────────────────────────────────────────────────────────────
 wait_for_ci() {
     local pr_num=$1
-    local max_retries=3
-    local retry_delay=30
-    local attempt=1
+    local max_wait_minutes=15  # Maximum time to wait for CI
+    local poll_interval=30     # Seconds between polls
+    local max_polls=$((max_wait_minutes * 60 / poll_interval))
+    local poll=1
+    local network_failures=0
+    local max_network_failures=5  # Give up after consecutive network errors
 
     header "CI Check"
-    log "Checking CI status on PR #$pr_num..."
+    log "Waiting for CI checks on PR #$pr_num (max ${max_wait_minutes} minutes)..."
 
-    while [ $attempt -le $max_retries ]; do
+    while [ $poll -le $max_polls ]; do
         local ci_output
         local exit_code=0
 
-        # Run gh pr checks (no timeout needed - it's fast)
+        # Run gh pr checks
         ci_output=$(gh pr checks "$pr_num" 2>&1) || exit_code=$?
 
-        if [ $exit_code -eq 0 ]; then
-            # Command succeeded - check for failures in output
-            if echo "$ci_output" | grep -qi "fail"; then
-                warn "CI checks have failures (attempt $attempt/$max_retries)"
-                echo "$ci_output" | head -10 >&2
-            elif echo "$ci_output" | grep -qi "pending\|running"; then
-                log "CI checks still running (attempt $attempt/$max_retries)"
-                echo "$ci_output" | head -5 >&2
-            else
-                success "CI checks passed"
+        # gh pr checks exit codes:
+        # 0 = all checks passed
+        # 1 = some checks failed
+        # 8 = some checks still pending
+        # other = network/API error
+
+        case $exit_code in
+            0)
+                # All checks passed
+                success "CI checks passed!"
                 echo "$ci_output" | head -5 >&2
                 return 0
-            fi
-        else
-            warn "CI check command failed (exit $exit_code, attempt $attempt/$max_retries)"
-            echo "$ci_output" | head -5 >&2
-        fi
+                ;;
+            1)
+                # Some checks failed - this is a real failure
+                error "CI checks failed!"
+                echo "$ci_output" >&2
+                return 1
+                ;;
+            8)
+                # Checks still pending - keep waiting
+                network_failures=0  # Reset network failure counter
+                local elapsed_min=$((poll * poll_interval / 60))
+                log "CI checks still running... (${elapsed_min}/${max_wait_minutes} min)"
+                echo "$ci_output" | grep -E "pending|running" | head -3 >&2
+                ;;
+            *)
+                # Network or API error
+                network_failures=$((network_failures + 1))
+                warn "CI check command failed (exit $exit_code, network error $network_failures/$max_network_failures)"
+                echo "$ci_output" | head -3 >&2
 
-        if [ $attempt -lt $max_retries ]; then
-            log "Retrying in ${retry_delay}s..."
-            sleep $retry_delay
+                if [ $network_failures -ge $max_network_failures ]; then
+                    error "Too many network failures checking CI status"
+                    return 1
+                fi
+                ;;
+        esac
+
+        # Wait before next poll
+        if [ $poll -lt $max_polls ]; then
+            sleep $poll_interval
         fi
-        attempt=$((attempt + 1))
+        poll=$((poll + 1))
     done
 
-    # Don't block - just warn and continue
-    warn "CI checks inconclusive after $max_retries attempts - continuing anyway"
-    warn "You may want to check CI status manually: gh pr checks $pr_num"
-    return 0  # Return success to not block workflow
+    # Timeout - CI took too long
+    error "CI checks timed out after ${max_wait_minutes} minutes"
+    warn "Check status manually: gh pr checks $pr_num"
+    return 1
 }
 
 #─────────────────────────────────────────────────────────────────────
@@ -1262,10 +1455,17 @@ $pr_diff
    - Is there unnecessary complexity? (violates KISS)
    - Any code duplication?
 
-4. **Testing**
-   - Are new code paths tested?
-   - Are edge cases tested?
+4. **Testing** (CRITICAL - Request changes if missing)
+   - Are there NEW unit tests for added/modified business logic?
+   - Are there NEW E2E tests for user-facing features?
+   - Do unit tests cover: happy path, edge cases, error scenarios?
+   - Are test fixtures/mock data meaningful and realistic?
    - Do existing tests still pass?
+
+   **Auto-reject if:**
+   - No new test files added for significant code changes
+   - Tests are trivial (e.g., only testing that something renders)
+   - E2E tests missing for new user-facing features
 
 5. **Performance**
    - Any obvious performance issues?
@@ -1287,10 +1487,20 @@ Provide your review as a JSON object ONLY (no markdown, no explanation):
       \"suggestion\": \"How to fix it\"
     }
   ],
+  \"testing\": {
+    \"unit_tests_added\": true | false,
+    \"e2e_tests_added\": true | false,
+    \"missing_tests\": [\"description of missing test coverage\"],
+    \"test_quality\": \"adequate\" | \"insufficient\" | \"excellent\"
+  },
   \"summary\": \"Brief 1-2 sentence overall assessment\"
 }
 
 Be thorough but fair. Only request changes for real issues, not style preferences.
+
+$(echo "$NEW_ISSUE_INSTRUCTIONS" | sed "s/CURRENT_ISSUE/$issue_num/g")
+
+**IMPORTANT:** Create any discovered issues BEFORE outputting the JSON review result.
 " > "$STATE_DIR/review_result_raw.txt"
 
     local session_end
@@ -1308,8 +1518,8 @@ Be thorough but fair. Only request changes for real issues, not style preference
     echo "$extracted_json" > "$STATE_DIR/review_result.json"
 
     local review_status review_summary
-    review_status=$(echo "$extracted_json" | jq -r '.status')
-    review_summary=$(echo "$extracted_json" | jq -r '.summary')
+    review_status=$(echo "$extracted_json" | jq -r '.status // "changes_requested"' 2>/dev/null) || review_status="changes_requested"
+    review_summary=$(echo "$extracted_json" | jq -r '.summary // "Review completed"' 2>/dev/null) || review_summary="Review completed"
 
     log "Review Summary: $review_summary"
 
@@ -1327,7 +1537,7 @@ $review_summary"
     else
         warn "Code review: CHANGES REQUESTED"
         echo ""
-        jq -r '.comments[] | "  [\(.severity)] \(.file):\(.line) - \(.issue)"' "$STATE_DIR/review_result.json"
+        jq -r '.comments[]? | "  [\(.severity)] \(.file):\(.line) - \(.issue)"' "$STATE_DIR/review_result.json" 2>/dev/null || true
         echo ""
         return 1
     fi
@@ -1348,8 +1558,15 @@ fix_review_feedback() {
     local session_start
     session_start=$(date +%s)
 
-    local review_comments
-    review_comments=$(jq -c '.comments' "$STATE_DIR/review_result.json")
+    # Safely extract review comments (handle missing/invalid JSON)
+    local review_comments="[]"
+    local review_testing="{}"
+    if [ -f "$STATE_DIR/review_result.json" ]; then
+        review_comments=$(jq -c '.comments // []' "$STATE_DIR/review_result.json" 2>/dev/null) || review_comments="[]"
+        review_testing=$(jq -c '.testing // {}' "$STATE_DIR/review_result.json" 2>/dev/null) || review_testing="{}"
+    else
+        warn "No review_result.json found - will fetch review comments from PR"
+    fi
 
     run_claude "
 Fix the code review feedback for PR #$pr_num.
@@ -1357,17 +1574,52 @@ Fix the code review feedback for PR #$pr_num.
 **Review Comments to Address:**
 $review_comments
 
+**Testing Feedback:**
+$review_testing
+
+If the review comments above are empty ([]), fetch them from GitHub:
+  gh pr view $pr_num --json reviews,comments
+  gh api repos/\$(gh repo view --json nameWithOwner -q .nameWithOwner)/pulls/$pr_num/comments
+
+**Git Configuration (CRITICAL):**
+- Always use --no-gpg-sign for commits: git commit --no-gpg-sign -m "message"
+- For rebase: git -c commit.gpgsign=false rebase <branch>
+- For merge: git -c commit.gpgsign=false merge <branch>
+
+**Handling Merge Conflicts:**
+If you encounter merge conflicts during rebase or merge:
+1. Identify conflicted files: git status
+2. For each conflicted file:
+   - Read the file to understand both versions
+   - Edit the file to resolve conflicts (remove <<<<<<, =======, >>>>>>> markers)
+   - Keep the correct code based on understanding both changes
+   - git add <file>
+3. Continue: git -c commit.gpgsign=false rebase --continue
+4. If conflict is too complex, abort and try a different approach:
+   - git rebase --abort
+   - Consider cherry-picking specific commits instead
+
 For EACH comment:
 1. Read the file and understand the context
 2. Understand why the reviewer flagged this
 3. Implement the fix (or explain why you disagree)
 4. Test that the fix works
 
+**If review feedback mentions missing tests:**
+1. Create the required unit test files in src/lib/__tests__/ or next to source
+2. Create the required E2E test files in e2e/
+3. Add any missing test fixtures
+4. Ensure tests are meaningful (test real behavior, not just existence)
+5. Follow existing test patterns in the codebase
+
 After ALL fixes:
 1. Run: npm run lint && npm run build
 2. Run: npm run test:unit
-3. Commit: git commit -am 'fix: address review feedback'
-4. Push: git push
+3. Run: npm run test:e2e (if E2E tests were added)
+4. Commit: git commit --no-gpg-sign -am 'fix: address review feedback'
+5. Push: git push
+
+$(echo "$NEW_ISSUE_INSTRUCTIONS" | sed "s/CURRENT_ISSUE/$issue_num/g")
 
 Output 'FIXES_COMPLETE' when all fixes are complete and pushed.
 " > /dev/null  # Discard stdout - no output capture needed
@@ -1417,10 +1669,28 @@ Execute these phases from CLAUDE.md:
 - Phase 7: Merge & Deploy
 - Phase 8: Production Verification
 
+**Git Configuration (CRITICAL):**
+- Always use --no-gpg-sign for commits: git commit --no-gpg-sign -m "message"
+- For rebase: git -c commit.gpgsign=false rebase <branch>
+
 **Steps:**
 
 1. **Verify Merge Readiness**
    gh pr view $pr_num --json mergeable,mergeStateStatus
+
+   If mergeStateStatus is not CLEAN (e.g., BEHIND or CONFLICTING):
+   a. Checkout the PR branch: gh pr checkout $pr_num
+   b. Fetch and rebase onto main:
+      git fetch origin main
+      git -c commit.gpgsign=false rebase origin/main
+   c. If conflicts occur:
+      - git status to see conflicted files
+      - Read and edit each file to resolve conflicts
+      - Remove <<<<<<, =======, >>>>>>> markers
+      - git add <resolved-file>
+      - git -c commit.gpgsign=false rebase --continue
+   d. Force push the rebased branch: git push --force-with-lease
+   e. Wait for CI to pass again, then proceed to merge
 
 2. **Merge PR**
    gh pr merge $pr_num --squash --delete-branch
@@ -1452,6 +1722,8 @@ Execute these phases from CLAUDE.md:
    b. Log in with QA account (zubzone+qa@gmail.com / 3294sdzadsg\$&\$§)
    c. Test that the new feature works in production
    d. Check browser console for errors
+
+$(echo "$NEW_ISSUE_INSTRUCTIONS" | sed "s/CURRENT_ISSUE/$issue_num/g")
 
 Output 'DEPLOYMENT_VERIFIED' when verification is complete, or 'DEPLOYMENT_FAILED' if there were issues.
 " > /dev/null  # Discard stdout - no output capture needed
@@ -1545,7 +1817,7 @@ Guidelines:
 
 After updating:
 1. git add CLAUDE.md
-2. git commit -m 'docs: update CLAUDE.md'
+2. git commit --no-gpg-sign -m 'docs: update CLAUDE.md'
 3. git push
 
 Output 'DOCS_UPDATED' when complete.
@@ -1606,12 +1878,12 @@ resume_from_phase() {
 
     log "Resuming issue #$issue_num from phase: $phase"
 
-    # Load issue details
+    # Load issue details (safe with set -e)
     local issue_json
-    issue_json=$(gh issue view "$issue_num" --json title,body)
+    issue_json=$(gh issue view "$issue_num" --json title,body 2>/dev/null) || issue_json="{}"
     local issue_title issue_body
-    issue_title=$(echo "$issue_json" | jq -r '.title')
-    issue_body=$(echo "$issue_json" | jq -r '.body')
+    issue_title=$(echo "$issue_json" | jq -r '.title // "Unknown"' 2>/dev/null) || issue_title="Unknown"
+    issue_body=$(echo "$issue_json" | jq -r '.body // ""' 2>/dev/null) || issue_body=""
 
     # Get PR number if exists
     local pr_num
@@ -1660,7 +1932,8 @@ resume_from_phase() {
                 mark_blocked "$issue_num" "No PR number found"
                 return 1
             fi
-            run_review_loop "$issue_num" "$pr_num"
+            # run_review_loop may return 1 if blocked - don't let set -e exit
+            run_review_loop "$issue_num" "$pr_num" || true
             ;;
         "fixing")
             if [ -z "$pr_num" ]; then
@@ -1767,6 +2040,10 @@ main() {
         log "Continuous mode - Press Ctrl+C to stop"
     fi
 
+    if [ -n "$SELECTION_HINT" ]; then
+        log "Selection hint: ${YELLOW}$SELECTION_HINT${NC}"
+    fi
+
     while true; do
         echo ""
         log "═══════════════════════════════════════════════════════════"
@@ -1803,8 +2080,8 @@ main() {
                 error "Failed to fetch issue #$issue_num"
                 exit 1
             fi
-            issue_title=$(echo "$issue_json" | jq -r '.title')
-            issue_body=$(echo "$issue_json" | jq -r '.body')
+            issue_title=$(echo "$issue_json" | jq -r '.title // "Unknown"' 2>/dev/null) || issue_title="Unknown"
+            issue_body=$(echo "$issue_json" | jq -r '.body // ""' 2>/dev/null) || issue_body=""
 
             success "Working on: $issue_title"
         else
@@ -1851,8 +2128,8 @@ main() {
                 continue
             fi
 
-            issue_title=$(jq -r '.title' "$STATE_DIR/selected_issue.json")
-            issue_body=$(jq -r '.body' "$STATE_DIR/selected_issue.json")
+            issue_title=$(jq -r '.title // "Unknown"' "$STATE_DIR/selected_issue.json" 2>/dev/null) || issue_title="Unknown"
+            issue_body=$(jq -r '.body // ""' "$STATE_DIR/selected_issue.json" 2>/dev/null) || issue_body=""
         fi
 
         # Run the full workflow
