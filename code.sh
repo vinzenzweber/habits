@@ -98,6 +98,48 @@ header() { echo -e "\n${BOLD}${CYAN}$*${NC}" | tee -a "$LOG_FILE" >&2; }
 mkdir -p "$STATE_DIR"
 
 #═══════════════════════════════════════════════════════════════════════════════
+# CLEANUP AND EXIT HANDLING
+# Ensures background processes (dev servers, etc.) are stopped on exit
+#═══════════════════════════════════════════════════════════════════════════════
+
+# Track background PIDs started by this script
+BACKGROUND_PIDS=()
+
+# Cleanup function - kills any background processes we started
+cleanup_background_processes() {
+    log "Cleaning up background processes..."
+
+    # Kill any tracked background PIDs
+    for pid in "${BACKGROUND_PIDS[@]}"; do
+        if kill -0 "$pid" 2>/dev/null; then
+            log "Killing background process $pid"
+            kill "$pid" 2>/dev/null || true
+        fi
+    done
+
+    # Kill any dev servers on port 3000 (common testing port)
+    local port_pids
+    port_pids=$(lsof -ti:3000 2>/dev/null || true)
+    if [ -n "$port_pids" ]; then
+        log "Killing processes on port 3000: $port_pids"
+        echo "$port_pids" | xargs kill 2>/dev/null || true
+    fi
+
+    # Kill any node processes started by npm run dev in this directory
+    local npm_pids
+    npm_pids=$(pgrep -f "node.*$REPO_ROOT" 2>/dev/null || true)
+    if [ -n "$npm_pids" ]; then
+        log "Killing node processes for this project: $npm_pids"
+        echo "$npm_pids" | xargs kill 2>/dev/null || true
+    fi
+
+    success "Cleanup complete"
+}
+
+# Set up trap to run cleanup on exit
+trap cleanup_background_processes EXIT
+
+#═══════════════════════════════════════════════════════════════════════════════
 # GITHUB MEMORY SYSTEM
 # Uses labels for phase tracking, comments for session memory
 #═══════════════════════════════════════════════════════════════════════════════
@@ -976,13 +1018,16 @@ Execute these phases from CLAUDE.md:
    - Run: npm run test:unit
 
 5. **Manual Testing**
-   - Start dev server: npm run dev
+   - Start dev server in background: npm run dev &
+   - Wait a few seconds for server to start
    - Use Playwright MCP to test:
      a. Navigate to http://localhost:3000/login
      b. Log in with QA account (zubzone+qa@gmail.com / 3294sdzadsg\$&\$§)
         - If account doesn't exist, register it first at /register
      c. Test the feature you implemented
      d. Verify it works correctly
+   - IMPORTANT: Stop the dev server after testing:
+     pkill -f 'next dev' || lsof -ti:3000 | xargs kill 2>/dev/null || true
 
 6. **Fix Issues**
    - If tests fail or manual testing reveals bugs, fix them
