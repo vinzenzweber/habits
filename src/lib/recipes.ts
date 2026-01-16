@@ -14,7 +14,6 @@ import {
   UpdateRecipeInput,
   rowToRecipe,
   generateSlug,
-  toRecipeSummary,
 } from "./recipe-types";
 
 // Re-export generateSlug for backwards compatibility
@@ -280,10 +279,65 @@ export async function getUserTags(): Promise<string[]> {
 
 /**
  * Get all active recipes for the current user as summaries (lightweight)
+ * Queries only the fields needed for RecipeSummary instead of full recipe data
  */
 export async function getUserRecipeSummaries(): Promise<RecipeSummary[]> {
-  const recipes = await getUserRecipes();
-  return recipes.map(toRecipeSummary);
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Not authenticated");
+  }
+  const userId = parseInt(session.user.id, 10);
+
+  // Query only the columns needed for RecipeSummary
+  // Uses JSON extraction to avoid loading full recipe_json (which contains steps, ingredientGroups, etc.)
+  const result = await query<{
+    slug: string;
+    title: string;
+    description: string | null;
+    tags: string[];
+    servings: number;
+    prep_time_minutes: number | null;
+    cook_time_minutes: number | null;
+    images: Array<{ url: string; caption?: string; isPrimary?: boolean }>;
+    nutrition: {
+      calories: number;
+      protein: number;
+      carbohydrates: number;
+      fat: number;
+      fiber?: number;
+    };
+    recipe_description: string;
+  }>(
+    `SELECT slug, title, description, tags,
+            (recipe_json->>'servings')::int as servings,
+            (recipe_json->>'prepTimeMinutes')::int as prep_time_minutes,
+            (recipe_json->>'cookTimeMinutes')::int as cook_time_minutes,
+            recipe_json->'images' as images,
+            recipe_json->'nutrition' as nutrition,
+            recipe_json->>'description' as recipe_description
+     FROM recipes
+     WHERE user_id = $1 AND is_active = true
+     ORDER BY updated_at DESC`,
+    [userId]
+  );
+
+  return result.rows.map((row) => {
+    // Get the primary image or first image
+    const images = row.images || [];
+    const primaryImage = images.find((img) => img.isPrimary) ?? images[0];
+
+    return {
+      slug: row.slug,
+      title: row.title,
+      description: row.description ?? row.recipe_description,
+      tags: row.tags,
+      servings: row.servings,
+      prepTimeMinutes: row.prep_time_minutes ?? undefined,
+      cookTimeMinutes: row.cook_time_minutes ?? undefined,
+      primaryImage,
+      nutrition: row.nutrition,
+    };
+  });
 }
 
 /**
@@ -340,7 +394,7 @@ export async function updateRecipeInPlace(
   );
 
   if (result.rowCount === 0) {
-    throw new Error("Recipe not found");
+    throw new Error("Recipe not found or inactive");
   }
 
   return { success: true };
@@ -348,7 +402,18 @@ export async function updateRecipeInPlace(
 
 /**
  * Save a new version of a recipe (creates new version row)
- * Alias for updateRecipe with different return type
+ *
+ * This is a convenience wrapper around updateRecipe() that returns only the
+ * new version number. Use this when you only need to confirm the version was
+ * created and don't need the full Recipe object.
+ *
+ * Use updateRecipe() directly when you need:
+ * - The full Recipe object after update
+ * - Access to recipeJson, timestamps, or other fields
+ *
+ * Use saveRecipeVersion() when you only need:
+ * - Confirmation that a new version was saved
+ * - The new version number for display or logging
  */
 export async function saveRecipeVersion(
   slug: string,
@@ -361,13 +426,37 @@ export async function saveRecipeVersion(
 /**
  * Get version history for a recipe
  * Returns all versions (active and inactive) ordered by version DESC
+ *
+ * @param slug - The recipe slug
+ * @param options.limit - Maximum number of versions to return (default: all)
+ * @param options.offset - Number of versions to skip (default: 0)
  */
-export async function getRecipeVersions(slug: string): Promise<RecipeVersion[]> {
+export async function getRecipeVersions(
+  slug: string,
+  options?: { limit?: number; offset?: number }
+): Promise<RecipeVersion[]> {
   const session = await auth();
   if (!session?.user?.id) {
     throw new Error("Not authenticated");
   }
   const userId = parseInt(session.user.id, 10);
+
+  // Build query with optional pagination
+  let queryText = `SELECT version, title, description, created_at, is_active
+     FROM recipes
+     WHERE user_id = $1 AND slug = $2
+     ORDER BY version DESC`;
+  const values: (number | string)[] = [userId, slug];
+
+  if (options?.limit !== undefined) {
+    queryText += ` LIMIT $${values.length + 1}`;
+    values.push(options.limit);
+  }
+
+  if (options?.offset !== undefined) {
+    queryText += ` OFFSET $${values.length + 1}`;
+    values.push(options.offset);
+  }
 
   const result = await query<{
     version: number;
@@ -375,13 +464,7 @@ export async function getRecipeVersions(slug: string): Promise<RecipeVersion[]> 
     description: string | null;
     created_at: Date;
     is_active: boolean;
-  }>(
-    `SELECT version, title, description, created_at, is_active
-     FROM recipes
-     WHERE user_id = $1 AND slug = $2
-     ORDER BY version DESC`,
-    [userId, slug]
-  );
+  }>(queryText, values);
 
   return result.rows.map((row) => ({
     version: row.version,
