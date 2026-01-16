@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { getRecipeBySlug, updateRecipe, deleteRecipe } from "@/lib/recipes";
+import { getRecipeBySlug, updateRecipe, deleteRecipe, updateRecipeInPlace } from "@/lib/recipes";
 import { UpdateRecipeInput } from "@/lib/recipe-types";
 
 export const runtime = "nodejs";
@@ -53,6 +53,35 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   } catch (error) {
     console.error("Error updating recipe:", error);
     if (error instanceof Error && error.message === "Recipe not found") {
+      return Response.json({ error: "Recipe not found" }, { status: 404 });
+    }
+    return Response.json(
+      { error: "Failed to update recipe" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PUT /api/recipes/[slug]
+ * Update a recipe in place (without creating a new version)
+ * Use for minor metadata changes like favorite status, notes, etc.
+ */
+export async function PUT(request: Request, { params }: RouteParams) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const { slug } = await params;
+    const body = await request.json() as UpdateRecipeInput;
+
+    const result = await updateRecipeInPlace(slug, body);
+    return Response.json(result);
+  } catch (error) {
+    console.error("Error updating recipe in place:", error);
+    if (error instanceof Error && error.message === "Recipe not found or inactive") {
       return Response.json({ error: "Recipe not found" }, { status: 404 });
     }
     return Response.json(
