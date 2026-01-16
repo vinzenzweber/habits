@@ -1083,24 +1083,28 @@ wait_for_ci() {
     log "Checking CI status on PR #$pr_num..."
 
     while [ $attempt -le $max_retries ]; do
-        # Use timeout to prevent hanging on network issues
         local ci_output
-        if ci_output=$(timeout 120 gh pr checks "$pr_num" 2>&1); then
-            # Check if all checks passed
-            if echo "$ci_output" | grep -q "fail\|failure"; then
+        local exit_code=0
+
+        # Run gh pr checks (no timeout needed - it's fast)
+        ci_output=$(gh pr checks "$pr_num" 2>&1) || exit_code=$?
+
+        if [ $exit_code -eq 0 ]; then
+            # Command succeeded - check for failures in output
+            if echo "$ci_output" | grep -qi "fail"; then
                 warn "CI checks have failures (attempt $attempt/$max_retries)"
                 echo "$ci_output" | head -10 >&2
+            elif echo "$ci_output" | grep -qi "pending\|running"; then
+                log "CI checks still running (attempt $attempt/$max_retries)"
+                echo "$ci_output" | head -5 >&2
             else
                 success "CI checks passed"
+                echo "$ci_output" | head -5 >&2
                 return 0
             fi
         else
-            local exit_code=$?
-            if [ $exit_code -eq 124 ]; then
-                warn "CI check timed out (attempt $attempt/$max_retries)"
-            else
-                warn "CI check failed - likely network issue (attempt $attempt/$max_retries)"
-            fi
+            warn "CI check command failed (exit $exit_code, attempt $attempt/$max_retries)"
+            echo "$ci_output" | head -5 >&2
         fi
 
         if [ $attempt -lt $max_retries ]; then
