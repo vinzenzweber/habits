@@ -28,12 +28,7 @@ vi.mock('../Confetti', () => ({
 // Mock Audio API
 let mockPlay: ReturnType<typeof vi.fn>;
 let mockPause: ReturnType<typeof vi.fn>;
-let mockAudioInstance: {
-  play: ReturnType<typeof vi.fn>;
-  pause: ReturnType<typeof vi.fn>;
-  currentTime: number;
-  preload: string;
-};
+let mockAudioInstance: MockAudio | null = null;
 let audioConstructorCalled = false;
 let audioConstructorArg = '';
 
@@ -47,6 +42,8 @@ class MockAudio {
   constructor(src?: string) {
     mockPlay = this.play;
     mockPause = this.pause;
+    // Store reference to this instance for test assertions
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     mockAudioInstance = this;
     audioConstructorCalled = true;
     audioConstructorArg = src || '';
@@ -56,12 +53,7 @@ class MockAudio {
 beforeEach(() => {
   mockPlay = vi.fn();
   mockPause = vi.fn();
-  mockAudioInstance = {
-    play: mockPlay,
-    pause: mockPause,
-    currentTime: 0,
-    preload: '',
-  };
+  mockAudioInstance = null;
   audioConstructorCalled = false;
   audioConstructorArg = '';
 
@@ -110,7 +102,7 @@ describe('GuidedRoutinePlayer countdown beeps', () => {
 
       render(<GuidedRoutinePlayer workout={workout} />);
 
-      expect(mockAudioInstance.preload).toBe('auto');
+      expect(mockAudioInstance?.preload).toBe('auto');
     });
   });
 
@@ -273,7 +265,7 @@ describe('GuidedRoutinePlayer countdown beeps', () => {
       });
 
       expect(mockPause).toHaveBeenCalled();
-      expect(mockAudioInstance.currentTime).toBe(0);
+      expect(mockAudioInstance?.currentTime).toBe(0);
     });
   });
 
