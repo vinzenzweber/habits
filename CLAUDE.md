@@ -52,6 +52,8 @@ Applied migrations are tracked in the `_migrations` table.
   - `/workouts/[slug]/play` — Full-screen guided workout player
   - `/workouts/nano` — Nano workout preview
   - `/workouts/nano/play` — Nano workout player
+  - `/recipes` — Recipe list page with search and empty state
+  - `/recipes/[slug]` — Recipe detail page with image gallery and nutrition info
 
 ### Core Data Model
 
@@ -90,6 +92,11 @@ Key functions:
 
 **InstallPrompt** (src/components/InstallPrompt.tsx):
 - Prompts users to install the PWA on supported platforms
+
+**BottomNav** (src/components/BottomNav.tsx):
+- Fixed bottom navigation bar for mobile-first navigation
+- Tabs: Home (today's workout) and Recipes (recipe list)
+- Active state styling based on current route
 
 ### Styling
 
