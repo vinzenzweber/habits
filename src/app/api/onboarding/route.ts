@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { auth } from "@/lib/auth";
+import { auth, unstable_update } from "@/lib/auth";
 import { query } from "@/lib/db";
 import {
   saveMemory,
@@ -268,6 +268,17 @@ async function executeTool(
           SET onboarding_completed = true, onboarding_completed_at = NOW()
           WHERE id = $1
         `, [userId]);
+
+        // Trigger session update to refresh the JWT with new onboardingCompleted status
+        try {
+          await unstable_update({
+            user: { onboardingCompleted: true }
+          });
+        } catch (sessionUpdateError) {
+          // Log error but don't fail - DB update succeeded
+          console.error('Error updating session:', sessionUpdateError);
+        }
+
         result = { success: true, message: "Onboarding completed!" };
         onboardingComplete = true;
       } catch (error) {
