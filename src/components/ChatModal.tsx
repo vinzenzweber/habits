@@ -3,9 +3,19 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChatHistory } from './ChatHistory';
 
+interface ToolCall {
+  id: string;
+  type: 'function';
+  function: {
+    name: string;
+    arguments: string;
+  };
+}
+
 interface Message {
   role: string;
   content: string;
+  toolCalls?: ToolCall[];
 }
 
 interface PageContext {
@@ -23,6 +33,26 @@ interface ChatModalProps {
   onInitialStateConsumed?: () => void;
   pageContext?: PageContext;
 }
+
+// Display names for completed tool calls (past tense)
+const TOOL_DISPLAY_NAMES: Record<string, string> = {
+  get_workout: "Fetched workout",
+  get_all_workouts: "Fetched all workouts",
+  update_workout: "Updated workout",
+  save_memory: "Saved to memory",
+  get_memories: "Retrieved memories",
+  delete_memory: "Deleted memory",
+  web_search: "Searched the web",
+  create_feedback_issue: "Recorded feedback",
+  search_exercises: "Searched exercises",
+  create_exercise: "Created exercise",
+  get_exercise_images: "Checked exercise images",
+  get_workout_stats: "Analyzed workout history",
+  search_recipes: "Searched recipes",
+  get_recipe: "Fetched recipe",
+  create_recipe: "Created recipe",
+  update_recipe: "Updated recipe"
+};
 
 export function ChatModal({
   isOpen,
@@ -47,6 +77,7 @@ export function ChatModal({
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [awaitingRating, setAwaitingRating] = useState(false);
   const [toolInProgress, setToolInProgress] = useState<string | null>(null);
+  const [pendingToolCalls, setPendingToolCalls] = useState<ToolCall[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [loadingSession, setLoadingSession] = useState(false);
 
@@ -323,11 +354,13 @@ export function ChatModal({
                 if (fullContent) {
                   setMessages(prev => [...prev, {
                     role: 'assistant',
-                    content: fullContent
+                    content: fullContent,
+                    toolCalls: data.toolCalls
                   }]);
                 }
                 setStreamingContent('');
                 setToolInProgress(null);
+                setPendingToolCalls([]);
                 // Refresh page if workout was updated
                 if (workoutUpdatedRef.current) {
                   workoutUpdatedRef.current = false;
@@ -353,6 +386,7 @@ export function ChatModal({
       }]);
       setStreamingContent('');
       setToolInProgress(null);
+      setPendingToolCalls([]);
     } finally {
       setLoading(false);
     }
@@ -433,11 +467,13 @@ export function ChatModal({
                 if (fullContent) {
                   setMessages(prev => [...prev, {
                     role: 'assistant',
-                    content: fullContent
+                    content: fullContent,
+                    toolCalls: data.toolCalls
                   }]);
                 }
                 setStreamingContent('');
                 setToolInProgress(null);
+                setPendingToolCalls([]);
                 // Refresh page if workout was updated
                 if (workoutUpdatedRef.current) {
                   workoutUpdatedRef.current = false;
@@ -465,6 +501,7 @@ export function ChatModal({
       }]);
       setStreamingContent('');
       setToolInProgress(null);
+      setPendingToolCalls([]);
     } finally {
       setLoading(false);
     }
@@ -647,9 +684,10 @@ export function ChatModal({
       const data = await response.json();
 
       setSessionId(sessionId);
-      setMessages(data.session.messages.map((m: { role: string; content: string }) => ({
+      setMessages(data.session.messages.map((m: { role: string; content: string; toolCalls?: ToolCall[] }) => ({
         role: m.role,
-        content: m.content
+        content: m.content,
+        toolCalls: m.toolCalls
       })));
       setShowHistory(false);
       setStreamingContent('');
@@ -742,6 +780,25 @@ export function ChatModal({
 
           {messages.map((msg, i) => (
             <div key={i} className={msg.role === 'user' ? 'text-right' : 'text-left'}>
+              {/* Persistent tool indicators for assistant messages */}
+              {msg.role === 'assistant' && msg.toolCalls && msg.toolCalls.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-1">
+                  {msg.toolCalls.map((tool, idx) => {
+                    const displayName = TOOL_DISPLAY_NAMES[tool.function.name] || tool.function.name;
+                    return (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-800 text-xs text-slate-400"
+                      >
+                        <svg className="w-3 h-3 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        {displayName}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
               <div className={`inline-block rounded-lg px-4 py-2 max-w-[80%] text-left ${
                 msg.role === 'user' ? 'bg-emerald-600' : 'bg-slate-800'
               }`}>
