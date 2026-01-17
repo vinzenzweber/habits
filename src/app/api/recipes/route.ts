@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     }
 
     const recipe = await createRecipe(body);
-    return Response.json({ slug: recipe.slug, version: recipe.version }, { status: 201 });
+    return Response.json({ recipe }, { status: 201 });
   } catch (error) {
     console.error("Error creating recipe:", error);
     return Response.json(
