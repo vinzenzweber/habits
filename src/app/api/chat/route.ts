@@ -669,7 +669,8 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
 async function executeTool(
   openai: OpenAI,
   userId: string,
-  toolCall: OpenAI.Chat.Completions.ChatCompletionMessageToolCall
+  toolCall: OpenAI.Chat.Completions.ChatCompletionMessageToolCall,
+  userLocale: string = 'en-US'
 ): Promise<string> {
   // Only handle function tool calls
   if (toolCall.type !== 'function') {
@@ -854,7 +855,7 @@ async function executeTool(
           locale: args.locale,
           tags: args.tags,
           recipeJson: args.recipeJson
-        });
+        }, userLocale);
         result = createResult;
       } catch (error) {
         result = { error: "Failed to create recipe", message: error instanceof Error ? error.message : "Unknown error" };
@@ -1037,7 +1038,7 @@ ${memoryContext}${pageContextSection}${instructionSection}`;
               const displayName = TOOL_DISPLAY_NAMES[toolName] || toolName;
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "tool_start", tool: displayName })}\n\n`));
 
-              const result = await executeTool(openai, userId, toolCall);
+              const result = await executeTool(openai, userId, toolCall, userLocale);
               apiMessages.push({
                 role: "tool",
                 tool_call_id: toolCall.id,

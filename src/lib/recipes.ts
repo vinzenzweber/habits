@@ -143,6 +143,8 @@ export async function createRecipe(input: CreateRecipeInput): Promise<Recipe> {
     throw new Error("Not authenticated");
   }
   const userId = parseInt(session.user.id, 10);
+  // Use user's locale preference as fallback, with 'en-US' as ultimate default
+  const defaultLocale = session.user.locale ?? 'en-US';
 
   return transaction(async (client) => {
     const slug = await getUniqueSlug(userId, input.title);
@@ -172,7 +174,7 @@ export async function createRecipe(input: CreateRecipeInput): Promise<Recipe> {
         version,
         input.title,
         input.description || null,
-        input.locale || "de-DE",
+        input.locale || defaultLocale,
         JSON.stringify(input.tags || []),
         JSON.stringify(input.recipeJson),
       ]

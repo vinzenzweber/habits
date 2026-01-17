@@ -13,6 +13,9 @@ export default async function NewRecipePage() {
     redirect('/login');
   }
 
+  // Get user's locale preference (with fallback to 'en-US')
+  const userLocale = session.user.locale ?? 'en-US';
+
   // Get existing tags for autocomplete
   const existingTags = await getUserTags();
 
@@ -38,7 +41,7 @@ export default async function NewRecipePage() {
         </h1>
 
         {/* Form */}
-        <RecipeForm existingTags={existingTags} />
+        <RecipeForm existingTags={existingTags} defaultLocale={userLocale} />
       </div>
     </main>
   );

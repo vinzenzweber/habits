@@ -183,7 +183,7 @@ describe('recipes', () => {
         version: 1,
         title: 'Test Recipe',
         description: 'Test description',
-        locale: 'de-DE',
+        locale: 'en-US',
         tags: JSON.stringify([]),
         recipe_json: JSON.stringify(createMockRecipeJson()),
         is_active: true,
@@ -213,6 +213,147 @@ describe('recipes', () => {
 
       expect(recipe.version).toBe(1);
       expect(recipe.title).toBe('Test Recipe');
+    });
+
+    it('uses session.user.locale when input.locale is not provided', async () => {
+      const sessionWithLocale = { user: { id: '123', locale: 'de-DE' } };
+      vi.mocked(auth).mockResolvedValueOnce(sessionWithLocale);
+
+      // Mock query for getUniqueSlug's slugExists check
+      vi.mocked(query).mockResolvedValueOnce({ rows: [{ count: '0' }] });
+
+      let capturedLocale: string | undefined;
+
+      const mockClient = {
+        query: vi.fn()
+          .mockResolvedValueOnce({ rows: [{ version: null }] })
+          .mockResolvedValueOnce({ rows: [] })
+          .mockImplementationOnce((_sql: string, values: unknown[]) => {
+            capturedLocale = values[5] as string; // locale is 6th param
+            return Promise.resolve({
+              rows: [{
+                id: 1,
+                user_id: '123',
+                slug: 'test-recipe',
+                version: 1,
+                title: 'Test Recipe',
+                description: 'Test description',
+                locale: capturedLocale,
+                tags: JSON.stringify([]),
+                recipe_json: JSON.stringify(createMockRecipeJson()),
+                is_active: true,
+                created_at: new Date(),
+                updated_at: new Date(),
+              }],
+            });
+          }),
+      };
+
+      vi.mocked(transaction).mockImplementation((fn) => fn(mockClient));
+
+      const input = {
+        title: 'Test Recipe',
+        description: 'Test description',
+        // locale NOT provided - should use session.user.locale
+        recipeJson: createMockRecipeJson(),
+      };
+
+      await createRecipe(input);
+
+      expect(capturedLocale).toBe('de-DE');
+    });
+
+    it('falls back to en-US when neither input.locale nor session.user.locale is set', async () => {
+      const sessionWithoutLocale = { user: { id: '123' } };
+      vi.mocked(auth).mockResolvedValueOnce(sessionWithoutLocale);
+
+      vi.mocked(query).mockResolvedValueOnce({ rows: [{ count: '0' }] });
+
+      let capturedLocale: string | undefined;
+
+      const mockClient = {
+        query: vi.fn()
+          .mockResolvedValueOnce({ rows: [{ version: null }] })
+          .mockResolvedValueOnce({ rows: [] })
+          .mockImplementationOnce((_sql: string, values: unknown[]) => {
+            capturedLocale = values[5] as string;
+            return Promise.resolve({
+              rows: [{
+                id: 1,
+                user_id: '123',
+                slug: 'test-recipe',
+                version: 1,
+                title: 'Test Recipe',
+                description: 'Test description',
+                locale: capturedLocale,
+                tags: JSON.stringify([]),
+                recipe_json: JSON.stringify(createMockRecipeJson()),
+                is_active: true,
+                created_at: new Date(),
+                updated_at: new Date(),
+              }],
+            });
+          }),
+      };
+
+      vi.mocked(transaction).mockImplementation((fn) => fn(mockClient));
+
+      const input = {
+        title: 'Test Recipe',
+        description: 'Test description',
+        recipeJson: createMockRecipeJson(),
+      };
+
+      await createRecipe(input);
+
+      expect(capturedLocale).toBe('en-US');
+    });
+
+    it('uses input.locale when explicitly provided (overrides session.user.locale)', async () => {
+      const sessionWithLocale = { user: { id: '123', locale: 'de-DE' } };
+      vi.mocked(auth).mockResolvedValueOnce(sessionWithLocale);
+
+      vi.mocked(query).mockResolvedValueOnce({ rows: [{ count: '0' }] });
+
+      let capturedLocale: string | undefined;
+
+      const mockClient = {
+        query: vi.fn()
+          .mockResolvedValueOnce({ rows: [{ version: null }] })
+          .mockResolvedValueOnce({ rows: [] })
+          .mockImplementationOnce((_sql: string, values: unknown[]) => {
+            capturedLocale = values[5] as string;
+            return Promise.resolve({
+              rows: [{
+                id: 1,
+                user_id: '123',
+                slug: 'test-recipe',
+                version: 1,
+                title: 'Test Recipe',
+                description: 'Test description',
+                locale: capturedLocale,
+                tags: JSON.stringify([]),
+                recipe_json: JSON.stringify(createMockRecipeJson()),
+                is_active: true,
+                created_at: new Date(),
+                updated_at: new Date(),
+              }],
+            });
+          }),
+      };
+
+      vi.mocked(transaction).mockImplementation((fn) => fn(mockClient));
+
+      const input = {
+        title: 'Test Recipe',
+        description: 'Test description',
+        locale: 'fr-FR', // explicit locale
+        recipeJson: createMockRecipeJson(),
+      };
+
+      await createRecipe(input);
+
+      expect(capturedLocale).toBe('fr-FR');
     });
   });
 
