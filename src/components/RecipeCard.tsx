@@ -57,6 +57,7 @@ export function RecipeCard({ recipe, href }: RecipeCardProps) {
             alt={recipe.primaryImage!.caption ?? recipe.title}
             fill
             className="object-cover"
+            unoptimized
             onError={() => setImageError(true)}
           />
         ) : (

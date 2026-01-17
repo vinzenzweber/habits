@@ -307,6 +307,9 @@ export async function getUserRecipeSummaries(): Promise<RecipeSummary[]> {
       fiber?: number;
     };
     recipe_description: string;
+    is_favorite: boolean | null;
+    rating: number | null;
+    updated_at: Date;
   }>(
     `SELECT slug, title, description, tags,
             (recipe_json->>'servings')::int as servings,
@@ -314,7 +317,10 @@ export async function getUserRecipeSummaries(): Promise<RecipeSummary[]> {
             (recipe_json->>'cookTimeMinutes')::int as cook_time_minutes,
             recipe_json->'images' as images,
             recipe_json->'nutrition' as nutrition,
-            recipe_json->>'description' as recipe_description
+            recipe_json->>'description' as recipe_description,
+            (recipe_json->>'isFavorite')::boolean as is_favorite,
+            (recipe_json->>'rating')::float as rating,
+            updated_at
      FROM recipes
      WHERE user_id = $1 AND is_active = true
      ORDER BY updated_at DESC`,
@@ -336,6 +342,9 @@ export async function getUserRecipeSummaries(): Promise<RecipeSummary[]> {
       cookTimeMinutes: row.cook_time_minutes ?? undefined,
       primaryImage,
       nutrition: row.nutrition,
+      isFavorite: row.is_favorite ?? false,
+      rating: row.rating ?? undefined,
+      updatedAt: row.updated_at,
     };
   });
 }
