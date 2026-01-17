@@ -1,9 +1,25 @@
 'use client';
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { WorkoutPreviewMini } from "@/components/WorkoutPreviewMini";
+import { getDefaultUnitSystemForLocale } from "@/lib/user-preferences";
+
+// Helper to detect browser preferences (runs once at module load, client-side)
+function detectBrowserPreferences() {
+  if (typeof window === 'undefined') {
+    return { timezone: 'UTC', locale: 'en-US', unitSystem: 'metric' as const };
+  }
+  try {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    const locale = navigator.language || 'en-US';
+    const unitSystem = getDefaultUnitSystemForLocale(locale);
+    return { timezone, locale, unitSystem };
+  } catch {
+    return { timezone: 'UTC', locale: 'en-US', unitSystem: 'metric' as const };
+  }
+}
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
@@ -12,6 +28,9 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  // Auto-detected browser preferences (stored in ref since they don't change after mount)
+  const browserPrefs = useRef(detectBrowserPreferences());
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,7 +41,14 @@ export default function RegisterPage() {
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, name })
+        body: JSON.stringify({
+          email,
+          password,
+          name,
+          timezone: browserPrefs.current.timezone,
+          locale: browserPrefs.current.locale,
+          unitSystem: browserPrefs.current.unitSystem,
+        })
       });
 
       const data = await response.json();

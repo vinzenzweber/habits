@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { query } from "@/lib/db";
+import { isValidTimezone, isValidLocale, isValidUnitSystem } from "@/lib/user-preferences";
 
 export const runtime = 'nodejs';
 
@@ -8,7 +9,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(request: Request) {
   try {
-    const { email, password, name } = await request.json();
+    const { email, password, name, timezone, locale, unitSystem } = await request.json();
 
     // Validate email format
     if (!email || typeof email !== 'string' || !EMAIL_REGEX.test(email)) {
@@ -37,13 +38,18 @@ export async function POST(request: Request) {
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 
+    // Validate and set preferences with defaults
+    const validTimezone = timezone && isValidTimezone(timezone) ? timezone : 'UTC';
+    const validLocale = locale && isValidLocale(locale) ? locale : 'en-US';
+    const validUnitSystem = unitSystem && isValidUnitSystem(unitSystem) ? unitSystem : 'metric';
+
     // Create user (workouts will be generated during onboarding)
     // Note: onboarding_started_at is set separately if the column exists
     const result = await query<{ id: number }>(`
-      INSERT INTO users (email, name, password_hash)
-      VALUES ($1, $2, $3)
+      INSERT INTO users (email, name, password_hash, timezone, locale, unit_system)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING id
-    `, [email, name.trim(), passwordHash]);
+    `, [email, name.trim(), passwordHash, validTimezone, validLocale, validUnitSystem]);
 
     // Try to set onboarding_started_at if column exists (gracefully handle if not)
     try {
