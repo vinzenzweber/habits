@@ -17,7 +17,26 @@ test.describe('Settings Page', () => {
     await page.getByLabel(/email/i).fill(testEmail)
     await page.getByLabel(/password/i).fill(testPassword)
     await page.getByRole('button', { name: /register|sign up|create account/i }).click()
-    await expect(page).toHaveURL(/\/(login|onboarding|\/)/, { timeout: 10000 })
+
+    // Wait for redirect to complete AND page to load (not just URL change)
+    await expect(page).toHaveURL(/\/(login|onboarding|\/)/, { timeout: 15000 })
+    await page.waitForLoadState('networkidle')
+
+    // If redirected to login, login first
+    if (page.url().includes('/login')) {
+      await page.getByLabel(/email/i).fill(testEmail)
+      await page.getByLabel(/password/i).fill(testPassword)
+      await page.getByRole('button', { name: /log in|sign in|login/i }).click()
+      await expect(page).toHaveURL(/\/(onboarding|\/)/, { timeout: 10000 })
+      await page.waitForLoadState('networkidle')
+    }
+
+    // Complete onboarding via test endpoint (use page.request to use the same session cookies)
+    const response = await page.request.post('/api/test/complete-onboarding')
+    // If already completed or successful, both are fine
+    const body = await response.json()
+    expect(body.success || body.message === 'Already completed').toBe(true)
+
     await page.close()
   })
 
@@ -28,13 +47,9 @@ test.describe('Settings Page', () => {
       await page.getByLabel(/email/i).fill(testEmail)
       await page.getByLabel(/password/i).fill(testPassword)
       await page.getByRole('button', { name: /log in|sign in|login/i }).click()
-      await expect(page).toHaveURL(/\/(onboarding|\/)/, { timeout: 10000 })
 
-      // If on onboarding, wait for it to complete or navigate away
-      if (page.url().includes('/onboarding')) {
-        // Skip onboarding for now by navigating directly to home
-        await page.goto('/')
-      }
+      // Should redirect to home since onboarding is already completed
+      await expect(page).toHaveURL('/', { timeout: 10000 })
 
       // Check for Profile link in bottom nav
       const profileLink = page.getByRole('link', { name: /profile/i })
@@ -46,12 +61,9 @@ test.describe('Settings Page', () => {
       await page.getByLabel(/email/i).fill(testEmail)
       await page.getByLabel(/password/i).fill(testPassword)
       await page.getByRole('button', { name: /log in|sign in|login/i }).click()
-      await expect(page).toHaveURL(/\/(onboarding|\/)/, { timeout: 10000 })
 
-      // Navigate to home if on onboarding
-      if (page.url().includes('/onboarding')) {
-        await page.goto('/')
-      }
+      // Should redirect to home since onboarding is already completed
+      await expect(page).toHaveURL('/', { timeout: 10000 })
 
       // Click Profile link
       await page.getByRole('link', { name: /profile/i }).click()
@@ -71,7 +83,9 @@ test.describe('Settings Page', () => {
       await page.getByLabel(/email/i).fill(testEmail)
       await page.getByLabel(/password/i).fill(testPassword)
       await page.getByRole('button', { name: /log in|sign in|login/i }).click()
-      await expect(page).toHaveURL(/\/(onboarding|\/)/, { timeout: 10000 })
+
+      // Should redirect to home since onboarding is already completed
+      await expect(page).toHaveURL('/', { timeout: 10000 })
 
       // Navigate to settings
       await page.goto('/settings')
