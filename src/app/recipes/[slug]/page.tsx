@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getRecipeBySlug } from "@/lib/recipes";
 import { getRecipeDetailTranslations } from "@/lib/translations/recipe-detail";
+import { convertIngredientUnit } from "@/lib/unit-utils";
 import { RecipeImageGallery } from "@/components/RecipeImageGallery";
 import { PageContextSetter } from "@/components/PageContextSetter";
 
@@ -44,9 +45,10 @@ export default async function RecipeDetailPage({
     notFound();
   }
 
-  // Get user's locale for UI translations
+  // Get user's locale and unit system preferences
   const session = await auth();
   const userLocale = session?.user?.locale ?? 'en-US';
+  const userUnitSystem = session?.user?.unitSystem ?? 'metric';
   const t = getRecipeDetailTranslations(userLocale);
 
   const { recipeJson } = recipe;
@@ -231,17 +233,24 @@ export default async function RecipeDetailPage({
                   </p>
                 </div>
                 <ul className="px-5 pb-5 sm:px-6">
-                  {group.ingredients.map((ingredient, index) => (
-                    <li
-                      key={`${ingredient.name}-${index}`}
-                      className="flex items-baseline gap-2 py-2"
-                    >
-                      <span className="font-medium text-white">
-                        {ingredient.quantity} {ingredient.unit}
-                      </span>
-                      <span className="text-slate-300">{ingredient.name}</span>
-                    </li>
-                  ))}
+                  {group.ingredients.map((ingredient, index) => {
+                    const converted = convertIngredientUnit(
+                      ingredient.quantity,
+                      ingredient.unit,
+                      userUnitSystem
+                    );
+                    return (
+                      <li
+                        key={`${ingredient.name}-${index}`}
+                        className="flex items-baseline gap-2 py-2"
+                      >
+                        <span className="font-medium text-white">
+                          {converted.quantity} {converted.unit}
+                        </span>
+                        <span className="text-slate-300">{ingredient.name}</span>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             ))}
