@@ -1,8 +1,11 @@
 /**
  * Tests for GuidedRoutinePlayer countdown beeps functionality
+ *
+ * The component uses Web Audio API instead of HTMLAudioElement to play
+ * countdown beeps without interrupting background music on mobile devices.
  */
 
-import { render, act } from '@testing-library/react';
+import { render, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { GuidedRoutinePlayer } from '../GuidedRoutinePlayer';
 import type { WorkoutDay, RoutineSegment } from '@/lib/workoutPlan';
@@ -25,39 +28,64 @@ vi.mock('../Confetti', () => ({
   Confetti: () => null,
 }));
 
-// Mock Audio API
-let mockPlay: ReturnType<typeof vi.fn>;
-let mockPause: ReturnType<typeof vi.fn>;
-let mockAudioInstance: MockAudio | null = null;
-let audioConstructorCalled = false;
-let audioConstructorArg = '';
+// Mock Web Audio API
+let mockStart: ReturnType<typeof vi.fn>;
+let mockConnect: ReturnType<typeof vi.fn>;
+let mockResume: ReturnType<typeof vi.fn>;
+let mockClose: ReturnType<typeof vi.fn>;
+let mockCreateBufferSource: ReturnType<typeof vi.fn>;
+let audioContextCreated = false;
+let audioContextState = 'running';
 
-// Mock Audio constructor as a class
-class MockAudio {
-  play = vi.fn();
-  pause = vi.fn();
-  currentTime = 0;
-  preload = '';
+class MockAudioBufferSourceNode {
+  buffer: AudioBuffer | null = null;
+  connect = vi.fn();
+  start = vi.fn();
 
-  constructor(src?: string) {
-    mockPlay = this.play;
-    mockPause = this.pause;
-    // Store reference to this instance for test assertions
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
-    mockAudioInstance = this;
-    audioConstructorCalled = true;
-    audioConstructorArg = src || '';
+  constructor() {
+    mockStart = this.start;
+    mockConnect = this.connect;
   }
 }
 
-beforeEach(() => {
-  mockPlay = vi.fn();
-  mockPause = vi.fn();
-  mockAudioInstance = null;
-  audioConstructorCalled = false;
-  audioConstructorArg = '';
+class MockAudioContext {
+  state = audioContextState;
+  destination = {};
 
-  global.Audio = MockAudio as unknown as typeof Audio;
+  resume = vi.fn().mockResolvedValue(undefined);
+  close = vi.fn().mockResolvedValue(undefined);
+  createBufferSource = vi.fn(() => new MockAudioBufferSourceNode());
+  // Resolve immediately with a mock buffer
+  decodeAudioData = vi.fn().mockResolvedValue({} as AudioBuffer);
+
+  constructor() {
+    mockResume = this.resume;
+    mockClose = this.close;
+    mockCreateBufferSource = this.createBufferSource;
+    audioContextCreated = true;
+    this.state = audioContextState;
+  }
+}
+
+// Mock fetch for audio file loading - resolves immediately
+const mockFetch = vi.fn().mockImplementation(() =>
+  Promise.resolve({
+    arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+  })
+);
+
+beforeEach(() => {
+  mockStart = vi.fn();
+  mockConnect = vi.fn();
+  mockResume = vi.fn();
+  mockClose = vi.fn();
+  mockCreateBufferSource = vi.fn();
+  audioContextCreated = false;
+  audioContextState = 'running';
+
+  global.AudioContext = MockAudioContext as unknown as typeof AudioContext;
+  (global as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext = MockAudioContext as unknown as typeof AudioContext;
+  global.fetch = mockFetch;
 });
 
 afterEach(() => {
@@ -85,51 +113,79 @@ const createMockWorkout = (segments: RoutineSegment[]): WorkoutDay => ({
 });
 
 describe('GuidedRoutinePlayer countdown beeps', () => {
-  describe('audio initialization', () => {
-    it('creates Audio instance on mount', () => {
+  describe('Web Audio API initialization', () => {
+    it('creates AudioContext on mount', () => {
       vi.useFakeTimers();
       const workout = createMockWorkout(createMockSegments());
 
       render(<GuidedRoutinePlayer workout={workout} />);
 
-      expect(audioConstructorCalled).toBe(true);
-      expect(audioConstructorArg).toBe('/short-beep-countdown-81121.mp3');
+      expect(audioContextCreated).toBe(true);
     });
 
-    it('sets audio preload to auto', () => {
+    it('fetches the audio file', () => {
       vi.useFakeTimers();
       const workout = createMockWorkout(createMockSegments());
 
       render(<GuidedRoutinePlayer workout={workout} />);
 
-      expect(mockAudioInstance?.preload).toBe('auto');
+      expect(mockFetch).toHaveBeenCalledWith('/short-beep-countdown-81121.mp3');
+    });
+
+    it('cleans up AudioContext on unmount', async () => {
+      const workout = createMockWorkout(createMockSegments());
+
+      const { unmount } = render(<GuidedRoutinePlayer workout={workout} />);
+
+      // Wait for audio loading to complete
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalled();
+      });
+
+      unmount();
+
+      expect(mockClose).toHaveBeenCalled();
     });
   });
 
   describe('beep playback', () => {
-    it('plays beep at 4 seconds remaining', () => {
+    it('plays beep at 4 seconds remaining', async () => {
       vi.useFakeTimers();
       const segments = createMockSegments(1);
       segments[0].durationSeconds = 10;
       const workout = createMockWorkout(segments);
 
       render(<GuidedRoutinePlayer workout={workout} />);
+
+      // Let async audio loading complete
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
 
       // Advance to 4 seconds remaining (10 - 6 = 4)
       act(() => {
         vi.advanceTimersByTime(6000); // 6 seconds = 24 intervals of 250ms
       });
 
-      expect(mockPlay).toHaveBeenCalled();
+      expect(mockCreateBufferSource).toHaveBeenCalled();
+      expect(mockStart).toHaveBeenCalled();
     });
 
-    it('plays beep at 3 seconds remaining', () => {
+    it('plays beep at 3 seconds remaining', async () => {
       vi.useFakeTimers();
       const segments = createMockSegments(1);
       segments[0].durationSeconds = 10;
       const workout = createMockWorkout(segments);
 
       render(<GuidedRoutinePlayer workout={workout} />);
+
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
 
       // Advance to 3 seconds remaining
       act(() => {
@@ -137,42 +193,54 @@ describe('GuidedRoutinePlayer countdown beeps', () => {
       });
 
       // Should have played for 4s and 3s
-      expect(mockPlay).toHaveBeenCalled();
+      expect(mockCreateBufferSource).toHaveBeenCalled();
     });
 
-    it('plays beep at 2 seconds remaining', () => {
+    it('plays beep at 2 seconds remaining', async () => {
       vi.useFakeTimers();
       const segments = createMockSegments(1);
       segments[0].durationSeconds = 10;
       const workout = createMockWorkout(segments);
 
       render(<GuidedRoutinePlayer workout={workout} />);
+
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
 
       // Advance to 2 seconds remaining
       act(() => {
         vi.advanceTimersByTime(8000);
       });
 
-      expect(mockPlay).toHaveBeenCalled();
+      expect(mockCreateBufferSource).toHaveBeenCalled();
     });
 
-    it('plays beep at 1 second remaining', () => {
+    it('plays beep at 1 second remaining', async () => {
       vi.useFakeTimers();
       const segments = createMockSegments(1);
       segments[0].durationSeconds = 10;
       const workout = createMockWorkout(segments);
 
       render(<GuidedRoutinePlayer workout={workout} />);
+
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
 
       // Advance to 1 second remaining
       act(() => {
         vi.advanceTimersByTime(9000);
       });
 
-      expect(mockPlay).toHaveBeenCalled();
+      expect(mockCreateBufferSource).toHaveBeenCalled();
     });
 
-    it('does not play duplicate beeps for same second', () => {
+    it('does not play duplicate beeps for same second', async () => {
       vi.useFakeTimers();
       const segments = createMockSegments(1);
       segments[0].durationSeconds = 10;
@@ -180,12 +248,18 @@ describe('GuidedRoutinePlayer countdown beeps', () => {
 
       render(<GuidedRoutinePlayer workout={workout} />);
 
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
       // Advance into countdown zone
       act(() => {
         vi.advanceTimersByTime(6000); // At 4 seconds
       });
 
-      const initialCallCount = mockPlay.mock.calls.length;
+      const initialCallCount = mockCreateBufferSource.mock.calls.length;
 
       // Advance a tiny bit more but still at 4 seconds
       act(() => {
@@ -193,10 +267,10 @@ describe('GuidedRoutinePlayer countdown beeps', () => {
       });
 
       // Should not play again for the same second
-      expect(mockPlay.mock.calls.length).toBe(initialCallCount);
+      expect(mockCreateBufferSource.mock.calls.length).toBe(initialCallCount);
     });
 
-    it('resets beep tracking when seconds remaining > 4', () => {
+    it('plays beeps in sequence during countdown', async () => {
       vi.useFakeTimers();
       const segments = createMockSegments(1);
       segments[0].durationSeconds = 10;
@@ -204,35 +278,86 @@ describe('GuidedRoutinePlayer countdown beeps', () => {
 
       render(<GuidedRoutinePlayer workout={workout} />);
 
-      // Advance to first beep (at 4 seconds remaining = 6 seconds elapsed)
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      // Advance to 4 seconds remaining - first beep
+      act(() => {
+        vi.advanceTimersByTime(6000);
+      });
+      expect(mockCreateBufferSource.mock.calls.length).toBe(1);
+
+      // Advance to 3 seconds remaining - second beep
+      act(() => {
+        vi.advanceTimersByTime(1000);
+      });
+      expect(mockCreateBufferSource.mock.calls.length).toBe(2);
+
+      // Advance to 2 seconds remaining - third beep
+      act(() => {
+        vi.advanceTimersByTime(1000);
+      });
+      expect(mockCreateBufferSource.mock.calls.length).toBe(3);
+
+      // Advance to 1 second remaining - fourth beep
+      act(() => {
+        vi.advanceTimersByTime(1000);
+      });
+      expect(mockCreateBufferSource.mock.calls.length).toBe(4);
+    });
+  });
+
+  describe('iOS AudioContext suspension handling', () => {
+    it('resumes AudioContext if suspended before playing', async () => {
+      vi.useFakeTimers();
+      audioContextState = 'suspended';
+      const segments = createMockSegments(1);
+      segments[0].durationSeconds = 10;
+      const workout = createMockWorkout(segments);
+
+      render(<GuidedRoutinePlayer workout={workout} />);
+
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      // Advance to trigger a beep
       act(() => {
         vi.advanceTimersByTime(6000);
       });
 
-      const firstBeepCount = mockPlay.mock.calls.length;
-      expect(firstBeepCount).toBeGreaterThan(0);
-
-      // Continue advancing - beeps should continue for 3, 2, 1 seconds
-      act(() => {
-        vi.advanceTimersByTime(3000); // Another 3 seconds
-      });
-
-      // Should have more beeps now
-      expect(mockPlay.mock.calls.length).toBeGreaterThan(firstBeepCount);
+      // Should have called resume on the suspended context
+      expect(mockResume).toHaveBeenCalled();
     });
   });
 
   describe('pause behavior', () => {
-    it('pauses audio when timer is paused', () => {
+    it('does not play new beeps when timer is paused', async () => {
       vi.useFakeTimers();
-      const workout = createMockWorkout(createMockSegments());
+      const segments = createMockSegments(1);
+      segments[0].durationSeconds = 10;
+      const workout = createMockWorkout(segments);
 
       const { getByRole } = render(<GuidedRoutinePlayer workout={workout} />);
 
-      // Get into countdown zone
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      // Advance to trigger the first beep (4s remaining)
       act(() => {
         vi.advanceTimersByTime(6000);
       });
+
+      const callCountAfterFirstBeep = mockCreateBufferSource.mock.calls.length;
+      expect(callCountAfterFirstBeep).toBe(1);
 
       // Pause the timer
       const pauseButton = getByRole('button', { name: /pause/i });
@@ -240,37 +365,60 @@ describe('GuidedRoutinePlayer countdown beeps', () => {
         pauseButton.click();
       });
 
-      expect(mockPause).toHaveBeenCalled();
+      // Try to advance time (but timer is paused)
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+
+      // No new beeps should have played since timer is paused
+      expect(mockCreateBufferSource.mock.calls.length).toBe(callCountAfterFirstBeep);
     });
   });
 
   describe('workout completion', () => {
-    it('pauses and resets audio on workout finish', () => {
+    it('does not play beeps after workout finishes', async () => {
       vi.useFakeTimers();
       const segments = createMockSegments(1);
-      segments[0].durationSeconds = 2;
+      segments[0].durationSeconds = 5;
       const workout = createMockWorkout(segments);
 
       // Mock fetch for completion tracking
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ completionId: 1 }),
-      });
+      global.fetch = vi.fn()
+        .mockImplementationOnce(() => Promise.resolve({
+          arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+        }))
+        .mockImplementation(() => Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ completionId: 1 }),
+        }));
 
       render(<GuidedRoutinePlayer workout={workout} />);
 
-      // Complete the workout
-      act(() => {
-        vi.advanceTimersByTime(3000); // More than segment duration
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
       });
 
-      expect(mockPause).toHaveBeenCalled();
-      expect(mockAudioInstance?.currentTime).toBe(0);
+      // Complete the workout (5 second segment = beeps at 4, 3, 2, 1 = 4 beeps)
+      act(() => {
+        vi.advanceTimersByTime(6000); // More than segment duration
+      });
+
+      const callCountAtFinish = mockCreateBufferSource.mock.calls.length;
+
+      // Advance more time
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+
+      // No new beeps should play after completion
+      expect(mockCreateBufferSource.mock.calls.length).toBe(callCountAtFinish);
     });
   });
 
   describe('no segments', () => {
-    it('does not crash with empty segments', () => {
+    it('does not crash with empty segments', async () => {
       vi.useFakeTimers();
       const workout: WorkoutDay = {
         slug: 'empty',
@@ -284,8 +432,15 @@ describe('GuidedRoutinePlayer countdown beeps', () => {
 
       const { getByText } = render(<GuidedRoutinePlayer workout={workout} />);
 
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
       expect(getByText(/no guided plan available/i)).toBeInTheDocument();
-      expect(mockPlay).not.toHaveBeenCalled();
+      // createBufferSource shouldn't be called for empty workout
+      expect(mockStart).not.toHaveBeenCalled();
     });
   });
 });

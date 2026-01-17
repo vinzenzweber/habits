@@ -86,16 +86,55 @@ export function GuidedRoutinePlayer({
   const [showConfetti, setShowConfetti] = useState(false);
   const [completionId, setCompletionId] = useState<number | null>(null);
   const [isTrackingCompletion, setIsTrackingCompletion] = useState(false);
-  const countdownAudioRef = useRef<HTMLAudioElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioBufferRef = useRef<AudioBuffer | null>(null);
   // Track which countdown seconds have been played for the current segment
   const countdownBeepsPlayedRef = useRef<Set<number>>(new Set());
   const startTimeRef = useRef<number>(0);
   const hasTrackedCompletionRef = useRef(false);
 
+  // Play beep sound using Web Audio API (doesn't interrupt background music)
+  const playBeep = useCallback(() => {
+    const audioContext = audioContextRef.current;
+    const audioBuffer = audioBufferRef.current;
+
+    if (!audioContext || !audioBuffer) return;
+
+    // Resume AudioContext if suspended (required after user gesture on iOS)
+    if (audioContext.state === 'suspended') {
+      audioContext.resume();
+    }
+
+    // Create a new buffer source for each play (they're one-time use)
+    const source = audioContext.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(audioContext.destination);
+    source.start(0);
+  }, []);
+
   useEffect(() => {
-    const audio = new Audio("/short-beep-countdown-81121.mp3");
-    audio.preload = "auto";
-    countdownAudioRef.current = audio;
+    // Create AudioContext on mount (with webkit prefix fallback for older Safari)
+    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const audioContext = new AudioContextClass();
+    audioContextRef.current = audioContext;
+
+    // Load and decode the beep sound
+    fetch("/short-beep-countdown-81121.mp3")
+      .then(response => response.arrayBuffer())
+      .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
+      .then(audioBuffer => {
+        audioBufferRef.current = audioBuffer;
+      })
+      .catch(error => {
+        console.error("Failed to load countdown beep:", error);
+      });
+
+    // Cleanup on unmount
+    return () => {
+      if (audioContextRef.current?.state !== 'closed') {
+        audioContextRef.current?.close();
+      }
+    };
   }, []);
 
   // Track workout completion and trigger confetti
@@ -183,19 +222,7 @@ export function GuidedRoutinePlayer({
   }, [hasFinished, hasRoutine, isRunning, segments]);
 
   useEffect(() => {
-    const audio = countdownAudioRef.current;
-    if (!audio) {
-      return;
-    }
-
-    if (!hasRoutine || hasFinished) {
-      audio.pause();
-      audio.currentTime = 0;
-      return;
-    }
-
-    if (!isRunning) {
-      audio.pause();
+    if (!hasRoutine || hasFinished || !isRunning) {
       return;
     }
 
@@ -213,10 +240,9 @@ export function GuidedRoutinePlayer({
       !countdownBeepsPlayedRef.current.has(roundedRemaining)
     ) {
       countdownBeepsPlayedRef.current.add(roundedRemaining);
-      audio.currentTime = 0;
-      void audio.play();
+      playBeep();
     }
-  }, [hasFinished, hasRoutine, isRunning, remainingSeconds]);
+  }, [hasFinished, hasRoutine, isRunning, remainingSeconds, playBeep]);
 
   const currentSegment = segments[currentIndex];
   const nextSegment = segments[currentIndex + 1];
