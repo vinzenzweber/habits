@@ -126,14 +126,20 @@ export async function PUT(request: Request) {
     };
 
     // Trigger session update with new preferences to refresh the JWT
-    // The session data is passed directly to the jwt callback's session parameter
-    await unstable_update({
-      user: {
-        timezone: updatedPreferences.timezone,
-        locale: updatedPreferences.locale,
-        unitSystem: updatedPreferences.unitSystem,
-      },
-    });
+    // This invokes the JWT callback with trigger='update' and passes preferences in the session parameter
+    try {
+      await unstable_update({
+        user: {
+          timezone: updatedPreferences.timezone,
+          locale: updatedPreferences.locale,
+          unitSystem: updatedPreferences.unitSystem,
+        },
+      });
+    } catch (sessionUpdateError) {
+      // Log error but don't fail the request - DB update succeeded
+      // Session will refresh on next login
+      console.error('Error updating session:', sessionUpdateError);
+    }
 
     return Response.json(updatedPreferences);
   } catch (error) {

@@ -359,6 +359,29 @@ describe('/api/user/preferences', () => {
         expect(response.status).toBe(401)
         expect(mockUnstableUpdate).not.toHaveBeenCalled()
       })
+
+      it('returns success even when unstable_update fails', async () => {
+        mockAuth.mockResolvedValueOnce({
+          user: { id: '1', email: 'test@example.com', name: 'Test', timezone: 'UTC', locale: 'en-US', unitSystem: 'metric' },
+          expires: ''
+        })
+        mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as never)
+        mockQuery.mockResolvedValueOnce({
+          rows: [{ timezone: 'UTC', locale: 'en-US', unit_system: 'metric' }],
+          rowCount: 1
+        } as never)
+        // Simulate unstable_update failing
+        mockUnstableUpdate.mockRejectedValueOnce(new Error('Session update failed'))
+
+        const request = createPutRequest({ timezone: 'UTC' })
+        const response = await PUT(request)
+        const data = await response.json()
+
+        // Should succeed despite session error - DB update succeeded
+        expect(response.status).toBe(200)
+        expect(data.timezone).toBe('UTC')
+        expect(mockUnstableUpdate).toHaveBeenCalledTimes(1)
+      })
     })
   })
 })
