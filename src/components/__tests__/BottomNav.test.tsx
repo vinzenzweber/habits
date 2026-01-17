@@ -136,6 +136,53 @@ describe('BottomNav', () => {
       const recipesLink = screen.getByRole('link', { name: /recipes/i });
       expect(recipesLink).toHaveAttribute('href', '/recipes');
     });
+
+    it('Settings link points to /settings', () => {
+      vi.mocked(usePathname).mockReturnValue('/');
+      render(<BottomNav />);
+
+      const settingsLink = screen.getByRole('link', { name: /settings/i });
+      expect(settingsLink).toHaveAttribute('href', '/settings');
+    });
+  });
+
+  describe('settings tab', () => {
+    it('renders Settings tab on home page', () => {
+      vi.mocked(usePathname).mockReturnValue('/');
+      render(<BottomNav />);
+
+      expect(screen.getByText('Settings')).toBeInTheDocument();
+    });
+
+    it('renders Settings tab on recipes page', () => {
+      vi.mocked(usePathname).mockReturnValue('/recipes');
+      render(<BottomNav />);
+
+      expect(screen.getByText('Settings')).toBeInTheDocument();
+    });
+
+    it('renders Settings tab on settings page', () => {
+      vi.mocked(usePathname).mockReturnValue('/settings');
+      render(<BottomNav />);
+
+      expect(screen.getByText('Settings')).toBeInTheDocument();
+    });
+
+    it('highlights Settings tab when on settings page', () => {
+      vi.mocked(usePathname).mockReturnValue('/settings');
+      render(<BottomNav />);
+
+      const settingsLink = screen.getByRole('link', { name: /settings/i });
+      expect(settingsLink).toHaveClass('text-emerald-400');
+    });
+
+    it('does not highlight Settings tab when on home page', () => {
+      vi.mocked(usePathname).mockReturnValue('/');
+      render(<BottomNav />);
+
+      const settingsLink = screen.getByRole('link', { name: /settings/i });
+      expect(settingsLink).toHaveClass('text-slate-400');
+    });
   });
 
   describe('structure', () => {
