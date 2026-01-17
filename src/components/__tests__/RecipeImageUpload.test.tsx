@@ -106,25 +106,31 @@ describe('RecipeImageUpload', () => {
   });
 
   describe('file validation', () => {
-    // This test is skipped due to complex async interactions with file upload mocking.
-    // The functionality is covered by E2E tests.
-    it.skip('shows error for invalid file type', async () => {
-      vi.mocked(validateImageFile).mockReturnValueOnce({
+    it('shows error for invalid file type', async () => {
+      // Set up mock to return invalid for file validation
+      vi.mocked(validateImageFile).mockImplementation(() => ({
         valid: false,
         error: 'Invalid file type',
-      });
+      }));
 
       const user = userEvent.setup();
-      render(<RecipeImageUpload images={[]} onChange={() => {}} />);
+      const onChange = vi.fn();
+      render(<RecipeImageUpload images={[]} onChange={onChange} />);
 
-      const file = new File(['test'], 'test.txt', { type: 'text/plain' });
+      // Use an image MIME type to pass the browser's accept filter,
+      // but our mock will reject it as invalid
+      const file = new File(['test'], 'corrupted.jpg', { type: 'image/jpeg' });
       const input = document.querySelector('input[type="file"]') as HTMLInputElement;
 
       await user.upload(input, file);
 
+      // The error message format is "filename: error message"
       await waitFor(() => {
-        expect(screen.getByText(/Invalid file type/i)).toBeInTheDocument();
+        expect(screen.getByText(/corrupted\.jpg: Invalid file type/i)).toBeInTheDocument();
       });
+
+      // onChange should not be called for invalid file
+      expect(onChange).not.toHaveBeenCalled();
     });
 
     it('shows error when max images exceeded', async () => {
@@ -145,8 +151,11 @@ describe('RecipeImageUpload', () => {
   });
 
   describe('file upload', () => {
-    // This test is skipped due to complex async interactions with file upload mocking.
-    it.skip('uploads valid file and calls onChange', async () => {
+    it('uploads valid file and calls onChange', async () => {
+      // Ensure mocks return valid state for successful upload
+      vi.mocked(validateImageFile).mockReturnValue({ valid: true });
+      vi.mocked(resizeImage).mockResolvedValue(new Blob(['test'], { type: 'image/jpeg' }));
+
       const user = userEvent.setup();
       const onChange = vi.fn();
       render(<RecipeImageUpload images={[]} onChange={onChange} />);
@@ -250,47 +259,44 @@ describe('RecipeImageUpload', () => {
   });
 
   describe('drag and drop', () => {
-    // Both drag state tests are skipped because class assertions vary based on implementation details.
-    // The functionality is covered by E2E tests.
-    it.skip('shows drag over state on dragOver', () => {
+    it('shows drag over state on dragOver', () => {
       render(<RecipeImageUpload images={[]} onChange={() => {}} />);
 
-      const dropZone = screen.getByText(/drop images here/i).closest('div');
+      // Get the drop zone div that has the onDragOver handler
+      const dropZone = screen.getByText(/drop images here/i).closest('div[class*="border-dashed"]');
       fireEvent.dragOver(dropZone!);
 
       expect(dropZone).toHaveClass('border-emerald-500');
     });
 
-    // Skipped: Related to 'shows drag over state on dragOver' test above.
-    // Testing only the removal half of a state transition doesn't provide meaningful coverage.
-    it.skip('removes drag over state on dragLeave', () => {
+    it('removes drag over state on dragLeave', () => {
       render(<RecipeImageUpload images={[]} onChange={() => {}} />);
 
-      const dropZone = screen.getByText(/drop images here/i).closest('div');
+      const dropZone = screen.getByText(/drop images here/i).closest('div[class*="border-dashed"]');
       fireEvent.dragOver(dropZone!);
-      fireEvent.dragLeave(dropZone!);
+      expect(dropZone).toHaveClass('border-emerald-500');
 
+      fireEvent.dragLeave(dropZone!);
       expect(dropZone).not.toHaveClass('border-emerald-500');
     });
   });
 
   describe('image management', () => {
-    // This test is skipped due to hover state management complexity.
-    it.skip('removes image on delete button click', async () => {
+    it('removes image on delete button click', async () => {
       const user = userEvent.setup();
       const onChange = vi.fn();
       render(<RecipeImageUpload images={mockImages} onChange={onChange} />);
 
-      // Hover over first image to show delete button
-      const imageContainers = screen.getAllByTestId('recipe-image');
-      const container = imageContainers[0].closest('.group');
-      fireEvent.mouseEnter(container!);
-
-      // Find and click delete button
+      // The delete buttons are always in the DOM but hidden with opacity-0 via group-hover
+      // We can still click them directly
       const deleteButtons = screen.getAllByTitle('Remove');
       await user.click(deleteButtons[0]);
 
-      expect(onChange).toHaveBeenCalledWith([mockImages[1]]);
+      // First image removed, second one remains (but not yet promoted to primary since
+      // we're testing the remove action, not the result - see 'makes next image primary' test)
+      expect(onChange).toHaveBeenCalledWith([
+        { ...mockImages[1], isPrimary: true },
+      ]);
     });
 
     it('makes next image primary when primary is removed', async () => {
@@ -322,17 +328,14 @@ describe('RecipeImageUpload', () => {
       ]);
     });
 
-    // This test is skipped due to complex interactions with userEvent.clear() + type() on controlled inputs.
-    // The functionality is covered by E2E tests.
-    it.skip('updates caption on input change', async () => {
-      const user = userEvent.setup();
+    it('updates caption on input change', () => {
       const onChange = vi.fn();
       render(<RecipeImageUpload images={mockImages} onChange={onChange} />);
 
       const captionInputs = screen.getAllByPlaceholderText('Caption (optional)');
-      await user.clear(captionInputs[0]);
-      await user.type(captionInputs[0], 'New caption');
+      fireEvent.change(captionInputs[0], { target: { value: 'New caption' } });
 
+      expect(onChange).toHaveBeenCalled();
       const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
       expect(lastCall[0].caption).toBe('New caption');
     });
@@ -365,11 +368,10 @@ describe('RecipeImageUpload', () => {
       });
     });
 
-    // This test is skipped because the opacity class is applied to the outer container, not the closest div.
-    // The functionality is covered by E2E tests.
-    it.skip('shows disabled styling on drop zone', () => {
+    it('shows disabled styling on drop zone', () => {
       render(<RecipeImageUpload images={[]} onChange={() => {}} disabled />);
-      const dropZone = screen.getByText(/drop images here/i).closest('div');
+      // The disabled class is applied to the border-dashed container
+      const dropZone = screen.getByText(/drop images here/i).closest('div[class*="border-dashed"]');
       expect(dropZone).toHaveClass('opacity-50');
     });
   });

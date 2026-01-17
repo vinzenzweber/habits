@@ -2,7 +2,7 @@
  * Tests for RecipeForm component
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { RecipeForm } from '../RecipeForm';
@@ -171,9 +171,7 @@ describe('RecipeForm', () => {
   });
 
   describe('pre-population for editing', () => {
-    // This test is skipped because the mock for initialRecipe may not work
-    // as expected with the component's internal state initialization.
-    it.skip('pre-populates form with initial recipe data', () => {
+    it('pre-populates form with initial recipe data', () => {
       const initialRecipe = createMockRecipeJson({
         title: 'Existing Recipe',
         description: 'Existing description',
@@ -184,11 +182,23 @@ describe('RecipeForm', () => {
 
       render(<RecipeForm initialRecipe={initialRecipe} slug="existing-recipe" />);
 
-      expect(screen.getByDisplayValue('Existing Recipe')).toBeInTheDocument();
-      expect(screen.getByDisplayValue('Existing description')).toBeInTheDocument();
-      expect(screen.getByDisplayValue('4')).toBeInTheDocument();
-      expect(screen.getByDisplayValue('15')).toBeInTheDocument();
-      expect(screen.getByDisplayValue('30')).toBeInTheDocument();
+      // Check title input value
+      const titleInput = screen.getByLabelText(/Title/) as HTMLInputElement;
+      expect(titleInput.value).toBe('Existing Recipe');
+
+      // Check description
+      const descriptionInput = screen.getByLabelText(/Description/) as HTMLTextAreaElement;
+      expect(descriptionInput.value).toBe('Existing description');
+
+      // Check numeric fields
+      const servingsInput = screen.getByLabelText(/Servings/) as HTMLInputElement;
+      expect(servingsInput.value).toBe('4');
+
+      const prepTimeInput = screen.getByLabelText(/Prep time/) as HTMLInputElement;
+      expect(prepTimeInput.value).toBe('15');
+
+      const cookTimeInput = screen.getByLabelText(/Cook time/) as HTMLInputElement;
+      expect(cookTimeInput.value).toBe('30');
     });
 
     it('shows Save Changes button when editing', () => {
@@ -203,9 +213,7 @@ describe('RecipeForm', () => {
   });
 
   describe('validation', () => {
-    // These validation tests are skipped due to complex interactions with mocked child components.
-    // The validation functionality is covered by E2E tests.
-    it.skip('shows error when title is empty', async () => {
+    it('shows error when title is empty', async () => {
       const user = userEvent.setup();
       render(<RecipeForm />);
 
@@ -213,7 +221,14 @@ describe('RecipeForm', () => {
       await user.click(screen.getByText('Add Mock Image'));
       await user.click(screen.getByText('Add Mock Ingredient'));
       await user.click(screen.getByText('Add Mock Step'));
-      await user.type(screen.getByLabelText(/Description/), 'Test description');
+
+      // Fill description using fireEvent.change for controlled input
+      const descriptionInput = screen.getByLabelText(/Description/);
+      fireEvent.change(descriptionInput, { target: { value: 'Test description' } });
+
+      // Fill title with whitespace only (passes browser required check but fails our trim validation)
+      const titleInput = screen.getByLabelText(/Title/);
+      fireEvent.change(titleInput, { target: { value: '   ' } });
 
       await user.click(screen.getByRole('button', { name: /Create Recipe/ }));
 
@@ -222,11 +237,18 @@ describe('RecipeForm', () => {
       });
     });
 
-    it.skip('shows error when description is empty', async () => {
+    it('shows error when description is empty', async () => {
       const user = userEvent.setup();
       render(<RecipeForm />);
 
-      await user.type(screen.getByLabelText(/Title/), 'Test Recipe');
+      // Fill title using fireEvent.change for controlled input
+      const titleInput = screen.getByLabelText(/Title/);
+      fireEvent.change(titleInput, { target: { value: 'Test Recipe' } });
+
+      // Fill description with whitespace only (passes browser required check but fails our trim validation)
+      const descriptionInput = screen.getByLabelText(/Description/);
+      fireEvent.change(descriptionInput, { target: { value: '   ' } });
+
       await user.click(screen.getByText('Add Mock Image'));
       await user.click(screen.getByText('Add Mock Ingredient'));
       await user.click(screen.getByText('Add Mock Step'));
@@ -254,25 +276,22 @@ describe('RecipeForm', () => {
       });
     });
 
-    it.skip('shows error when servings is less than 1', async () => {
-      const user = userEvent.setup();
+    it('prevents servings from being set to 0', () => {
+      // This test verifies the component's defensive behavior that prevents
+      // servings from being set to invalid values like 0. The onChange handler
+      // does `parseInt(e.target.value) || 1`, which means 0 is falsy and becomes 1.
       render(<RecipeForm />);
 
-      await user.type(screen.getByLabelText(/Title/), 'Test Recipe');
-      await user.type(screen.getByLabelText(/Description/), 'Test description');
-      await user.click(screen.getByText('Add Mock Image'));
-      await user.click(screen.getByText('Add Mock Ingredient'));
-      await user.click(screen.getByText('Add Mock Step'));
+      const servingsInput = screen.getByLabelText(/Servings/) as HTMLInputElement;
 
-      const servingsInput = screen.getByLabelText(/Servings/);
-      await user.clear(servingsInput);
-      await user.type(servingsInput, '0');
+      // Initial value should be 2 (default)
+      expect(servingsInput.value).toBe('2');
 
-      await user.click(screen.getByRole('button', { name: /Create Recipe/ }));
+      // Try to set servings to 0
+      fireEvent.change(servingsInput, { target: { value: '0' } });
 
-      await waitFor(() => {
-        expect(screen.getByText('Servings must be at least 1')).toBeInTheDocument();
-      });
+      // Component should default to 1 (falsy protection)
+      expect(servingsInput.value).toBe('1');
     });
 
     it('shows error when no ingredients', async () => {
