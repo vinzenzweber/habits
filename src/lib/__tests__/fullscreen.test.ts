@@ -418,6 +418,41 @@ describe("useFullscreen", () => {
       expect(result.current.isFullscreen).toBe(false);
     });
 
+    it("reports isFullscreen false when a different element is fullscreen", () => {
+      // Create a different element that is NOT the ref
+      const differentElement = document.createElement("div");
+
+      const { result } = renderHook(() => useFullscreen(mockRef));
+
+      expect(result.current.isFullscreen).toBe(false);
+
+      // Simulate a different element entering fullscreen (not our ref)
+      Object.defineProperty(document, "fullscreenElement", {
+        value: differentElement,
+        configurable: true,
+      });
+
+      act(() => {
+        document.dispatchEvent(new Event("fullscreenchange"));
+      });
+
+      // isFullscreen should remain false because differentElement !== ref.current
+      expect(result.current.isFullscreen).toBe(false);
+
+      // Now simulate our element entering fullscreen
+      Object.defineProperty(document, "fullscreenElement", {
+        value: mockElement,
+        configurable: true,
+      });
+
+      act(() => {
+        document.dispatchEvent(new Event("fullscreenchange"));
+      });
+
+      // Now it should be true because mockElement === ref.current
+      expect(result.current.isFullscreen).toBe(true);
+    });
+
     it("handles webkit fullscreen element changes", () => {
       // Remove standard API
       Object.defineProperty(document, "fullscreenElement", {

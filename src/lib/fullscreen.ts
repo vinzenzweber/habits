@@ -162,7 +162,8 @@ export function useFullscreen(
     if (typeof document === "undefined") return;
 
     const handleChange = () => {
-      setIsFullscreen(getFullscreenElement() !== null);
+      const fullscreenEl = getFullscreenElement();
+      setIsFullscreen(fullscreenEl !== null && fullscreenEl === ref.current);
     };
 
     // Listen to all vendor-prefixed fullscreen change events
@@ -180,7 +181,7 @@ export function useFullscreen(
         document.removeEventListener(event, handleChange)
       );
     };
-  }, [getFullscreenElement]);
+  }, [getFullscreenElement, ref]);
 
   return {
     isFullscreen,
