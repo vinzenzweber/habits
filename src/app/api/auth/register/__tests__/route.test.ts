@@ -225,4 +225,150 @@ describe('POST /api/auth/register', () => {
       expect(data.userId).toBe(42)
     })
   })
+
+  describe('browser-detected preferences (issue #120)', () => {
+    it('saves valid browser-detected timezone, locale, and unit system', async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never)
+      mockQuery.mockResolvedValueOnce({ rows: [{ id: 1 }], rowCount: 1 } as never)
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as never)
+
+      const request = createRequest({
+        email: 'test@example.com',
+        password: 'ValidPassword123!',
+        name: 'Test User',
+        timezone: 'America/New_York',
+        locale: 'en-US',
+        unitSystem: 'imperial'
+      })
+
+      const response = await POST(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+
+      // Verify INSERT was called with browser-detected preferences
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO users'),
+        ['test@example.com', 'Test User', 'hashed_password', 'America/New_York', 'en-US', 'imperial']
+      )
+    })
+
+    it('saves metric unit system for European locales', async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never)
+      mockQuery.mockResolvedValueOnce({ rows: [{ id: 1 }], rowCount: 1 } as never)
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as never)
+
+      const request = createRequest({
+        email: 'test@example.com',
+        password: 'ValidPassword123!',
+        name: 'Test User',
+        timezone: 'Europe/Berlin',
+        locale: 'de-DE',
+        unitSystem: 'metric'
+      })
+
+      const response = await POST(request)
+      expect(response.status).toBe(200)
+
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO users'),
+        ['test@example.com', 'Test User', 'hashed_password', 'Europe/Berlin', 'de-DE', 'metric']
+      )
+    })
+
+    it('falls back to defaults for invalid timezone', async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never)
+      mockQuery.mockResolvedValueOnce({ rows: [{ id: 1 }], rowCount: 1 } as never)
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as never)
+
+      const request = createRequest({
+        email: 'test@example.com',
+        password: 'ValidPassword123!',
+        name: 'Test User',
+        timezone: 'Invalid/Timezone',
+        locale: 'en-US',
+        unitSystem: 'imperial'
+      })
+
+      const response = await POST(request)
+      expect(response.status).toBe(200)
+
+      // Should fall back to UTC for invalid timezone
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO users'),
+        ['test@example.com', 'Test User', 'hashed_password', 'UTC', 'en-US', 'imperial']
+      )
+    })
+
+    it('falls back to defaults for invalid locale', async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never)
+      mockQuery.mockResolvedValueOnce({ rows: [{ id: 1 }], rowCount: 1 } as never)
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as never)
+
+      const request = createRequest({
+        email: 'test@example.com',
+        password: 'ValidPassword123!',
+        name: 'Test User',
+        timezone: 'America/New_York',
+        locale: 'not-a-valid-locale!',
+        unitSystem: 'imperial'
+      })
+
+      const response = await POST(request)
+      expect(response.status).toBe(200)
+
+      // Should fall back to en-US for invalid locale
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO users'),
+        ['test@example.com', 'Test User', 'hashed_password', 'America/New_York', 'en-US', 'imperial']
+      )
+    })
+
+    it('falls back to defaults for invalid unit system', async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never)
+      mockQuery.mockResolvedValueOnce({ rows: [{ id: 1 }], rowCount: 1 } as never)
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as never)
+
+      const request = createRequest({
+        email: 'test@example.com',
+        password: 'ValidPassword123!',
+        name: 'Test User',
+        timezone: 'America/New_York',
+        locale: 'en-US',
+        unitSystem: 'invalid'
+      })
+
+      const response = await POST(request)
+      expect(response.status).toBe(200)
+
+      // Should fall back to metric for invalid unit system
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO users'),
+        ['test@example.com', 'Test User', 'hashed_password', 'America/New_York', 'en-US', 'metric']
+      )
+    })
+
+    it('uses defaults when no preferences are provided', async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never)
+      mockQuery.mockResolvedValueOnce({ rows: [{ id: 1 }], rowCount: 1 } as never)
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as never)
+
+      const request = createRequest({
+        email: 'test@example.com',
+        password: 'ValidPassword123!',
+        name: 'Test User'
+        // No timezone, locale, or unitSystem provided
+      })
+
+      const response = await POST(request)
+      expect(response.status).toBe(200)
+
+      // Should use all defaults
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO users'),
+        ['test@example.com', 'Test User', 'hashed_password', 'UTC', 'en-US', 'metric']
+      )
+    })
+  })
 })
