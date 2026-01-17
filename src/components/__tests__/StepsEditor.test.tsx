@@ -2,7 +2,7 @@
  * Tests for StepsEditor component
  */
 
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { StepsEditor } from '../StepsEditor';
@@ -101,17 +101,14 @@ describe('StepsEditor', () => {
   });
 
   describe('updating step instruction', () => {
-    // This test is skipped because userEvent.clear() followed by type() has
-    // complex interactions with controlled inputs. The functionality is covered by E2E tests.
-    it.skip('updates instruction on textarea change', async () => {
-      const user = userEvent.setup();
+    it('updates instruction on textarea change', () => {
       const onChange = vi.fn();
       render(<StepsEditor steps={createMockSteps()} onChange={onChange} />);
 
       const textarea = screen.getByDisplayValue('Mix dry ingredients');
-      await user.clear(textarea);
-      await user.type(textarea, 'Combine all dry ingredients');
+      fireEvent.change(textarea, { target: { value: 'Combine all dry ingredients' } });
 
+      expect(onChange).toHaveBeenCalled();
       const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
       expect(lastCall[1].instruction).toBe('Combine all dry ingredients');
     });

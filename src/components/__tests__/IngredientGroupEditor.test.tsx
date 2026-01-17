@@ -2,7 +2,7 @@
  * Tests for IngredientGroupEditor component
  */
 
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { IngredientGroupEditor } from '../IngredientGroupEditor';
@@ -105,19 +105,14 @@ describe('IngredientGroupEditor', () => {
   });
 
   describe('updating group name', () => {
-    // This test is skipped because userEvent.clear() followed by type() has
-    // complex interactions with controlled inputs that vary by React/Testing Library version.
-    // The functionality is covered by E2E tests.
-    it.skip('updates group name on input change', async () => {
-      const user = userEvent.setup();
+    it('updates group name on input change', () => {
       const onChange = vi.fn();
       render(<IngredientGroupEditor groups={createMockGroups()} onChange={onChange} />);
 
       const groupNameInput = screen.getByDisplayValue('Main Ingredients');
-      await user.clear(groupNameInput);
-      await user.type(groupNameInput, 'New Name');
+      fireEvent.change(groupNameInput, { target: { value: 'New Name' } });
 
-      // Check the last call includes the updated name
+      expect(onChange).toHaveBeenCalled();
       const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
       expect(lastCall[0].name).toBe('New Name');
     });
@@ -213,44 +208,39 @@ describe('IngredientGroupEditor', () => {
   });
 
   describe('updating ingredient fields', () => {
-    // These tests are skipped because userEvent.clear() followed by type() has
-    // complex interactions with controlled inputs. The functionality is covered by E2E tests.
-    it.skip('updates ingredient name', async () => {
-      const user = userEvent.setup();
+    it('updates ingredient name', () => {
       const onChange = vi.fn();
       render(<IngredientGroupEditor groups={createMockGroups()} onChange={onChange} />);
 
       const nameInput = screen.getByDisplayValue('Flour');
-      await user.clear(nameInput);
-      await user.type(nameInput, 'Whole Wheat Flour');
+      fireEvent.change(nameInput, { target: { value: 'Whole Wheat Flour' } });
 
+      expect(onChange).toHaveBeenCalled();
       const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
       expect(lastCall[0].ingredients[0].name).toBe('Whole Wheat Flour');
     });
 
-    it.skip('updates ingredient quantity', async () => {
-      const user = userEvent.setup();
+    it('updates ingredient quantity', () => {
       const onChange = vi.fn();
       render(<IngredientGroupEditor groups={createMockGroups()} onChange={onChange} />);
 
       const quantityInput = screen.getByDisplayValue('200');
-      await user.clear(quantityInput);
-      await user.type(quantityInput, '250');
+      fireEvent.change(quantityInput, { target: { value: '250' } });
 
+      expect(onChange).toHaveBeenCalled();
       const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
       expect(lastCall[0].ingredients[0].quantity).toBe(250);
     });
 
-    it.skip('updates ingredient unit', async () => {
-      const user = userEvent.setup();
+    it('updates ingredient unit', () => {
       const onChange = vi.fn();
       render(<IngredientGroupEditor groups={createMockGroups()} onChange={onChange} />);
 
       // Find unit input (value 'g' for flour)
       const unitInputs = screen.getAllByDisplayValue('g');
-      await user.clear(unitInputs[0]);
-      await user.type(unitInputs[0], 'kg');
+      fireEvent.change(unitInputs[0], { target: { value: 'kg' } });
 
+      expect(onChange).toHaveBeenCalled();
       const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
       expect(lastCall[0].ingredients[0].unit).toBe('kg');
     });
