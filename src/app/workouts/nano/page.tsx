@@ -38,7 +38,7 @@ export default async function NanoWorkoutPage() {
           <header className="flex flex-col gap-6">
             <Link
               href="/"
-              className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400 transition hover:text-white"
+              className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white transition hover:border-emerald-300 hover:text-emerald-200"
             >
               ← Back
             </Link>
@@ -73,7 +73,7 @@ export default async function NanoWorkoutPage() {
         <header className="flex flex-col gap-6">
           <Link
             href="/"
-            className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400 transition hover:text-white"
+            className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white transition hover:border-emerald-300 hover:text-emerald-200"
           >
             ← Back
           </Link>
