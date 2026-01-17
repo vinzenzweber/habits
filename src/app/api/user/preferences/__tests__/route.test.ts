@@ -6,15 +6,17 @@ vi.mock('@/lib/db', () => ({
 }))
 
 vi.mock('@/lib/auth', () => ({
-  auth: vi.fn()
+  auth: vi.fn(),
+  unstable_update: vi.fn()
 }))
 
 import { GET, PUT } from '../route'
 import { query } from '@/lib/db'
-import { auth } from '@/lib/auth'
+import { auth, unstable_update } from '@/lib/auth'
 
 const mockQuery = vi.mocked(query)
 const mockAuth = vi.mocked(auth)
+const mockUnstableUpdate = vi.mocked(unstable_update)
 
 function createPutRequest(body: object): Request {
   return new Request('http://localhost/api/user/preferences', {
@@ -276,6 +278,110 @@ describe('/api/user/preferences', () => {
       expect(data.error).toContain('Invalid timezone')
       expect(data.error).toContain('Invalid locale')
       expect(data.error).toContain('Invalid unit system')
+    })
+
+    describe('session update via unstable_update', () => {
+      it('calls unstable_update with new preferences after successful update', async () => {
+        mockAuth.mockResolvedValueOnce({
+          user: { id: '1', email: 'test@example.com', name: 'Test', timezone: 'UTC', locale: 'en-US', unitSystem: 'metric' },
+          expires: ''
+        })
+        mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as never)
+        mockQuery.mockResolvedValueOnce({
+          rows: [{ timezone: 'Asia/Tokyo', locale: 'ja-JP', unit_system: 'imperial' }],
+          rowCount: 1
+        } as never)
+        mockUnstableUpdate.mockResolvedValueOnce(undefined)
+
+        const request = createPutRequest({
+          timezone: 'Asia/Tokyo',
+          locale: 'ja-JP',
+          unitSystem: 'imperial'
+        })
+        const response = await PUT(request)
+
+        expect(response.status).toBe(200)
+        expect(mockUnstableUpdate).toHaveBeenCalledTimes(1)
+        expect(mockUnstableUpdate).toHaveBeenCalledWith({
+          user: {
+            timezone: 'Asia/Tokyo',
+            locale: 'ja-JP',
+            unitSystem: 'imperial'
+          }
+        })
+      })
+
+      it('calls unstable_update with default values for null DB fields', async () => {
+        mockAuth.mockResolvedValueOnce({
+          user: { id: '1', email: 'test@example.com', name: 'Test', timezone: 'UTC', locale: 'en-US', unitSystem: 'metric' },
+          expires: ''
+        })
+        mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as never)
+        // DB returns null values
+        mockQuery.mockResolvedValueOnce({
+          rows: [{ timezone: null, locale: null, unit_system: null }],
+          rowCount: 1
+        } as never)
+        mockUnstableUpdate.mockResolvedValueOnce(undefined)
+
+        const request = createPutRequest({ timezone: 'UTC' })
+        const response = await PUT(request)
+
+        expect(response.status).toBe(200)
+        expect(mockUnstableUpdate).toHaveBeenCalledWith({
+          user: {
+            timezone: 'UTC',
+            locale: 'en-US',
+            unitSystem: 'metric'
+          }
+        })
+      })
+
+      it('does not call unstable_update on validation error', async () => {
+        mockAuth.mockResolvedValueOnce({
+          user: { id: '1', email: 'test@example.com', name: 'Test', timezone: 'UTC', locale: 'en-US', unitSystem: 'metric' },
+          expires: ''
+        })
+
+        const request = createPutRequest({ timezone: 'Invalid/Zone' })
+        const response = await PUT(request)
+
+        expect(response.status).toBe(400)
+        expect(mockUnstableUpdate).not.toHaveBeenCalled()
+      })
+
+      it('does not call unstable_update when not authenticated', async () => {
+        mockAuth.mockResolvedValueOnce(null)
+
+        const request = createPutRequest({ timezone: 'UTC' })
+        const response = await PUT(request)
+
+        expect(response.status).toBe(401)
+        expect(mockUnstableUpdate).not.toHaveBeenCalled()
+      })
+
+      it('returns success even when unstable_update fails', async () => {
+        mockAuth.mockResolvedValueOnce({
+          user: { id: '1', email: 'test@example.com', name: 'Test', timezone: 'UTC', locale: 'en-US', unitSystem: 'metric' },
+          expires: ''
+        })
+        mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as never)
+        mockQuery.mockResolvedValueOnce({
+          rows: [{ timezone: 'UTC', locale: 'en-US', unit_system: 'metric' }],
+          rowCount: 1
+        } as never)
+        // Simulate unstable_update failing
+        mockUnstableUpdate.mockRejectedValueOnce(new Error('Session update failed'))
+
+        const request = createPutRequest({ timezone: 'UTC' })
+        const response = await PUT(request)
+        const data = await response.json()
+
+        // Should succeed despite session error - DB update succeeded
+        expect(response.status).toBe(200)
+        expect(data.timezone).toBe('UTC')
+        expect(mockUnstableUpdate).toHaveBeenCalledTimes(1)
+      })
     })
   })
 })

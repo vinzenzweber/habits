@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth";
+import { auth, unstable_update } from "@/lib/auth";
 import { query } from "@/lib/db";
 import {
   isValidTimezone,
@@ -124,6 +124,22 @@ export async function PUT(request: Request) {
       locale: row.locale ?? 'en-US',
       unitSystem: (row.unit_system as UnitSystem) ?? 'metric',
     };
+
+    // Trigger session update with new preferences to refresh the JWT
+    // This invokes the JWT callback with trigger='update' and passes preferences in the session parameter
+    try {
+      await unstable_update({
+        user: {
+          timezone: updatedPreferences.timezone,
+          locale: updatedPreferences.locale,
+          unitSystem: updatedPreferences.unitSystem,
+        },
+      });
+    } catch (sessionUpdateError) {
+      // Log error but don't fail the request - DB update succeeded
+      // Session will refresh on next login
+      console.error('Error updating session:', sessionUpdateError);
+    }
 
     return Response.json(updatedPreferences);
   } catch (error) {

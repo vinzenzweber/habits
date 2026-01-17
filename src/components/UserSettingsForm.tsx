@@ -50,7 +50,7 @@ export function UserSettingsForm({
       }
 
       setSuccess(true);
-      // Refresh to update session with new preferences
+      // Refresh to update server components with new session data
       router.refresh();
     } catch {
       setError('An error occurred. Please try again.');
