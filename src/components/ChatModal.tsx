@@ -1,6 +1,7 @@
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { ChatHistory } from './ChatHistory';
 
 interface Message {
   role: string;
@@ -46,6 +47,8 @@ export function ChatModal({
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [awaitingRating, setAwaitingRating] = useState(false);
   const [toolInProgress, setToolInProgress] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [loadingSession, setLoadingSession] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasAutoSentRef = useRef(false);
@@ -100,6 +103,7 @@ export function ChatModal({
       setShowRatingButtons(false);
       setRatingSubmitted(false);
       setAwaitingRating(false);
+      setShowHistory(false);
     }
   }, [isOpen]);
 
@@ -630,6 +634,33 @@ export function ChatModal({
     }
   }, [isSpeaking, speakingIndex]);
 
+  // Load a session from chat history
+  const loadSession = useCallback(async (sessionId: number) => {
+    if (loadingSession) return;
+
+    setLoadingSession(true);
+    try {
+      const response = await fetch(`/api/chat/sessions/${sessionId}`);
+      if (!response.ok) {
+        throw new Error('Failed to load session');
+      }
+      const data = await response.json();
+
+      setSessionId(sessionId);
+      setMessages(data.session.messages.map((m: { role: string; content: string }) => ({
+        role: m.role,
+        content: m.content
+      })));
+      setShowHistory(false);
+      setStreamingContent('');
+    } catch (error) {
+      console.error('Error loading session:', error);
+      alert('Failed to load chat session. Please try again.');
+    } finally {
+      setLoadingSession(false);
+    }
+  }, [loadingSession]);
+
   if (!isOpen) return null;
 
   return (
@@ -660,6 +691,13 @@ export function ChatModal({
         <div className="flex items-center justify-between p-4 border-b border-slate-700">
           <h2 className="text-lg font-semibold">Personal Trainer</h2>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowHistory(true)}
+              className="text-xs px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300 transition"
+              title="View chat history"
+            >
+              History
+            </button>
             {messages.length > 0 && (
               <button
                 onClick={() => {
@@ -845,6 +883,14 @@ export function ChatModal({
           </button>
         </div>
       </div>
+
+      {/* Chat History Panel */}
+      <ChatHistory
+        isOpen={showHistory}
+        onClose={() => setShowHistory(false)}
+        onSelectSession={loadSession}
+        currentSessionId={sessionId}
+      />
     </>
   );
 }
