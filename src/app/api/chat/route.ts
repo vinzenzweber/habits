@@ -1076,8 +1076,11 @@ ${memoryContext}${pageContextSection}${instructionSection}`;
             }
           }
 
-          // Send done signal
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "done" })}\n\n`));
+          // Send done signal with tool calls for persistent display
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            type: "done",
+            toolCalls: allToolCalls.length > 0 ? allToolCalls : undefined
+          })}\n\n`));
 
           // Save assistant message to DB
           await query(`
