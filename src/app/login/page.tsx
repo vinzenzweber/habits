@@ -1,6 +1,6 @@
 'use client';
 import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { WorkoutPreviewMini } from "@/components/WorkoutPreviewMini";
@@ -13,13 +13,27 @@ function getGreeting(): string {
   return "End your day strong";
 }
 
+// Empty subscribe function - greeting only needs to be read once on mount
+function subscribe() {
+  return () => {};
+}
+
+// useSyncExternalStore hook to safely get greeting on client only
+function useGreeting(): string | null {
+  return useSyncExternalStore(
+    subscribe,
+    getGreeting, // Client: return actual greeting
+    () => null // Server: return null to show fallback
+  );
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const greeting = useGreeting();
   const router = useRouter();
-  const greeting = getGreeting();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +64,9 @@ export default function LoginPage() {
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
       <div className="bg-slate-900 rounded-lg p-8 max-w-md w-full space-y-6">
         <div>
-          <p className="text-emerald-400 text-sm font-medium mb-1">{greeting}</p>
+          <p className="text-emerald-400 text-sm font-medium mb-1">
+            {greeting ?? "Ready for your workout?"}
+          </p>
           <h1 className="text-2xl font-bold">Welcome back</h1>
         </div>
 

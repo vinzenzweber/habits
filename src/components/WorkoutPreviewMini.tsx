@@ -1,5 +1,7 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
+
 // Self-contained workout data to avoid importing server-side dependencies
 const DAY_ORDER = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"] as const;
 type DaySlug = (typeof DAY_ORDER)[number];
@@ -29,8 +31,36 @@ function getTodaySlug(): DaySlug {
   return DAY_ORDER[new Date().getDay()];
 }
 
+// Empty subscribe function - the date only needs to be read once on mount
+function subscribe() {
+  return () => {};
+}
+
+// useSyncExternalStore hook to safely get today's slug on client only
+function useTodaySlug(): DaySlug | null {
+  return useSyncExternalStore(
+    subscribe,
+    getTodaySlug, // Client: return actual value
+    () => null // Server: return null to show loading state
+  );
+}
+
 export function WorkoutPreviewMini() {
-  const todaySlug = getTodaySlug();
+  const todaySlug = useTodaySlug();
+
+  // Show loading skeleton during SSR to avoid hydration mismatch
+  if (!todaySlug) {
+    return (
+      <div className="rounded-xl border border-slate-700/50 bg-slate-800/30 p-4">
+        <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-emerald-400">
+          Today&apos;s Workout
+        </p>
+        <div className="h-5 w-32 animate-pulse rounded bg-slate-700" />
+        <div className="mt-2 h-4 w-48 animate-pulse rounded bg-slate-700" />
+      </div>
+    );
+  }
+
   const workout = DEFAULT_WORKOUTS[todaySlug];
   const dayLabel = DAY_LABELS[todaySlug];
 
