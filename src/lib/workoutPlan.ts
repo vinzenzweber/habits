@@ -607,14 +607,22 @@ export async function getWorkoutBySlug(slug: string | null | undefined): Promise
   if (!isDaySlug(normalized)) return null;
 
   const session = await auth();
-  if (!session?.user?.id) return null;
+  if (!session?.user?.id) {
+    console.warn('[getWorkoutBySlug] No session/user - returning null', { slug: normalized });
+    return null;
+  }
+
+  console.log('[getWorkoutBySlug]', { userId: session.user.id, slug: normalized });
 
   const result = await query(`
     SELECT workout_json FROM workouts
     WHERE user_id = $1 AND slug = $2 AND is_active = true
   `, [session.user.id, normalized]);
 
-  if (result.rows.length === 0) return null;
+  if (result.rows.length === 0) {
+    console.warn('[getWorkoutBySlug] No workout found', { userId: session.user.id, slug: normalized });
+    return null;
+  }
 
   const workout = result.rows[0].workout_json;
   // Always recalculate totalSeconds from segments to ensure accuracy
@@ -636,7 +644,12 @@ export async function getWorkoutForToday(now: Date = new Date()): Promise<Workou
 
 export async function getAllWorkouts(): Promise<WorkoutDay[]> {
   const session = await auth();
-  if (!session?.user?.id) return [];
+  if (!session?.user?.id) {
+    console.warn('[getAllWorkouts] No session/user - returning empty array');
+    return [];
+  }
+
+  console.log('[getAllWorkouts]', { userId: session.user.id });
 
   const result = await query(`
     SELECT workout_json FROM workouts
@@ -648,6 +661,8 @@ export async function getAllWorkouts(): Promise<WorkoutDay[]> {
       WHEN 'sunday' THEN 7
     END
   `, [session.user.id]);
+
+  console.log('[getAllWorkouts] Found workouts', { userId: session.user.id, count: result.rows.length });
 
   return result.rows.map(row => {
     const workout = row.workout_json as StructuredWorkout;
@@ -704,12 +719,14 @@ export async function getNextUncompletedWorkout(now: Date = new Date()): Promise
 
   // If today's workout is not completed, return it
   if (!completions[todaySlug]) {
+    console.log('[getNextUncompletedWorkout] Returning today\'s workout', { todaySlug, reason: 'not completed' });
     return getWorkoutBySlug(todaySlug);
   }
 
   // Otherwise, return tomorrow's workout
   const tomorrowIndex = (now.getDay() + 1) % 7;
   const tomorrowSlug = DAY_ORDER[tomorrowIndex];
+  console.log('[getNextUncompletedWorkout] Returning tomorrow\'s workout', { todaySlug, tomorrowSlug, reason: 'today completed' });
   return getWorkoutBySlug(tomorrowSlug);
 }
 

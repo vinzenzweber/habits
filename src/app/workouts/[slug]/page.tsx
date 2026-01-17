@@ -108,7 +108,7 @@ export default async function WorkoutDetailPage({ params }: WorkoutPageProps) {
             <div className="space-y-2">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">
-                  {isToday ? "Today · " : ""}{workout.label}
+                  {isToday ? "Today · " : ""}Your {workout.label} Workout
                 </p>
                 <h1 className="mt-2 text-3xl font-semibold text-white sm:text-4xl">
                   {workout.title}
