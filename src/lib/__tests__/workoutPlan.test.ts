@@ -419,4 +419,158 @@ describe('workoutPlan', () => {
       expect(result[1].label).toBe('Saturday')
     })
   })
+
+  describe('Multi-user workout isolation', () => {
+    it('getWorkoutBySlug passes correct user_id to database query', async () => {
+      const { auth } = await import('@/lib/auth')
+      const { query } = await import('@/lib/db')
+
+      vi.mocked(auth).mockResolvedValue({
+        user: { id: 'user-abc', email: 'userA@test.com' },
+        expires: new Date(Date.now() + 86400000).toISOString()
+      })
+
+      const storedWorkout = {
+        slug: 'monday',
+        title: 'User A Monday',
+        focus: 'Custom A',
+        description: 'User A description',
+        segments: [{ id: '1', title: 'Ex 1', durationSeconds: 30, category: 'main' }],
+        totalSeconds: 30
+      }
+
+      vi.mocked(query).mockResolvedValue({
+        rows: [{ workout_json: storedWorkout }],
+        rowCount: 1
+      })
+
+      const { getWorkoutBySlug } = await import('../workoutPlan')
+      await getWorkoutBySlug('monday')
+
+      // Verify the query was called with the correct user_id
+      expect(query).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE user_id = $1'),
+        expect.arrayContaining(['user-abc'])
+      )
+    })
+
+    it('getAllWorkouts passes correct user_id to database query', async () => {
+      const { auth } = await import('@/lib/auth')
+      const { query } = await import('@/lib/db')
+
+      vi.mocked(auth).mockResolvedValue({
+        user: { id: 'user-xyz', email: 'userX@test.com' },
+        expires: new Date(Date.now() + 86400000).toISOString()
+      })
+
+      vi.mocked(query).mockResolvedValue({ rows: [], rowCount: 0 })
+
+      const { getAllWorkouts } = await import('../workoutPlan')
+      await getAllWorkouts()
+
+      // Verify the query was called with the correct user_id
+      expect(query).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE user_id = $1'),
+        expect.arrayContaining(['user-xyz'])
+      )
+    })
+
+    it('different users get different workout data when auth returns different sessions', async () => {
+      const { auth } = await import('@/lib/auth')
+      const { query } = await import('@/lib/db')
+
+      // User A's workout
+      const userAWorkout = {
+        slug: 'monday',
+        title: 'User A Custom Workout',
+        focus: 'User A Focus',
+        description: 'Customized for User A',
+        segments: [
+          { id: '1', title: 'User A Exercise', durationSeconds: 45, category: 'main' }
+        ],
+        totalSeconds: 45
+      }
+
+      // User B's workout
+      const userBWorkout = {
+        slug: 'monday',
+        title: 'User B Custom Workout',
+        focus: 'User B Focus',
+        description: 'Customized for User B',
+        segments: [
+          { id: '1', title: 'User B Exercise', durationSeconds: 60, category: 'main' },
+          { id: '2', title: 'User B Exercise 2', durationSeconds: 30, category: 'main' }
+        ],
+        totalSeconds: 90
+      }
+
+      // Simulate User A's session
+      vi.mocked(auth).mockResolvedValue({
+        user: { id: 'user-A', email: 'userA@test.com' },
+        expires: new Date(Date.now() + 86400000).toISOString()
+      })
+      vi.mocked(query).mockResolvedValue({
+        rows: [{ workout_json: userAWorkout }],
+        rowCount: 1
+      })
+
+      const { getWorkoutBySlug } = await import('../workoutPlan')
+      const resultA = await getWorkoutBySlug('monday')
+
+      expect(resultA).not.toBeNull()
+      expect(resultA!.title).toBe('User A Custom Workout')
+      expect(resultA!.segments).toHaveLength(1)
+      expect(resultA!.segments[0].title).toBe('User A Exercise')
+
+      // Clear and switch to User B's session
+      vi.clearAllMocks()
+
+      vi.mocked(auth).mockResolvedValue({
+        user: { id: 'user-B', email: 'userB@test.com' },
+        expires: new Date(Date.now() + 86400000).toISOString()
+      })
+      vi.mocked(query).mockResolvedValue({
+        rows: [{ workout_json: userBWorkout }],
+        rowCount: 1
+      })
+
+      const resultB = await getWorkoutBySlug('monday')
+
+      expect(resultB).not.toBeNull()
+      expect(resultB!.title).toBe('User B Custom Workout')
+      expect(resultB!.segments).toHaveLength(2)
+      expect(resultB!.segments[0].title).toBe('User B Exercise')
+
+      // Verify the data is different
+      expect(resultA!.title).not.toBe(resultB!.title)
+      expect(resultA!.segments.length).not.toBe(resultB!.segments.length)
+    })
+
+    it('returns null when user has no session (security check)', async () => {
+      const { auth } = await import('@/lib/auth')
+
+      // Simulate no session (logged out)
+      vi.mocked(auth).mockResolvedValue(null)
+
+      const { getWorkoutBySlug } = await import('../workoutPlan')
+      const result = await getWorkoutBySlug('monday')
+
+      expect(result).toBeNull()
+    })
+
+    it('returns null when session exists but user.id is missing', async () => {
+      const { auth } = await import('@/lib/auth')
+
+      // Simulate session with missing user.id
+      vi.mocked(auth).mockResolvedValue({
+        user: { email: 'test@test.com' },
+        expires: new Date(Date.now() + 86400000).toISOString()
+      } as never)
+
+      const { getWorkoutBySlug } = await import('../workoutPlan')
+      const result = await getWorkoutBySlug('monday')
+
+      expect(result).toBeNull()
+    })
+  })
 })

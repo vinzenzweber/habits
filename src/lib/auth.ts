@@ -27,14 +27,20 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
         `, [email]);
 
         const user = result.rows[0];
-        if (!user) return null;
+        if (!user) {
+          console.warn('[auth] User not found', { email });
+          return null;
+        }
 
         const valid = await bcrypt.compare(
           password,
           user.password_hash
         );
 
-        if (!valid) return null;
+        if (!valid) {
+          console.warn('[auth] Invalid password', { email });
+          return null;
+        }
 
         // Try to get onboarding status and preferences separately (columns may not exist)
         let onboardingCompleted = false;
@@ -54,6 +60,8 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
         } catch {
           // Columns don't exist yet - use defaults
         }
+
+        console.log('[auth] Login successful', { userId: user.id, email: user.email });
 
         return {
           id: user.id.toString(),
@@ -78,6 +86,7 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
     async jwt({ token, user, trigger, session }) {
       // Initial login - populate token from user object
       if (user) {
+        console.log('[auth:jwt] Initial login - populating token', { userId: user.id });
         token.id = user.id;
         token.onboardingCompleted = (user as { onboardingCompleted?: boolean }).onboardingCompleted ?? false;
         token.timezone = (user as { timezone?: string }).timezone ?? 'UTC';
@@ -88,6 +97,7 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
       // Session update triggered - merge new preferences into token
       // Only update specific preference fields (security: prevent arbitrary token modification)
       if (trigger === "update" && session?.user) {
+        console.log('[auth:jwt] Session update triggered', { userId: token.id });
         const userData = session.user as { timezone?: string; locale?: string; unitSystem?: UnitSystem; onboardingCompleted?: boolean };
         if (userData.timezone !== undefined) {
           token.timezone = userData.timezone;
