@@ -41,7 +41,7 @@ test.describe('Settings Page', () => {
   })
 
   test.describe('Navigation', () => {
-    test('shows Profile tab in bottom navigation', async ({ page }) => {
+    test('shows Settings tab in bottom navigation', async ({ page }) => {
       // Login first
       await page.goto('/login')
       await page.getByLabel(/email/i).fill(testEmail)
@@ -51,12 +51,12 @@ test.describe('Settings Page', () => {
       // Should redirect to home since onboarding is already completed
       await expect(page).toHaveURL('/', { timeout: 10000 })
 
-      // Check for Profile link in bottom nav
-      const profileLink = page.getByRole('link', { name: /profile/i })
-      await expect(profileLink).toBeVisible()
+      // Check for Settings link in bottom nav
+      const settingsLink = page.getByRole('link', { name: /settings/i })
+      await expect(settingsLink).toBeVisible()
     })
 
-    test('navigates to settings page when clicking Profile', async ({ page }) => {
+    test('navigates to settings page when clicking Settings', async ({ page }) => {
       await page.goto('/login')
       await page.getByLabel(/email/i).fill(testEmail)
       await page.getByLabel(/password/i).fill(testPassword)
@@ -65,8 +65,8 @@ test.describe('Settings Page', () => {
       // Should redirect to home since onboarding is already completed
       await expect(page).toHaveURL('/', { timeout: 10000 })
 
-      // Click Profile link
-      await page.getByRole('link', { name: /profile/i }).click()
+      // Click Settings link
+      await page.getByRole('link', { name: /settings/i }).click()
       await expect(page).toHaveURL(/\/settings/)
     })
 
