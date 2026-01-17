@@ -84,6 +84,26 @@ describe('collection-db', () => {
       expect(result.description).toBeNull();
       expect(result.coverImageUrl).toBeNull();
     });
+
+    it('throws error when name exceeds 100 characters', async () => {
+      const longName = 'a'.repeat(101);
+
+      await expect(createCollection(1, { name: longName })).rejects.toThrow(
+        'Collection name must be 100 characters or less'
+      );
+      expect(query).not.toHaveBeenCalled();
+    });
+
+    it('allows name exactly 100 characters', async () => {
+      const exactName = 'a'.repeat(100);
+      const mockRow = createMockCollectionRow({ name: exactName });
+      vi.mocked(query).mockResolvedValueOnce({ rows: [mockRow] });
+
+      const result = await createCollection(1, { name: exactName });
+
+      expect(result.name).toBe(exactName);
+      expect(query).toHaveBeenCalled();
+    });
   });
 
   describe('getUserCollections', () => {
@@ -203,6 +223,15 @@ describe('collection-db', () => {
         'Collection not found'
       );
     });
+
+    it('throws error when name exceeds 100 characters', async () => {
+      const longName = 'a'.repeat(101);
+
+      await expect(updateCollection(1, 1, { name: longName })).rejects.toThrow(
+        'Collection name must be 100 characters or less'
+      );
+      expect(query).not.toHaveBeenCalled();
+    });
   });
 
   describe('deleteCollection', () => {
@@ -309,28 +338,47 @@ describe('collection-db', () => {
   });
 
   describe('reorderCollectionItems', () => {
-    it('updates positions for all recipe IDs', async () => {
+    it('updates positions for all recipe IDs using bulk CTE', async () => {
       const mockClient = {
         query: vi.fn()
           .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // collection check
-          .mockResolvedValue({ rows: [] }), // position updates
+          .mockResolvedValue({ rows: [] }), // bulk update and updated_at
       };
       vi.mocked(transaction).mockImplementation((fn) => fn(mockClient));
 
       await reorderCollectionItems(1, 1, [3, 1, 2]);
 
-      // Verify position updates (calls 2, 3, 4 are position updates for 3 items)
+      // Verify bulk CTE update (single query for all positions)
       expect(mockClient.query).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE recipe_collection_items'),
-        [0, 1, 3]
+        expect.stringContaining('WITH new_positions'),
+        [1]
       );
       expect(mockClient.query).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE recipe_collection_items'),
-        [1, 1, 1]
+        expect.stringContaining('VALUES (3, 0), (1, 1), (2, 2)'),
+        [1]
       );
+      // Verify updated_at is updated
       expect(mockClient.query).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE recipe_collection_items'),
-        [2, 1, 2]
+        expect.stringContaining('UPDATE recipe_collections SET updated_at'),
+        [1]
+      );
+    });
+
+    it('handles empty recipeIds array', async () => {
+      const mockClient = {
+        query: vi.fn()
+          .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // collection check
+          .mockResolvedValue({ rows: [] }), // updated_at
+      };
+      vi.mocked(transaction).mockImplementation((fn) => fn(mockClient));
+
+      await reorderCollectionItems(1, 1, []);
+
+      // Should only have collection check and updated_at, no bulk update
+      expect(mockClient.query).toHaveBeenCalledTimes(2);
+      expect(mockClient.query).not.toHaveBeenCalledWith(
+        expect.stringContaining('WITH new_positions'),
+        expect.anything()
       );
     });
   });
@@ -450,6 +498,15 @@ describe('collection-db', () => {
       await expect(shareCollection(1, 2, 1)).rejects.toThrow(
         'Collection already shared with this user'
       );
+    });
+
+    it('throws error when sharing with yourself', async () => {
+      // Self-sharing is prevented before any database calls
+      await expect(shareCollection(1, 1, 1)).rejects.toThrow(
+        'Cannot share collection with yourself'
+      );
+      // No transaction should be started
+      expect(transaction).not.toHaveBeenCalled();
     });
   });
 

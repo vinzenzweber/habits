@@ -18,7 +18,13 @@ import {
   rowToCollection,
   rowToCollectionItem,
 } from "./collection-types";
-import { RecipeJson, RecipeSummary } from "./recipe-types";
+import { RecipeJson, RecipeSummary, generateSlug } from "./recipe-types";
+
+// ============================================
+// Constants
+// ============================================
+
+const COLLECTION_NAME_MAX_LENGTH = 100;
 
 // ============================================
 // Collection CRUD Functions
@@ -31,6 +37,13 @@ export async function createCollection(
   userId: number,
   input: CreateCollectionInput
 ): Promise<Collection> {
+  // Validate name length (database allows VARCHAR(100))
+  if (input.name.length > COLLECTION_NAME_MAX_LENGTH) {
+    throw new Error(
+      `Collection name must be ${COLLECTION_NAME_MAX_LENGTH} characters or less`
+    );
+  }
+
   const result = await query<CollectionRow>(
     `INSERT INTO recipe_collections (user_id, name, description, cover_image_url)
      VALUES ($1, $2, $3, $4)
@@ -118,6 +131,13 @@ export async function updateCollection(
   collectionId: number,
   input: UpdateCollectionInput
 ): Promise<Collection> {
+  // Validate name length if provided (database allows VARCHAR(100))
+  if (input.name !== undefined && input.name.length > COLLECTION_NAME_MAX_LENGTH) {
+    throw new Error(
+      `Collection name must be ${COLLECTION_NAME_MAX_LENGTH} characters or less`
+    );
+  }
+
   // Build dynamic UPDATE query based on provided fields
   const updates: string[] = [];
   const values: (string | number | null)[] = [collectionId, userId];
@@ -295,13 +315,21 @@ export async function reorderCollectionItems(
       throw new Error("Collection not found or not owned by user");
     }
 
-    // Update positions for each recipe
-    for (let i = 0; i < recipeIds.length; i++) {
+    // Update positions for all recipes in a single bulk UPDATE using CTE
+    // This avoids N+1 queries when reordering large collections
+    if (recipeIds.length > 0) {
+      // Build values list: (recipe_id, new_position)
+      const values = recipeIds.map((id, idx) => `(${id}, ${idx})`).join(", ");
+
       await client.query(
-        `UPDATE recipe_collection_items
-         SET position = $1
-         WHERE collection_id = $2 AND recipe_id = $3`,
-        [i, collectionId, recipeIds[i]]
+        `WITH new_positions(recipe_id, position) AS (
+           VALUES ${values}
+         )
+         UPDATE recipe_collection_items rci
+         SET position = np.position
+         FROM new_positions np
+         WHERE rci.collection_id = $1 AND rci.recipe_id = np.recipe_id`,
+        [collectionId]
       );
     }
 
@@ -383,6 +411,11 @@ export async function shareCollection(
   collectionId: number,
   message?: string
 ): Promise<{ copiedCollectionId: number; copiedRecipeIds: number[] }> {
+  // Prevent self-sharing (creates unnecessary data duplication)
+  if (senderId === recipientId) {
+    throw new Error("Cannot share collection with yourself");
+  }
+
   return transaction(async (client) => {
     // 1. Verify sender owns the collection
     const collectionResult = await client.query<CollectionRow>(
@@ -501,7 +534,7 @@ async function getUniqueSlugForTransaction(
   userId: number,
   title: string
 ): Promise<string> {
-  const baseSlug = generateSlugFromTitle(title);
+  const baseSlug = generateSlug(title);
   let slug = baseSlug;
   let counter = 2;
 
@@ -518,18 +551,6 @@ async function getUniqueSlugForTransaction(
   }
 }
 
-/**
- * Helper function to generate slug from title
- */
-function generateSlugFromTitle(title: string): string {
-  return title
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // Remove diacritics (ä→a, ü→u, etc.)
-    .replace(/[^a-z0-9]+/g, "-") // Replace non-alphanumeric with hyphens
-    .replace(/^-+|-+$/g, "") // Trim leading/trailing hyphens
-    .substring(0, 200); // Max length
-}
 
 /**
  * Get collections shared with a user (inbox view)
@@ -588,6 +609,12 @@ export async function getReceivedCollections(
 
 /**
  * Get collections the user has shared (sent view)
+ *
+ * Note: If the original collection is deleted after sharing, those share records
+ * will be excluded from results due to the INNER JOIN. This is intentional behavior -
+ * the recipient's copied collection remains intact, but the sender no longer sees
+ * that share in their sent history (since the original_collection_id is not a FK
+ * and doesn't cascade delete the share record, but the JOIN filters it out).
  */
 export async function getSentCollections(
   userId: number
