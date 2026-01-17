@@ -149,7 +149,7 @@ Railway deployment configured via:
 - Session duration: 30 days (for PWA persistence)
 - Credentials provider (email/password)
 - User registration auto-creates default workouts
-- All routes protected except /login and /register
+- All routes protected except /login, /register, and `/api/exercises/[name]/images/[index]` (public for Next.js Image optimization)
 
 ## Streak Preservation System
 
