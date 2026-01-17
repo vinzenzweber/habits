@@ -50,7 +50,9 @@ export function UserSettingsForm({
       }
 
       setSuccess(true);
-      // Refresh to update session with new preferences
+      // Small delay to ensure session cookie is updated before refresh
+      await new Promise(resolve => setTimeout(resolve, 100));
+      // Refresh to update server components with new session data
       router.refresh();
     } catch {
       setError('An error occurred. Please try again.');

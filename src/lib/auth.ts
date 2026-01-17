@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { query } from "./db";
 import { type UnitSystem } from "./user-preferences";
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
   trustHost: true, // Required for Railway/reverse proxy deployments
   providers: [
     Credentials({
@@ -75,7 +75,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/login"
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
+      // Initial login - populate token from user object
       if (user) {
         token.id = user.id;
         token.onboardingCompleted = (user as { onboardingCompleted?: boolean }).onboardingCompleted ?? false;
@@ -83,6 +84,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.locale = (user as { locale?: string }).locale ?? 'en-US';
         token.unitSystem = (user as { unitSystem?: UnitSystem }).unitSystem ?? 'metric';
       }
+
+      // Session update triggered - merge new preferences into token
+      // Only update specific preference fields (security: prevent arbitrary token modification)
+      if (trigger === "update" && session?.user) {
+        const userData = session.user as { timezone?: string; locale?: string; unitSystem?: UnitSystem };
+        if (userData.timezone !== undefined) {
+          token.timezone = userData.timezone;
+        }
+        if (userData.locale !== undefined) {
+          token.locale = userData.locale;
+        }
+        if (userData.unitSystem !== undefined) {
+          token.unitSystem = userData.unitSystem;
+        }
+      }
+
       return token;
     },
     async session({ session, token }) {
