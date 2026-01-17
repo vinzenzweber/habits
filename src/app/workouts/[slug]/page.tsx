@@ -91,7 +91,7 @@ export default async function WorkoutDetailPage({ params }: WorkoutPageProps) {
           <div className="flex items-center justify-between">
             <Link
               href="/"
-              className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400 hover:text-white transition"
+              className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white transition hover:border-emerald-300 hover:text-emerald-200"
             >
               ← Back
             </Link>
