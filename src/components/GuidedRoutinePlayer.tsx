@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 import { useChat } from "@/contexts/ChatContext";
+import { useFullscreen } from "@/lib/fullscreen";
 import { Confetti } from "./Confetti";
 import { ExerciseImages, ExerciseImageThumbnail } from "./ExerciseImages";
 
@@ -16,6 +17,30 @@ import type { NanoWorkout } from "@/lib/nanoWorkout";
 
 // Base workout type that both regular and nano workouts satisfy
 type PlayableWorkout = WorkoutDay | (NanoWorkout & { label?: string });
+
+// Expand icon (enter fullscreen) - arrows pointing outward
+const ExpandIcon = () => (
+  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"
+    />
+  </svg>
+);
+
+// Collapse icon (exit fullscreen) - arrows pointing inward
+const CollapseIcon = () => (
+  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M9 9V4m0 5H4m0 0l5-5m11 5h-5m5 0V4m0 0l-5 5M9 15v5m0-5H4m0 0l5 5m11-5h-5m5 0v5m0 0l-5-5"
+    />
+  </svg>
+);
 
 type GuidedRoutinePlayerProps = {
   workout: PlayableWorkout;
@@ -92,6 +117,8 @@ export function GuidedRoutinePlayer({
   const countdownBeepsPlayedRef = useRef<Set<number>>(new Set());
   const startTimeRef = useRef<number>(0);
   const hasTrackedCompletionRef = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { isFullscreen, toggleFullscreen, isSupported } = useFullscreen(containerRef);
 
   // Play beep sound using Web Audio API (doesn't interrupt background music)
   const playBeep = useCallback(() => {
@@ -354,6 +381,7 @@ export function GuidedRoutinePlayer({
 
   const content = hasRoutine ? (
     <div
+      ref={containerRef}
       className="relative flex min-h-screen flex-col bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white touch-pan-y"
       style={PREVENT_OVERSCROLL_STYLE}
       onTouchStart={handleTouchStart}
@@ -370,7 +398,18 @@ export function GuidedRoutinePlayer({
         <div className="text-center text-[11px] font-semibold uppercase tracking-[0.35em] text-emerald-200">
           {workout.label} · Guided Timer
         </div>
-        <div className="w-[88px]" aria-hidden />
+        {isSupported ? (
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            className="rounded-full border border-white/20 p-2 text-white transition hover:border-emerald-300 hover:text-emerald-200"
+          >
+            {isFullscreen ? <CollapseIcon /> : <ExpandIcon />}
+          </button>
+        ) : (
+          <div className="w-[88px]" aria-hidden />
+        )}
       </header>
 
       <main className="relative z-10 mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-5 pb-12 pt-4 sm:px-8">
