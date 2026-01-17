@@ -125,7 +125,8 @@ describe('/api/user/preferences', () => {
         expires: ''
       })
 
-      const request = createPutRequest({ locale: 'invalid-locale-format' })
+      // Use a truly invalid locale format (contains invalid characters)
+      const request = createPutRequest({ locale: 'not a locale!' })
       const response = await PUT(request)
       const data = await response.json()
 
@@ -265,7 +266,7 @@ describe('/api/user/preferences', () => {
 
       const request = createPutRequest({
         timezone: 'Invalid/Zone',
-        locale: 'invalid-locale-format-too-long',
+        locale: 'not a locale!',
         unitSystem: 'wrong'
       })
       const response = await PUT(request)

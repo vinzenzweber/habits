@@ -80,12 +80,18 @@ export function isValidTimezone(timezone: string): boolean {
 
 /**
  * Validates if a locale string is in valid BCP 47 format
+ * Uses Intl.Locale for proper validation of all BCP 47 components
+ * (language, script subtags like Hans/Hant, and region codes)
  */
 export function isValidLocale(locale: string): boolean {
   if (!locale || typeof locale !== 'string') return false;
-  // Basic BCP 47 format: language[-region]
-  const bcp47Pattern = /^[a-z]{2,3}(-[A-Z]{2})?$/i;
-  return bcp47Pattern.test(locale);
+  try {
+    // Intl.Locale will throw if the locale is invalid
+    new Intl.Locale(locale);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -110,9 +116,10 @@ export function isValidUserPreferences(prefs: unknown): prefs is UserPreferences
 
 /**
  * Determines unit system based on locale
- * US, UK, and a few other countries use imperial
+ * US and a few other countries use imperial
+ * Note: UK officially uses metric for weights and temperatures
  */
 export function getDefaultUnitSystemForLocale(locale: string): UnitSystem {
-  const imperialLocales = ['en-US', 'en-GB', 'my-MM', 'lr-LR'];
+  const imperialLocales = ['en-US', 'my-MM', 'lr-LR'];
   return imperialLocales.includes(locale) ? 'imperial' : 'metric';
 }

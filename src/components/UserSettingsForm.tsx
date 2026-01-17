@@ -90,13 +90,13 @@ export function UserSettingsForm({
         <h2 className="text-lg font-semibold">Preferences</h2>
 
         {error && (
-          <div className="bg-red-500/20 text-red-200 p-3 rounded text-sm">
+          <div role="alert" className="bg-red-500/20 text-red-200 p-3 rounded text-sm">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="bg-emerald-500/20 text-emerald-200 p-3 rounded text-sm">
+          <div role="status" className="bg-emerald-500/20 text-emerald-200 p-3 rounded text-sm">
             Preferences saved successfully
           </div>
         )}

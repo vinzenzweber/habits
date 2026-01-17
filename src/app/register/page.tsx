@@ -1,25 +1,13 @@
 'use client';
-import { useState, useRef } from "react";
+import { useState, useRef, useLayoutEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { WorkoutPreviewMini } from "@/components/WorkoutPreviewMini";
-import { getDefaultUnitSystemForLocale } from "@/lib/user-preferences";
+import { getDefaultUnitSystemForLocale, type UnitSystem } from "@/lib/user-preferences";
 
-// Helper to detect browser preferences (runs once at module load, client-side)
-function detectBrowserPreferences() {
-  if (typeof window === 'undefined') {
-    return { timezone: 'UTC', locale: 'en-US', unitSystem: 'metric' as const };
-  }
-  try {
-    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-    const locale = navigator.language || 'en-US';
-    const unitSystem = getDefaultUnitSystemForLocale(locale);
-    return { timezone, locale, unitSystem };
-  } catch {
-    return { timezone: 'UTC', locale: 'en-US', unitSystem: 'metric' as const };
-  }
-}
+// Default preferences used during SSR
+const DEFAULT_BROWSER_PREFS = { timezone: 'UTC', locale: 'en-US', unitSystem: 'metric' as UnitSystem };
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
@@ -29,8 +17,20 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  // Auto-detected browser preferences (stored in ref since they don't change after mount)
-  const browserPrefs = useRef(detectBrowserPreferences());
+  // Browser preferences stored in ref (doesn't need to trigger re-renders, only read on submit)
+  const browserPrefs = useRef(DEFAULT_BROWSER_PREFS);
+
+  // Detect browser preferences after mount (client-side only, before paint)
+  useLayoutEffect(() => {
+    try {
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+      const locale = navigator.language || 'en-US';
+      const unitSystem = getDefaultUnitSystemForLocale(locale);
+      browserPrefs.current = { timezone, locale, unitSystem };
+    } catch {
+      // Keep default preferences on error
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

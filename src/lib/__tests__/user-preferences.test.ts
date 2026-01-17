@@ -121,9 +121,15 @@ describe("User Preferences", () => {
 
     it("returns false for invalid locales", () => {
       expect(isValidLocale("")).toBe(false);
-      expect(isValidLocale("invalid")).toBe(false);
-      expect(isValidLocale("en-USA")).toBe(false); // Region should be 2 chars
-      expect(isValidLocale("e-US")).toBe(false); // Language should be 2-3 chars
+      expect(isValidLocale("not a locale!")).toBe(false); // Contains invalid characters
+      expect(isValidLocale("123-456")).toBe(false); // Numbers only
+      expect(isValidLocale("@#$%")).toBe(false); // Special characters
+    });
+
+    it("returns true for extended BCP 47 codes with script subtags", () => {
+      expect(isValidLocale("zh-Hans-CN")).toBe(true); // Simplified Chinese
+      expect(isValidLocale("zh-Hant-TW")).toBe(true); // Traditional Chinese
+      expect(isValidLocale("sr-Latn-RS")).toBe(true); // Serbian Latin
     });
 
     it("returns false for non-string values", () => {
@@ -180,7 +186,7 @@ describe("User Preferences", () => {
     it("returns false for invalid locale", () => {
       expect(isValidUserPreferences({
         timezone: "UTC",
-        locale: "invalid",
+        locale: "not a locale!",
         unitSystem: "metric",
       })).toBe(false);
     });
@@ -218,8 +224,9 @@ describe("User Preferences", () => {
       expect(getDefaultUnitSystemForLocale("en-US")).toBe("imperial");
     });
 
-    it("returns imperial for UK locale", () => {
-      expect(getDefaultUnitSystemForLocale("en-GB")).toBe("imperial");
+    it("returns metric for UK locale", () => {
+      // UK officially uses metric for weights and temperatures
+      expect(getDefaultUnitSystemForLocale("en-GB")).toBe("metric");
     });
 
     it("returns metric for German locale", () => {
