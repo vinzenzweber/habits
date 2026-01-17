@@ -6,6 +6,7 @@
  */
 
 import { auth } from "@/lib/auth";
+import { generateImageId } from "@/lib/image-utils";
 import { saveRecipeImage, getRecipeImageUrl } from "@/lib/recipe-image-storage";
 
 export const runtime = "nodejs";
@@ -138,12 +139,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
-
-/**
- * Generate a unique image ID using cryptographically secure random values
- */
-function generateImageId(): string {
-  // Use crypto.randomUUID() for robust, collision-resistant ID generation
-  return crypto.randomUUID();
 }
