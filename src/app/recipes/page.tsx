@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 
 import { auth } from "@/lib/auth";
-import { getUserRecipeSummaries } from "@/lib/recipes";
+import { getUserRecipeSummaries, getUserTags } from "@/lib/recipes";
 import { LogoutButton } from "@/components/LogoutButton";
-import { RecipeCard } from "@/components/RecipeCard";
+import { RecipeListClient } from "@/components/RecipeListClient";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,11 @@ export default async function RecipesPage() {
     redirect("/login");
   }
 
-  const recipes = await getUserRecipeSummaries();
+  // Parallel data fetching
+  const [recipes, availableTags] = await Promise.all([
+    getUserRecipeSummaries(),
+    getUserTags(),
+  ]);
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
@@ -57,37 +62,41 @@ export default async function RecipesPage() {
           </Link>
         </section>
 
-        {/* Content area */}
-        {recipes.length === 0 ? (
-          /* Empty state */
-          <section className="rounded-2xl border border-slate-800 bg-slate-900/50 p-8 text-center">
-            <div className="mx-auto flex max-w-sm flex-col items-center gap-4">
-              <span className="text-5xl">🍳</span>
-              <h2 className="text-xl font-semibold text-white">
-                No recipes yet
-              </h2>
-              <p className="text-slate-400">
-                Start building your collection of healthy recipes. Import from
-                the web or create your own.
-              </p>
-              <Link
-                href="/recipes/new"
-                className="mt-2 inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-medium text-slate-950 transition hover:bg-emerald-400"
-              >
-                <PlusIcon />
-                Add your first recipe
-              </Link>
-            </div>
-          </section>
-        ) : (
-          /* Recipe list */
-          <section className="grid gap-3">
-            {recipes.map((recipe) => (
-              <RecipeCard key={recipe.slug} recipe={recipe} />
-            ))}
-          </section>
-        )}
+        {/* Search, filter, and recipe list - wrapped in Suspense for useSearchParams */}
+        <Suspense fallback={<RecipeListSkeleton />}>
+          <RecipeListClient
+            initialRecipes={recipes}
+            availableTags={availableTags}
+          />
+        </Suspense>
       </div>
     </main>
+  );
+}
+
+function RecipeListSkeleton() {
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Search input skeleton */}
+      <div className="h-12 animate-pulse rounded-xl bg-slate-800" />
+      {/* Filter bar skeleton */}
+      <div className="flex gap-3">
+        <div className="h-10 w-28 animate-pulse rounded-xl bg-slate-800" />
+        <div className="h-10 w-36 animate-pulse rounded-xl bg-slate-800" />
+      </div>
+      {/* Recipe cards skeleton */}
+      {[1, 2, 3].map((i) => (
+        <div
+          key={i}
+          className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/50"
+        >
+          <div className="aspect-video animate-pulse bg-slate-800" />
+          <div className="space-y-2 p-4">
+            <div className="h-5 w-2/3 animate-pulse rounded bg-slate-800" />
+            <div className="h-4 w-full animate-pulse rounded bg-slate-800" />
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

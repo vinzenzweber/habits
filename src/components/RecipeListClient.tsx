@@ -1,0 +1,332 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import Link from "next/link";
+
+import { RecipeSummary } from "@/lib/recipe-types";
+import {
+  SortOption,
+  filterAndSortRecipes,
+  countActiveFilters,
+} from "@/lib/recipe-filter-utils";
+import { RecipeCard } from "./RecipeCard";
+
+interface RecipeListClientProps {
+  initialRecipes: RecipeSummary[];
+  availableTags: string[];
+}
+
+// ============================================
+// Icons
+// ============================================
+
+const SearchIcon = () => (
+  <svg
+    className="h-4 w-4 text-slate-500"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+    />
+  </svg>
+);
+
+const ClearIcon = () => (
+  <svg
+    className="h-4 w-4"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M6 18L18 6M6 6l12 12"
+    />
+  </svg>
+);
+
+const ChevronDownIcon = () => (
+  <svg
+    className="h-4 w-4 text-slate-400"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M19 9l-7 7-7-7"
+    />
+  </svg>
+);
+
+const PlusIcon = () => (
+  <svg
+    className="h-4 w-4"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M12 4v16m8-8H4"
+    />
+  </svg>
+);
+
+// ============================================
+// Component
+// ============================================
+
+export function RecipeListClient({
+  initialRecipes,
+  availableTags,
+}: RecipeListClientProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // Parse initial state from URL parameters
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("q") ?? "");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
+  const [selectedTags, setSelectedTags] = useState<string[]>(() => {
+    const tags = searchParams.get("tags");
+    return tags ? tags.split(",").filter(Boolean) : [];
+  });
+  const [favoritesOnly, setFavoritesOnly] = useState(
+    searchParams.get("favorites") === "1"
+  );
+  const [sortBy, setSortBy] = useState<SortOption>(() => {
+    const sort = searchParams.get("sort");
+    if (sort === "alpha" || sort === "rating") return sort;
+    return "recent";
+  });
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Sync state to URL parameters
+  const updateUrlParams = useCallback(() => {
+    const params = new URLSearchParams();
+
+    if (debouncedSearchQuery) {
+      params.set("q", debouncedSearchQuery);
+    }
+    if (selectedTags.length > 0) {
+      params.set("tags", selectedTags.join(","));
+    }
+    if (favoritesOnly) {
+      params.set("favorites", "1");
+    }
+    if (sortBy !== "recent") {
+      params.set("sort", sortBy);
+    }
+
+    const queryString = params.toString();
+    const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
+    router.replace(newUrl, { scroll: false });
+  }, [debouncedSearchQuery, selectedTags, favoritesOnly, sortBy, pathname, router]);
+
+  useEffect(() => {
+    updateUrlParams();
+  }, [updateUrlParams]);
+
+  // Filter and sort recipes using extracted utilities
+  const filteredRecipes = useMemo(
+    () =>
+      filterAndSortRecipes(initialRecipes, {
+        searchQuery: debouncedSearchQuery,
+        selectedTags,
+        favoritesOnly,
+        sortBy,
+      }),
+    [initialRecipes, debouncedSearchQuery, selectedTags, favoritesOnly, sortBy]
+  );
+
+  // Toggle a tag selection
+  const toggleTag = (tag: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  };
+
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchQuery("");
+    setDebouncedSearchQuery("");
+    setSelectedTags([]);
+    setFavoritesOnly(false);
+    setSortBy("recent");
+  };
+
+  // Count active filters using extracted utility
+  const activeFilterCount = countActiveFilters({
+    searchQuery: debouncedSearchQuery,
+    selectedTags,
+    favoritesOnly,
+    sortBy,
+  });
+
+  const hasFilters = activeFilterCount > 0;
+  const hasNoResults = filteredRecipes.length === 0 && initialRecipes.length > 0;
+  const hasNoRecipes = initialRecipes.length === 0;
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Search input */}
+      <div className="relative">
+        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+          <SearchIcon />
+        </div>
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search recipes..."
+          className="w-full rounded-xl border border-slate-700 bg-slate-800 py-3 pl-10 pr-10 text-sm text-slate-100 placeholder-slate-500 transition focus:border-emerald-500 focus:outline-none"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery("")}
+            className="absolute inset-y-0 right-0 flex items-center pr-4 text-slate-500 hover:text-slate-300"
+            aria-label="Clear search"
+          >
+            <ClearIcon />
+          </button>
+        )}
+      </div>
+
+      {/* Tag chips (only show if tags exist) */}
+      {availableTags.length > 0 && (
+        <div className="-mx-5 overflow-x-auto px-5 sm:-mx-8 sm:px-8">
+          <div className="flex gap-2 pb-1">
+            {availableTags.map((tag) => {
+              const isSelected = selectedTags.includes(tag);
+              return (
+                <button
+                  key={tag}
+                  onClick={() => toggleTag(tag)}
+                  className={`shrink-0 rounded-full px-3 py-1.5 text-sm transition ${
+                    isSelected
+                      ? "bg-emerald-500 font-medium text-slate-950"
+                      : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                  }`}
+                >
+                  {tag}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Filter bar */}
+      <div className="flex items-center gap-3">
+        {/* Favorites toggle */}
+        <button
+          onClick={() => setFavoritesOnly((prev) => !prev)}
+          className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition ${
+            favoritesOnly
+              ? "bg-emerald-500 font-medium text-slate-950"
+              : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+          }`}
+        >
+          <span>❤️</span>
+          <span>Favorites</span>
+        </button>
+
+        {/* Sort dropdown */}
+        <div className="relative">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortOption)}
+            className="appearance-none rounded-xl border border-slate-700 bg-slate-800 py-2 pl-4 pr-10 text-sm text-slate-100 transition focus:border-emerald-500 focus:outline-none"
+          >
+            <option value="recent">Most recent</option>
+            <option value="alpha">A-Z</option>
+            <option value="rating">Highest rated</option>
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+            <ChevronDownIcon />
+          </div>
+        </div>
+
+        {/* Active filter count */}
+        {hasFilters && (
+          <button
+            onClick={clearFilters}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-slate-800 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700"
+          >
+            <span>{activeFilterCount} active</span>
+            <ClearIcon />
+          </button>
+        )}
+      </div>
+
+      {/* Content area */}
+      {hasNoRecipes ? (
+        /* Empty state - no recipes at all */
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/50 p-8 text-center">
+          <div className="mx-auto flex max-w-sm flex-col items-center gap-4">
+            <span className="text-5xl">🍳</span>
+            <h2 className="text-xl font-semibold text-white">No recipes yet</h2>
+            <p className="text-slate-400">
+              Start building your collection of healthy recipes. Import from the
+              web or create your own.
+            </p>
+            <Link
+              href="/recipes/new"
+              className="mt-2 inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-medium text-slate-950 transition hover:bg-emerald-400"
+            >
+              <PlusIcon />
+              Add your first recipe
+            </Link>
+          </div>
+        </section>
+      ) : hasNoResults ? (
+        /* Empty state - filters returned no results */
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/50 p-8 text-center">
+          <div className="mx-auto flex max-w-sm flex-col items-center gap-4">
+            <span className="text-5xl">🔍</span>
+            <h2 className="text-xl font-semibold text-white">
+              No recipes match your filters
+            </h2>
+            <p className="text-slate-400">
+              Try adjusting your search or clearing some filters to see more
+              recipes.
+            </p>
+            <button
+              onClick={clearFilters}
+              className="mt-2 inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-medium text-slate-950 transition hover:bg-emerald-400"
+            >
+              Clear filters
+            </button>
+          </div>
+        </section>
+      ) : (
+        /* Recipe list */
+        <section className="grid gap-3">
+          {filteredRecipes.map((recipe) => (
+            <RecipeCard key={recipe.slug} recipe={recipe} />
+          ))}
+        </section>
+      )}
+    </div>
+  );
+}

@@ -81,6 +81,9 @@ export type RecipeSummary = {
   cookTimeMinutes?: number;
   primaryImage?: RecipeImage;
   nutrition: NutritionInfo;
+  isFavorite?: boolean;
+  rating?: number;
+  updatedAt?: Date;
 };
 
 // ============================================

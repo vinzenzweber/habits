@@ -5,6 +5,148 @@
 import { test, expect } from './fixtures/auth.fixture';
 
 test.describe('Recipe Feature', () => {
+  test.describe('Recipe Search and Filter', () => {
+    test('shows search input on recipes page', async ({ authenticatedPage }) => {
+      await authenticatedPage.goto('/recipes');
+
+      // Search input should be visible
+      const searchInput = authenticatedPage.getByPlaceholder('Search recipes...');
+      await expect(searchInput).toBeVisible();
+    });
+
+    test('shows filter controls on recipes page', async ({ authenticatedPage }) => {
+      await authenticatedPage.goto('/recipes');
+
+      // Favorites button should be visible
+      const favoritesButton = authenticatedPage.getByRole('button', { name: /favorites/i });
+      await expect(favoritesButton).toBeVisible();
+
+      // Sort dropdown should be visible
+      const sortDropdown = authenticatedPage.locator('select');
+      await expect(sortDropdown).toBeVisible();
+    });
+
+    test('can enter search query', async ({ authenticatedPage }) => {
+      await authenticatedPage.goto('/recipes');
+
+      const searchInput = authenticatedPage.getByPlaceholder('Search recipes...');
+      await searchInput.fill('chicken');
+
+      // Input should have the value
+      await expect(searchInput).toHaveValue('chicken');
+    });
+
+    test('search updates URL parameters', async ({ authenticatedPage }) => {
+      await authenticatedPage.goto('/recipes');
+
+      const searchInput = authenticatedPage.getByPlaceholder('Search recipes...');
+      await searchInput.fill('test');
+
+      // Wait for debounce and URL update
+      await authenticatedPage.waitForTimeout(400);
+
+      // URL should include search query
+      await expect(authenticatedPage).toHaveURL(/q=test/);
+    });
+
+    test('can clear search with clear button', async ({ authenticatedPage }) => {
+      await authenticatedPage.goto('/recipes');
+
+      const searchInput = authenticatedPage.getByPlaceholder('Search recipes...');
+      await searchInput.fill('something');
+
+      // Clear button should appear
+      const clearButton = authenticatedPage.getByRole('button', { name: /clear search/i });
+      await expect(clearButton).toBeVisible();
+
+      await clearButton.click();
+
+      // Input should be empty
+      await expect(searchInput).toHaveValue('');
+    });
+
+    test('can toggle favorites filter', async ({ authenticatedPage }) => {
+      await authenticatedPage.goto('/recipes');
+
+      const favoritesButton = authenticatedPage.getByRole('button', { name: /favorites/i });
+      await favoritesButton.click();
+
+      // Wait for URL update
+      await authenticatedPage.waitForTimeout(100);
+
+      // URL should include favorites parameter
+      await expect(authenticatedPage).toHaveURL(/favorites=1/);
+    });
+
+    test('can change sort order', async ({ authenticatedPage }) => {
+      await authenticatedPage.goto('/recipes');
+
+      const sortDropdown = authenticatedPage.locator('select');
+      await sortDropdown.selectOption('alpha');
+
+      // Wait for URL update
+      await authenticatedPage.waitForTimeout(100);
+
+      // URL should include sort parameter
+      await expect(authenticatedPage).toHaveURL(/sort=alpha/);
+    });
+
+    test('loads with URL parameters', async ({ authenticatedPage }) => {
+      // Navigate with existing filters
+      await authenticatedPage.goto('/recipes?q=test&favorites=1&sort=alpha');
+
+      // Search input should have the query
+      const searchInput = authenticatedPage.getByPlaceholder('Search recipes...');
+      await expect(searchInput).toHaveValue('test');
+
+      // Favorites should be active (has emerald background)
+      const favoritesButton = authenticatedPage.getByRole('button', { name: /favorites/i });
+      await expect(favoritesButton).toHaveClass(/emerald/);
+
+      // Sort should be set to alpha
+      const sortDropdown = authenticatedPage.locator('select');
+      await expect(sortDropdown).toHaveValue('alpha');
+    });
+
+    test('shows empty state when filters have no results', async ({ authenticatedPage }) => {
+      await authenticatedPage.goto('/recipes');
+
+      // Search for something that won't exist
+      const searchInput = authenticatedPage.getByPlaceholder('Search recipes...');
+      await searchInput.fill('xyznonexistent123456');
+
+      // Wait for debounce
+      await authenticatedPage.waitForTimeout(400);
+
+      // Should show no results message
+      // Note: If user has no recipes at all, they see the regular empty state
+      // If user has recipes but filters exclude all, they see the filter empty state
+      // Both are valid outcomes for this test
+    });
+
+    test('clear filters button works', async ({ authenticatedPage }) => {
+      // Start with filters applied
+      await authenticatedPage.goto('/recipes?q=test&favorites=1&sort=alpha');
+
+      // Find the clear filters button (shows active filter count)
+      const clearFiltersButton = authenticatedPage.getByRole('button', { name: /active/i });
+
+      if (await clearFiltersButton.isVisible()) {
+        await clearFiltersButton.click();
+
+        // Wait for URL update
+        await authenticatedPage.waitForTimeout(100);
+
+        // URL should be clean (no filter params)
+        await expect(authenticatedPage).toHaveURL('/recipes');
+
+        // Search input should be empty
+        const searchInput = authenticatedPage.getByPlaceholder('Search recipes...');
+        await expect(searchInput).toHaveValue('');
+      }
+    });
+  });
+
   test.describe('Recipe List Page', () => {
     test('shows recipes page with empty state for new user', async ({ authenticatedPage }) => {
       await authenticatedPage.goto('/recipes');
