@@ -156,6 +156,12 @@ describe('unit-utils', () => {
         expect(result.unit).toBe('ml');
       });
 
+      it('converts cup to milliliters (singular form)', () => {
+        const result = convertIngredientUnit(1, 'cup', 'metric');
+        expect(result.quantity).toBe(237);
+        expect(result.unit).toBe('ml');
+      });
+
       it('converts tablespoons to milliliters', () => {
         const result = convertIngredientUnit(2, 'tbsp', 'metric');
         expect(result.quantity).toBe(30);
@@ -189,6 +195,13 @@ describe('unit-utils', () => {
         expect(convertIngredientUnit(2, 'cups', 'imperial')).toEqual({
           quantity: 2,
           unit: 'cups',
+        });
+      });
+
+      it('returns cup unchanged when target is imperial (singular form)', () => {
+        expect(convertIngredientUnit(1, 'cup', 'imperial')).toEqual({
+          quantity: 1,
+          unit: 'cup',
         });
       });
     });

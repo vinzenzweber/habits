@@ -49,7 +49,7 @@ export function formatWeight(
 const METRIC_UNITS = ['g', 'ml', 'kg', 'l'];
 
 // Known imperial units
-const IMPERIAL_UNITS = ['oz', 'cups', 'tbsp', 'tsp', 'lb', 'lbs', 'fl oz'];
+const IMPERIAL_UNITS = ['oz', 'cup', 'cups', 'tbsp', 'tsp', 'lb', 'lbs', 'fl oz'];
 
 /**
  * Convert ingredient quantity and unit to user's preferred unit system
@@ -121,6 +121,7 @@ export function convertIngredientUnit(
           quantity: Math.round((quantity / KG_TO_LBS) * 10) / 10,
           unit: 'kg',
         };
+      case 'cup':
       case 'cups':
         return { quantity: Math.round(quantity * ML_PER_CUP), unit: 'ml' };
       case 'tbsp':
