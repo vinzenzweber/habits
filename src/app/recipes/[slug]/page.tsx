@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { auth } from "@/lib/auth";
 import { getRecipeBySlug } from "@/lib/recipes";
+import { getRecipeDetailTranslations } from "@/lib/translations/recipe-detail";
 import { RecipeImageGallery } from "@/components/RecipeImageGallery";
 import { PageContextSetter } from "@/components/PageContextSetter";
 
@@ -42,6 +44,11 @@ export default async function RecipeDetailPage({
     notFound();
   }
 
+  // Get user's locale for UI translations
+  const session = await auth();
+  const userLocale = session?.user?.locale ?? 'en-US';
+  const t = getRecipeDetailTranslations(userLocale);
+
   const { recipeJson } = recipe;
 
   return (
@@ -55,7 +62,7 @@ export default async function RecipeDetailPage({
               href="/recipes"
               className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400 transition hover:text-white"
             >
-              ← Back to recipes
+              {t.backToRecipes}
             </Link>
           </div>
 
@@ -78,14 +85,14 @@ export default async function RecipeDetailPage({
                 href={`/recipes/${slug}/edit`}
                 className="inline-flex items-center justify-center rounded-full bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 transition"
               >
-                Edit
+                {t.edit}
               </Link>
               <button
                 disabled
                 className="inline-flex cursor-not-allowed items-center justify-center rounded-full bg-slate-800 px-4 py-2 text-sm font-medium text-slate-500"
                 title="Coming soon"
               >
-                Share
+                {t.share}
               </button>
             </div>
           </div>
@@ -106,7 +113,7 @@ export default async function RecipeDetailPage({
               <div className="flex items-center gap-2">
                 <span className="text-xl">🕐</span>
                 <div>
-                  <p className="text-xs text-slate-400">Prep</p>
+                  <p className="text-xs text-slate-400">{t.prepTime}</p>
                   <p className="font-medium text-white">
                     {recipeJson.prepTimeMinutes} min
                   </p>
@@ -117,7 +124,7 @@ export default async function RecipeDetailPage({
               <div className="flex items-center gap-2">
                 <span className="text-xl">🍳</span>
                 <div>
-                  <p className="text-xs text-slate-400">Cook</p>
+                  <p className="text-xs text-slate-400">{t.cookTime}</p>
                   <p className="font-medium text-white">
                     {recipeJson.cookTimeMinutes} min
                   </p>
@@ -127,7 +134,7 @@ export default async function RecipeDetailPage({
             <div className="flex items-center gap-2">
               <span className="text-xl">👥</span>
               <div>
-                <p className="text-xs text-slate-400">Servings</p>
+                <p className="text-xs text-slate-400">{t.servings}</p>
                 <p className="font-medium text-white">{recipeJson.servings}</p>
               </div>
             </div>
@@ -140,28 +147,28 @@ export default async function RecipeDetailPage({
           aria-label="Nutrition information"
         >
           <div className="border-b border-slate-800 px-5 py-4 sm:px-6">
-            <h2 className="text-lg font-semibold text-white">Nutrition</h2>
-            <p className="mt-1 text-sm text-slate-400">Per serving</p>
+            <h2 className="text-lg font-semibold text-white">{t.nutrition}</h2>
+            <p className="mt-1 text-sm text-slate-400">{t.perServing}</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-slate-800 text-xs text-slate-400">
                   <th className="px-5 py-3 text-left font-medium sm:px-6">
-                    Energie
+                    {t.energy}
                   </th>
                   <th className="px-5 py-3 text-left font-medium sm:px-6">
-                    Protein
+                    {t.protein}
                   </th>
                   <th className="px-5 py-3 text-left font-medium sm:px-6">
-                    Kohlenhydrate
+                    {t.carbohydrates}
                   </th>
                   <th className="px-5 py-3 text-left font-medium sm:px-6">
-                    Fett
+                    {t.fat}
                   </th>
                   {recipeJson.nutrition.fiber !== undefined && (
                     <th className="px-5 py-3 text-left font-medium sm:px-6">
-                      Ballaststoffe
+                      {t.fiber}
                     </th>
                   )}
                 </tr>
@@ -213,7 +220,7 @@ export default async function RecipeDetailPage({
           aria-label="Ingredients"
         >
           <div className="border-b border-slate-800 px-5 py-4 sm:px-6">
-            <h2 className="text-lg font-semibold text-white">Zutaten</h2>
+            <h2 className="text-lg font-semibold text-white">{t.ingredients}</h2>
           </div>
           <div className="divide-y divide-slate-800">
             {recipeJson.ingredientGroups.map((group, groupIndex) => (
@@ -247,7 +254,7 @@ export default async function RecipeDetailPage({
           aria-label="Instructions"
         >
           <div className="border-b border-slate-800 px-5 py-4 sm:px-6">
-            <h2 className="text-lg font-semibold text-white">Zubereitung</h2>
+            <h2 className="text-lg font-semibold text-white">{t.instructions}</h2>
           </div>
           <ol className="divide-y divide-slate-800">
             {recipeJson.steps.map((step) => (
