@@ -28,8 +28,7 @@ export function ExerciseImages({
   const [loadError, setLoadError] = useState<Record<number, boolean>>({});
   const [isLoading, setIsLoading] = useState<Record<number, boolean>>({ 1: true, 2: true });
 
-  const encodedName = encodeURIComponent(exerciseName);
-  const imageUrl = (index: 1 | 2) => `/api/exercises/${encodedName}/images/${index}`;
+  const imageUrl = (index: 1 | 2) => `/api/exercises/${exerciseName}/images/${index}`;
 
   // If both images failed to load, show nothing
   if (loadError[1] && loadError[2]) {
@@ -118,8 +117,7 @@ export function ExerciseImageThumbnail({
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const encodedName = encodeURIComponent(exerciseName);
-  const imageUrl = `/api/exercises/${encodedName}/images/1`;
+  const imageUrl = `/api/exercises/${exerciseName}/images/1`;
 
   if (hasError) {
     return null;
