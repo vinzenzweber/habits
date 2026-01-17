@@ -98,8 +98,9 @@ test.describe('Chat History', () => {
       // Should now show at least one session
       await expect(page.getByText('No conversations yet')).not.toBeVisible({ timeout: 5000 })
 
-      // Should show the session with our message as preview
-      await expect(page.getByText(/Hello, I want to improve/i)).toBeVisible()
+      // Should show the session with our message as preview (use .first() to avoid strict mode violation
+      // since the message appears both in the history panel preview and potentially in the chat area)
+      await expect(page.getByText(/Hello, I want to improve/i).first()).toBeVisible()
     })
 
     test('loads previous session when clicking on it in history', async ({ authenticatedPage: page }) => {
