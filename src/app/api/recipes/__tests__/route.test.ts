@@ -143,12 +143,12 @@ describe("POST /api/recipes", () => {
     expect(data.error).toBe("Missing required fields: title and recipeJson");
   });
 
-  it("creates recipe and returns slug and version", async () => {
+  it("creates recipe and returns recipe object", async () => {
     mockAuth.mockResolvedValue({
       user: { id: "1", email: "test@example.com" },
       expires: new Date().toISOString(),
     });
-    mockCreateRecipe.mockResolvedValue({
+    const mockRecipe = {
       id: 1,
       userId: 1,
       slug: "new-recipe",
@@ -161,14 +161,17 @@ describe("POST /api/recipes", () => {
       isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),
-    });
+    };
+    mockCreateRecipe.mockResolvedValue(mockRecipe);
 
     const request = createRequest("POST", validRecipeInput);
     const response = await POST(request);
     const data = await response.json();
 
     expect(response.status).toBe(201);
-    expect(data).toEqual({ slug: "new-recipe", version: 1 });
+    expect(data.recipe).toBeDefined();
+    expect(data.recipe.slug).toBe("new-recipe");
+    expect(data.recipe.version).toBe(1);
   });
 
   it("returns 500 on error", async () => {
