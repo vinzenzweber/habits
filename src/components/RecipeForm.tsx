@@ -22,6 +22,8 @@ interface RecipeFormProps {
   slug?: string;
   /** Available tags for autocomplete */
   existingTags?: string[];
+  /** Default locale for new recipes (from user preferences) */
+  defaultLocale?: string;
 }
 
 interface FormState {
@@ -57,7 +59,7 @@ const DEFAULT_FORM_STATE: FormState = {
   images: [],
 };
 
-export function RecipeForm({ initialRecipe, slug, existingTags = [] }: RecipeFormProps) {
+export function RecipeForm({ initialRecipe, slug, existingTags = [], defaultLocale = 'en-US' }: RecipeFormProps) {
   const router = useRouter();
   const isEditing = Boolean(slug);
 
@@ -170,7 +172,7 @@ export function RecipeForm({ initialRecipe, slug, existingTags = [] }: RecipeFor
         ingredientGroups: cleanedGroups,
         steps: cleanedSteps,
         images: form.images,
-        locale: 'de-DE',
+        locale: defaultLocale,
         sourceType: 'manual',
       };
 
@@ -202,7 +204,7 @@ export function RecipeForm({ initialRecipe, slug, existingTags = [] }: RecipeFor
     } finally {
       setLoading(false);
     }
-  }, [form, slug, isEditing, validate, router]);
+  }, [form, slug, isEditing, validate, router, defaultLocale]);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">

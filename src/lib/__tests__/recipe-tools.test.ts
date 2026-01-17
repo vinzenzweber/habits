@@ -327,6 +327,148 @@ describe('recipe-tools', () => {
 
       await expect(createRecipeTool('123', input)).rejects.toThrow('Invalid recipe structure')
     })
+
+    it('uses provided defaultLocale when input.locale is not set', async () => {
+      const recipeJson = createValidRecipeJson()
+      const input: CreateRecipeInput = {
+        title: 'New Recipe',
+        description: 'A new recipe',
+        tags: ['dinner'],
+        // locale NOT provided
+        recipeJson,
+      }
+
+      let capturedLocale: string | undefined
+
+      mockGetUniqueSlug.mockResolvedValueOnce('new-recipe')
+
+      mockTransaction.mockImplementationOnce(async (callback) => {
+        const mockClient = {
+          query: vi.fn()
+            .mockResolvedValueOnce({ rows: [{ version: null }] })
+            .mockResolvedValueOnce({ rows: [] })
+            .mockImplementationOnce((_sql: string, values: unknown[]) => {
+              capturedLocale = values[5] as string // locale is the 6th parameter
+              return Promise.resolve({
+                rows: [{
+                  id: 1,
+                  user_id: 123,
+                  slug: 'new-recipe',
+                  version: 1,
+                  title: 'New Recipe',
+                  description: 'A new recipe',
+                  locale: capturedLocale,
+                  tags: ['dinner'],
+                  recipe_json: recipeJson,
+                  is_active: true,
+                  created_at: new Date(),
+                  updated_at: new Date(),
+                }]
+              })
+            }),
+        }
+        return callback(mockClient as never)
+      })
+
+      await createRecipeTool('123', input, 'de-DE')
+
+      expect(capturedLocale).toBe('de-DE')
+    })
+
+    it('uses input.locale when explicitly provided (overrides defaultLocale)', async () => {
+      const recipeJson = createValidRecipeJson()
+      const input: CreateRecipeInput = {
+        title: 'New Recipe',
+        description: 'A new recipe',
+        tags: ['dinner'],
+        locale: 'fr-FR', // explicitly provided
+        recipeJson,
+      }
+
+      let capturedLocale: string | undefined
+
+      mockGetUniqueSlug.mockResolvedValueOnce('new-recipe')
+
+      mockTransaction.mockImplementationOnce(async (callback) => {
+        const mockClient = {
+          query: vi.fn()
+            .mockResolvedValueOnce({ rows: [{ version: null }] })
+            .mockResolvedValueOnce({ rows: [] })
+            .mockImplementationOnce((_sql: string, values: unknown[]) => {
+              capturedLocale = values[5] as string
+              return Promise.resolve({
+                rows: [{
+                  id: 1,
+                  user_id: 123,
+                  slug: 'new-recipe',
+                  version: 1,
+                  title: 'New Recipe',
+                  description: 'A new recipe',
+                  locale: capturedLocale,
+                  tags: ['dinner'],
+                  recipe_json: recipeJson,
+                  is_active: true,
+                  created_at: new Date(),
+                  updated_at: new Date(),
+                }]
+              })
+            }),
+        }
+        return callback(mockClient as never)
+      })
+
+      await createRecipeTool('123', input, 'de-DE')
+
+      expect(capturedLocale).toBe('fr-FR')
+    })
+
+    it('falls back to en-US when no locale parameters provided', async () => {
+      const recipeJson = createValidRecipeJson()
+      const input: CreateRecipeInput = {
+        title: 'New Recipe',
+        description: 'A new recipe',
+        tags: ['dinner'],
+        // no locale
+        recipeJson,
+      }
+
+      let capturedLocale: string | undefined
+
+      mockGetUniqueSlug.mockResolvedValueOnce('new-recipe')
+
+      mockTransaction.mockImplementationOnce(async (callback) => {
+        const mockClient = {
+          query: vi.fn()
+            .mockResolvedValueOnce({ rows: [{ version: null }] })
+            .mockResolvedValueOnce({ rows: [] })
+            .mockImplementationOnce((_sql: string, values: unknown[]) => {
+              capturedLocale = values[5] as string
+              return Promise.resolve({
+                rows: [{
+                  id: 1,
+                  user_id: 123,
+                  slug: 'new-recipe',
+                  version: 1,
+                  title: 'New Recipe',
+                  description: 'A new recipe',
+                  locale: capturedLocale,
+                  tags: ['dinner'],
+                  recipe_json: recipeJson,
+                  is_active: true,
+                  created_at: new Date(),
+                  updated_at: new Date(),
+                }]
+              })
+            }),
+        }
+        return callback(mockClient as never)
+      })
+
+      // Call without defaultLocale parameter (uses default value)
+      await createRecipeTool('123', input)
+
+      expect(capturedLocale).toBe('en-US')
+    })
   })
 
   describe('updateRecipeTool', () => {

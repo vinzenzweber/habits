@@ -190,10 +190,15 @@ export async function getRecipeTool(
 /**
  * Create a new recipe
  * Validates input and creates with versioning
+ *
+ * @param userId - The user ID
+ * @param input - Recipe creation input
+ * @param defaultLocale - Default locale to use if not specified in input (defaults to 'en-US')
  */
 export async function createRecipeTool(
   userId: string,
-  input: CreateRecipeInput
+  input: CreateRecipeInput,
+  defaultLocale: string = 'en-US'
 ): Promise<CreateRecipeResult> {
   const userIdNum = parseInt(userId, 10);
 
@@ -230,7 +235,7 @@ export async function createRecipeTool(
         version,
         input.title,
         input.description || null,
-        input.locale || "de-DE",
+        input.locale || defaultLocale,
         JSON.stringify(input.tags || []),
         JSON.stringify(input.recipeJson),
       ]
