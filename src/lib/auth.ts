@@ -88,7 +88,7 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
       // Session update triggered - merge new preferences into token
       // Only update specific preference fields (security: prevent arbitrary token modification)
       if (trigger === "update" && session?.user) {
-        const userData = session.user as { timezone?: string; locale?: string; unitSystem?: UnitSystem };
+        const userData = session.user as { timezone?: string; locale?: string; unitSystem?: UnitSystem; onboardingCompleted?: boolean };
         if (userData.timezone !== undefined) {
           token.timezone = userData.timezone;
         }
@@ -97,6 +97,9 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
         }
         if (userData.unitSystem !== undefined) {
           token.unitSystem = userData.unitSystem;
+        }
+        if (userData.onboardingCompleted !== undefined) {
+          token.onboardingCompleted = userData.onboardingCompleted;
         }
       }
 

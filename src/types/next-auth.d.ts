@@ -11,6 +11,7 @@ declare module "next-auth" {
       timezone: string;
       locale: string;
       unitSystem: UnitSystem;
+      onboardingCompleted?: boolean;
     };
   }
 

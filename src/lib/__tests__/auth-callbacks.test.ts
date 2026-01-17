@@ -32,6 +32,9 @@ describe('Auth JWT Callback Behavior', () => {
         if (userData.unitSystem !== undefined) {
           existingToken.unitSystem = userData.unitSystem
         }
+        if (userData.onboardingCompleted !== undefined) {
+          existingToken.onboardingCompleted = userData.onboardingCompleted
+        }
       }
       return existingToken
     }
@@ -117,13 +120,13 @@ describe('Auth JWT Callback Behavior', () => {
       expect(result.timezone).toBe('America/New_York')
     })
 
-    it('does not allow modification of onboardingCompleted field (security)', () => {
+    it('allows modification of onboardingCompleted field via session update', () => {
       const token = { id: '1', timezone: 'UTC', locale: 'en-US', unitSystem: 'metric', onboardingCompleted: false }
       const session = { user: { onboardingCompleted: true, timezone: 'Europe/Berlin' } }
 
       const result = simulateJwtCallbackUpdate(token, session)
 
-      expect(result.onboardingCompleted).toBe(false) // should not change
+      expect(result.onboardingCompleted).toBe(true) // should change now
       expect(result.timezone).toBe('Europe/Berlin')
     })
 
