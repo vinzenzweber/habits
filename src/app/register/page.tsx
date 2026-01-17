@@ -1,9 +1,13 @@
 'use client';
-import { useState } from "react";
+import { useState, useRef, useLayoutEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { WorkoutPreviewMini } from "@/components/WorkoutPreviewMini";
+import { getDefaultUnitSystemForLocale, type UnitSystem } from "@/lib/user-preferences";
+
+// Default preferences used during SSR
+const DEFAULT_BROWSER_PREFS = { timezone: 'UTC', locale: 'en-US', unitSystem: 'metric' as UnitSystem };
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
@@ -12,6 +16,21 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  // Browser preferences stored in ref (doesn't need to trigger re-renders, only read on submit)
+  const browserPrefs = useRef(DEFAULT_BROWSER_PREFS);
+
+  // Detect browser preferences after mount (client-side only, before paint)
+  useLayoutEffect(() => {
+    try {
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+      const locale = navigator.language || 'en-US';
+      const unitSystem = getDefaultUnitSystemForLocale(locale);
+      browserPrefs.current = { timezone, locale, unitSystem };
+    } catch {
+      // Keep default preferences on error
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,7 +41,14 @@ export default function RegisterPage() {
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, name })
+        body: JSON.stringify({
+          email,
+          password,
+          name,
+          timezone: browserPrefs.current.timezone,
+          locale: browserPrefs.current.locale,
+          unitSystem: browserPrefs.current.unitSystem,
+        })
       });
 
       const data = await response.json();

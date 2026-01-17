@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { query } from "./db";
+import { type UnitSystem } from "./user-preferences";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true, // Required for Railway/reverse proxy deployments
@@ -35,23 +36,33 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!valid) return null;
 
-        // Try to get onboarding status separately (column may not exist)
+        // Try to get onboarding status and preferences separately (columns may not exist)
         let onboardingCompleted = false;
+        let timezone = 'UTC';
+        let locale = 'en-US';
+        let unitSystem: UnitSystem = 'metric';
         try {
-          const onboardingResult = await query(
-            `SELECT onboarding_completed FROM users WHERE id = $1`,
+          const extendedResult = await query(
+            `SELECT onboarding_completed, timezone, locale, unit_system FROM users WHERE id = $1`,
             [user.id]
           );
-          onboardingCompleted = onboardingResult.rows[0]?.onboarding_completed ?? false;
+          const row = extendedResult.rows[0];
+          onboardingCompleted = row?.onboarding_completed ?? false;
+          timezone = row?.timezone ?? 'UTC';
+          locale = row?.locale ?? 'en-US';
+          unitSystem = (row?.unit_system as UnitSystem) ?? 'metric';
         } catch {
-          // Column doesn't exist yet - assume not completed for new users
+          // Columns don't exist yet - use defaults
         }
 
         return {
           id: user.id.toString(),
           email: user.email,
           name: user.name,
-          onboardingCompleted
+          onboardingCompleted,
+          timezone,
+          locale,
+          unitSystem
         };
       }
     })
@@ -68,12 +79,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.id = user.id;
         token.onboardingCompleted = (user as { onboardingCompleted?: boolean }).onboardingCompleted ?? false;
+        token.timezone = (user as { timezone?: string }).timezone ?? 'UTC';
+        token.locale = (user as { locale?: string }).locale ?? 'en-US';
+        token.unitSystem = (user as { unitSystem?: UnitSystem }).unitSystem ?? 'metric';
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user && token.id) {
         session.user.id = token.id as string;
+        session.user.timezone = token.timezone as string;
+        session.user.locale = token.locale as string;
+        session.user.unitSystem = token.unitSystem as UnitSystem;
       }
       return session;
     }

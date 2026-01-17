@@ -199,10 +199,10 @@ describe('POST /api/auth/register', () => {
       expect(data.success).toBe(true)
       expect(data.userId).toBe(1)
 
-      // Verify the INSERT query was called with trimmed name
+      // Verify the INSERT query was called with trimmed name and default preferences
       expect(mockQuery).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO users'),
-        ['test@example.com', 'Test User', 'hashed_password']
+        ['test@example.com', 'Test User', 'hashed_password', 'UTC', 'en-US', 'metric']
       )
     })
 

@@ -948,9 +948,25 @@ export async function POST(request: Request) {
       }
     }
 
+    // Get user preferences from session
+    const userTimezone = session.user.timezone ?? 'UTC';
+    const userLocale = session.user.locale ?? 'en-US';
+    const userUnitSystem = session.user.unitSystem ?? 'metric';
+
+    // Format unit system description for AI
+    const unitSystemDescription = userUnitSystem === 'metric'
+      ? 'kilograms (kg), centimeters (cm), and Celsius (°C)'
+      : 'pounds (lbs), inches (in), and Fahrenheit (°F)';
+
     const systemPrompt = `${PERSONAL_TRAINER_PROMPT}
 
 **Current Date:** ${dateStr}
+**User Timezone:** ${userTimezone}
+**User Locale:** ${userLocale}
+
+**User Preferences:**
+- Unit System: ${userUnitSystem} (use ${unitSystemDescription} for all measurements)
+- When discussing weights, measurements, temperatures, or creating recipes/workout content, always use the user's preferred unit system
 
 **User Profile (from memory):**
 ${memoryContext}${pageContextSection}${instructionSection}`;
