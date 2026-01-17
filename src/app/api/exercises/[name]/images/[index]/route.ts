@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import { auth } from '@/lib/auth';
 import { getExerciseWithImages } from '@/lib/exercise-library';
 import { readExerciseImage } from '@/lib/image-storage';
 
@@ -8,16 +7,16 @@ export const runtime = 'nodejs';
 /**
  * GET /api/exercises/[name]/images/[index]
  * Serve exercise image from storage
+ *
+ * Note: This endpoint is intentionally public (no authentication required).
+ * Exercise images are AI-generated illustrations from a global library,
+ * not user-specific data. Keeping this public allows Next.js Image
+ * optimization to work correctly.
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ name: string; index: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return new Response('Unauthorized', { status: 401 });
-  }
-
   const { name, index } = await params;
   const decodedName = decodeURIComponent(name);
   const imageIndex = parseInt(index);
