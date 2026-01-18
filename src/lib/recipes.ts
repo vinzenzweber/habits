@@ -293,6 +293,7 @@ export async function getUserRecipeSummaries(): Promise<RecipeSummary[]> {
   // Query only the columns needed for RecipeSummary
   // Uses JSON extraction to avoid loading full recipe_json (which contains steps, ingredientGroups, etc.)
   // Includes LEFT JOIN to aggregate ratings from recipe_ratings table
+  // Includes LEFT JOIN to recipe_favorites for favorite status
   const result = await query<{
     slug: string;
     title: string;
@@ -310,7 +311,7 @@ export async function getUserRecipeSummaries(): Promise<RecipeSummary[]> {
       fiber?: number;
     };
     recipe_description: string;
-    is_favorite: boolean | null;
+    is_favorite: boolean;
     rating: number | null;
     updated_at: Date;
     avg_rating: number | null;
@@ -323,12 +324,13 @@ export async function getUserRecipeSummaries(): Promise<RecipeSummary[]> {
             r.recipe_json->'images' as images,
             r.recipe_json->'nutrition' as nutrition,
             r.recipe_json->>'description' as recipe_description,
-            (r.recipe_json->>'isFavorite')::boolean as is_favorite,
+            (rf.id IS NOT NULL) as is_favorite,
             (r.recipe_json->>'rating')::float as rating,
             r.updated_at,
             COALESCE(ratings.avg_rating, 0) as avg_rating,
             COALESCE(ratings.rating_count, 0) as rating_count
      FROM recipes r
+     LEFT JOIN recipe_favorites rf ON rf.recipe_id = r.id AND rf.user_id = $1
      LEFT JOIN (
        SELECT recipe_id, recipe_version,
               AVG(rating)::float as avg_rating,
@@ -356,7 +358,7 @@ export async function getUserRecipeSummaries(): Promise<RecipeSummary[]> {
       cookTimeMinutes: row.cook_time_minutes ?? undefined,
       primaryImage,
       nutrition: row.nutrition,
-      isFavorite: row.is_favorite ?? false,
+      isFavorite: row.is_favorite,
       rating: row.rating ?? undefined,
       updatedAt: row.updated_at,
       averageRating:

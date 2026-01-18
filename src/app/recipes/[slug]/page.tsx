@@ -9,6 +9,7 @@ import {
   getUserRatingForVersion,
   getRatingHistory,
 } from "@/lib/recipe-ratings";
+import { isRecipeFavorite } from "@/lib/recipe-favorites";
 import { getRecipeDetailTranslations } from "@/lib/translations/recipe-detail";
 import { getRecipeSharingTranslations } from "@/lib/translations/recipe-sharing";
 import { convertIngredientUnit } from "@/lib/unit-utils";
@@ -62,11 +63,12 @@ export default async function RecipeDetailPage({
   const t = getRecipeDetailTranslations(userLocale);
   const sharingT = getRecipeSharingTranslations(userLocale);
 
-  // Fetch rating data for current version
-  const [versionStats, userRating, ratingHistory] = await Promise.all([
+  // Fetch rating and favorite data for current version
+  const [versionStats, userRating, ratingHistory, isFavorite] = await Promise.all([
     getVersionRatings(recipe.id, recipe.version),
     getUserRatingForVersion(recipe.id, recipe.version),
     getRatingHistory(recipe.id),
+    isRecipeFavorite(recipe.id),
   ]);
 
   const { recipeJson } = recipe;
@@ -105,6 +107,7 @@ export default async function RecipeDetailPage({
                 recipeSlug={slug}
                 recipeName={recipe.title}
                 editLabel={t.edit}
+                initialIsFavorite={isFavorite}
               />
               <ShareRecipeSection
                 recipeSlug={recipe.slug}
