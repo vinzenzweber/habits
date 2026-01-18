@@ -15,9 +15,13 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-      # Use npm install instead of npm ci to ensure platform-specific optional deps are installed
+      # Clean install with fresh node_modules to ensure platform-specific optional deps are installed
       # This works around npm bug with optional dependencies (https://github.com/npm/cli/issues/4828)
-      - run: npm install
+      - name: Clean install dependencies
+        run: |
+          rm -rf node_modules
+          npm cache clean --force
+          npm install --include=optional
 
       # Cache Next.js build
       - name: Cache Next.js build
@@ -63,9 +67,13 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-      # Use npm install instead of npm ci to ensure platform-specific optional deps are installed
+      # Clean install with fresh node_modules to ensure platform-specific optional deps are installed
       # This works around npm bug with optional dependencies (https://github.com/npm/cli/issues/4828)
-      - run: npm install
+      - name: Clean install dependencies
+        run: |
+          rm -rf node_modules
+          npm cache clean --force
+          npm install --include=optional
 
       # Cache Playwright browsers
       - name: Get Playwright version
@@ -120,9 +128,13 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-      # Use npm install instead of npm ci to ensure platform-specific optional deps are installed
+      # Clean install with fresh node_modules to ensure platform-specific optional deps are installed
       # This works around npm bug with optional dependencies (https://github.com/npm/cli/issues/4828)
-      - run: npm install
+      - name: Clean install dependencies
+        run: |
+          rm -rf node_modules
+          npm cache clean --force
+          npm install --include=optional
 
       - name: Download blob reports
         uses: actions/download-artifact@v4
