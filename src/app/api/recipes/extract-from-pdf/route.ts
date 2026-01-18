@@ -1,6 +1,9 @@
 /**
  * POST /api/recipes/extract-from-pdf
- * Extract recipes from a PDF file (handles multi-page PDFs)
+ * Extract recipes from a PDF file using vision API
+ *
+ * Always renders PDF pages to images and uses GPT-4 Vision for extraction.
+ * This approach handles both text-based and image-based (scanned) PDFs consistently.
  *
  * Request body:
  *   - pdfBase64: Base64-encoded PDF data
@@ -12,16 +15,16 @@
 
 import { auth } from '@/lib/auth';
 import {
-  extractRecipeFromText,
+  extractRecipeFromImage,
   toRecipeJson,
 } from '@/lib/recipe-extraction';
 import { createRecipe, getUniqueSlug } from '@/lib/recipes';
 import { generateSlug } from '@/lib/recipe-types';
 import { getRegionFromTimezone } from '@/lib/user-preferences';
 import {
-  extractPdfPagesText,
+  getPdfInfo,
+  renderPdfPageToImage,
   MAX_PDF_PAGES,
-  MIN_TEXT_LENGTH_FOR_TEXT_EXTRACTION,
 } from '@/lib/pdf-utils';
 
 export const runtime = 'nodejs';
@@ -79,7 +82,7 @@ export async function POST(request: Request) {
 
     let pdfInfo;
     try {
-      pdfInfo = await extractPdfPagesText(pdfBuffer);
+      pdfInfo = await getPdfInfo(pdfBuffer);
     } catch (error) {
       // Handle password-protected PDFs
       if (error instanceof Error && error.message.includes('password')) {
@@ -101,25 +104,21 @@ export async function POST(request: Request) {
     const recipes: ExtractedRecipeResult[] = [];
     const skippedPages: number[] = [];
 
-    // Process each page
-    for (const page of pdfInfo.pages) {
+    // Process each page: render to image and use vision API
+    for (let pageNum = 1; pageNum <= pdfInfo.pageCount; pageNum++) {
       try {
-        // Skip pages with insufficient text content
-        if (!page.hasSignificantText) {
-          // Page doesn't have enough text - likely an image-based page or TOC
-          // For now, we skip these pages (future: could render to image and use vision API)
-          skippedPages.push(page.pageNumber);
-          continue;
-        }
+        // Render page to high-res image
+        const imageBuffer = await renderPdfPageToImage(pdfBuffer, pageNum);
+        const imageBase64 = imageBuffer.toString('base64');
 
-        // Use text-based extraction for text-heavy pages
-        const extractionResult = await extractRecipeFromText(page.textContent, {
+        // Extract recipe using vision API
+        const extractionResult = await extractRecipeFromImage(imageBase64, {
           targetLocale: recipeLocale,
           targetRegion: userRegion,
         });
 
         if (!extractionResult.success) {
-          skippedPages.push(page.pageNumber);
+          skippedPages.push(pageNum);
           continue;
         }
 
@@ -128,7 +127,6 @@ export async function POST(request: Request) {
         const baseSlug = generateSlug(extractedData.title);
         const slug = await getUniqueSlug(userIdNum, baseSlug);
 
-        // Build and save recipe (no image for text-based extraction)
         const recipeJson = toRecipeJson(extractedData, slug);
 
         await createRecipe({
@@ -142,45 +140,11 @@ export async function POST(request: Request) {
         recipes.push({
           slug,
           title: extractedData.title,
-          pageNumber: page.pageNumber,
+          pageNumber: pageNum,
         });
       } catch (pageError) {
-        console.error(`Error processing page ${page.pageNumber}:`, pageError);
-        skippedPages.push(page.pageNumber);
-      }
-    }
-
-    // If no recipes were extracted but we have pages with text, try extracting from combined text
-    if (recipes.length === 0 && pdfInfo.totalText.length >= MIN_TEXT_LENGTH_FOR_TEXT_EXTRACTION) {
-      try {
-        const extractionResult = await extractRecipeFromText(pdfInfo.totalText, {
-          targetLocale: recipeLocale,
-          targetRegion: userRegion,
-        });
-
-        if (extractionResult.success) {
-          const extractedData = extractionResult.data;
-          const baseSlug = generateSlug(extractedData.title);
-          const slug = await getUniqueSlug(userIdNum, baseSlug);
-
-          const recipeJson = toRecipeJson(extractedData, slug);
-
-          await createRecipe({
-            title: extractedData.title,
-            description: extractedData.description,
-            locale: extractedData.locale,
-            tags: extractedData.tags,
-            recipeJson,
-          });
-
-          recipes.push({
-            slug,
-            title: extractedData.title,
-            pageNumber: 0, // Indicates combined extraction
-          });
-        }
-      } catch (error) {
-        console.error('Error extracting from combined text:', error);
+        console.error(`Error processing page ${pageNum}:`, pageError);
+        skippedPages.push(pageNum);
       }
     }
 

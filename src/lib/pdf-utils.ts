@@ -86,7 +86,10 @@ export async function extractPdfText(pdfBuffer: Buffer): Promise<PdfInfo> {
  * Extract text from each page of a PDF using pdfjs-dist
  */
 export async function extractPdfPagesText(pdfBuffer: Buffer): Promise<PdfInfo> {
-  // Dynamic import to avoid issues with pdfjs-dist worker
+  // Import worker module first to populate globalThis.pdfjsWorker
+  // This is required for server-side usage where Worker threads aren't available
+  await import('pdfjs-dist/legacy/build/pdf.worker.mjs');
+
   const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
 
   // Load the PDF - convert Buffer to Uint8Array for pdfjs-dist compatibility
@@ -139,6 +142,10 @@ export async function extractPageText(
   pdfBuffer: Buffer,
   pageNumber: number
 ): Promise<string> {
+  // Import worker module first to populate globalThis.pdfjsWorker
+  // This is required for server-side usage where Worker threads aren't available
+  await import('pdfjs-dist/legacy/build/pdf.worker.mjs');
+
   const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
 
   // Convert Buffer to Uint8Array for pdfjs-dist compatibility
@@ -186,4 +193,111 @@ export async function isPdfPasswordProtected(pdfBuffer: Buffer): Promise<boolean
 export async function getPdfPageCount(pdfBuffer: Buffer): Promise<number> {
   const data = await pdf(pdfBuffer);
   return data.numpages;
+}
+
+// Default DPI for rendering PDF pages to images
+// 200 DPI provides good quality for vision API (~1700px for standard pages)
+export const DEFAULT_PDF_RENDER_DPI = 200;
+
+/**
+ * Render a PDF page to a high-resolution PNG image using pdftoppm
+ *
+ * Uses the poppler-utils pdftoppm tool for reliable rendering of both
+ * text-based and image-based (scanned) PDFs.
+ *
+ * @param pdfBuffer - The PDF file as a Buffer
+ * @param pageNumber - Page number to render (1-indexed)
+ * @param dpi - DPI for rendering (default 200 for good quality)
+ * @returns PNG image as a Buffer
+ */
+export async function renderPdfPageToImage(
+  pdfBuffer: Buffer,
+  pageNumber: number,
+  dpi: number = DEFAULT_PDF_RENDER_DPI
+): Promise<Buffer> {
+  const { execFile } = await import('child_process');
+  const { promisify } = await import('util');
+  const { writeFileSync, readFileSync, unlinkSync, mkdtempSync } = await import('fs');
+  const { join } = await import('path');
+  const { tmpdir } = await import('os');
+
+  const execFileAsync = promisify(execFile);
+
+  // Create temp directory for PDF and output
+  const tempDir = mkdtempSync(join(tmpdir(), 'pdf-render-'));
+  const pdfPath = join(tempDir, 'input.pdf');
+  const outputPrefix = join(tempDir, 'page');
+
+  try {
+    // Write PDF to temp file
+    writeFileSync(pdfPath, pdfBuffer);
+
+    // Use pdftoppm to convert specific page to PNG
+    // -f and -l specify first and last page (same value for single page)
+    // -png outputs PNG format
+    // -r specifies DPI
+    await execFileAsync('pdftoppm', [
+      '-f', String(pageNumber),
+      '-l', String(pageNumber),
+      '-png',
+      '-r', String(dpi),
+      pdfPath,
+      outputPrefix,
+    ]);
+
+    // pdftoppm outputs files like page-1.png, page-01.png depending on page count
+    // Check both formats
+    const possibleOutputs = [
+      `${outputPrefix}-${pageNumber}.png`,
+      `${outputPrefix}-${String(pageNumber).padStart(2, '0')}.png`,
+      `${outputPrefix}-${String(pageNumber).padStart(3, '0')}.png`,
+    ];
+
+    for (const outputPath of possibleOutputs) {
+      try {
+        const imageBuffer = readFileSync(outputPath);
+        return imageBuffer;
+      } catch {
+        // Try next format
+      }
+    }
+
+    throw new Error(`Failed to find rendered image for page ${pageNumber}`);
+  } finally {
+    // Cleanup temp files
+    try {
+      const { readdirSync } = await import('fs');
+      const files = readdirSync(tempDir);
+      for (const file of files) {
+        unlinkSync(join(tempDir, file));
+      }
+      const { rmdirSync } = await import('fs');
+      rmdirSync(tempDir);
+    } catch {
+      // Ignore cleanup errors
+    }
+  }
+}
+
+/**
+ * Get basic PDF info (page count) without full text extraction
+ * Useful when we're going to use vision API anyway
+ */
+export async function getPdfInfo(pdfBuffer: Buffer): Promise<{ pageCount: number }> {
+  // Import worker module first to populate globalThis.pdfjsWorker
+  await import('pdfjs-dist/legacy/build/pdf.worker.mjs');
+
+  const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+
+  const pdfData = new Uint8Array(pdfBuffer);
+  const loadingTask = pdfjsLib.getDocument({ data: pdfData });
+  const pdfDoc = await loadingTask.promise;
+
+  if (pdfDoc.numPages > MAX_PDF_PAGES) {
+    throw new Error(`PDF has too many pages (${pdfDoc.numPages}). Maximum: ${MAX_PDF_PAGES}`);
+  }
+
+  return {
+    pageCount: pdfDoc.numPages,
+  };
 }

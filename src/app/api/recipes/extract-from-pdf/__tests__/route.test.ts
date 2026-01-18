@@ -1,5 +1,6 @@
 /**
  * Tests for recipe extraction from PDF API route
+ * The route always uses vision API (renders PDF pages to images)
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -12,7 +13,7 @@ vi.mock('@/lib/auth', () => ({
 
 // Mock recipe-extraction
 vi.mock('@/lib/recipe-extraction', () => ({
-  extractRecipeFromText: vi.fn(),
+  extractRecipeFromImage: vi.fn(),
   toRecipeJson: vi.fn(),
 }));
 
@@ -34,16 +35,16 @@ vi.mock('@/lib/user-preferences', () => ({
 
 // Mock pdf-utils
 vi.mock('@/lib/pdf-utils', () => ({
-  extractPdfPagesText: vi.fn(),
+  getPdfInfo: vi.fn(),
+  renderPdfPageToImage: vi.fn(),
   MAX_PDF_PAGES: 50,
-  MIN_TEXT_LENGTH_FOR_TEXT_EXTRACTION: 200,
 }));
 
 import { auth } from '@/lib/auth';
-import { extractRecipeFromText, toRecipeJson } from '@/lib/recipe-extraction';
+import { extractRecipeFromImage, toRecipeJson } from '@/lib/recipe-extraction';
 import { createRecipe, getUniqueSlug } from '@/lib/recipes';
 import { generateSlug } from '@/lib/recipe-types';
-import { extractPdfPagesText } from '@/lib/pdf-utils';
+import { getPdfInfo, renderPdfPageToImage } from '@/lib/pdf-utils';
 
 // Sample extracted data
 const mockExtractedData = {
@@ -100,8 +101,14 @@ describe('POST /api/recipes/extract-from-pdf', () => {
     vi.mocked(auth).mockResolvedValue({
       user: { id: '123', locale: 'en-US' },
     } as never);
-    // Default success extraction
-    vi.mocked(extractRecipeFromText).mockResolvedValue({
+    // Default PDF info with one page
+    vi.mocked(getPdfInfo).mockResolvedValue({
+      pageCount: 1,
+    });
+    // Default: render returns a PNG buffer
+    vi.mocked(renderPdfPageToImage).mockResolvedValue(Buffer.from('fake-png-data'));
+    // Default success extraction from vision API
+    vi.mocked(extractRecipeFromImage).mockResolvedValue({
       success: true,
       data: mockExtractedData,
     });
@@ -121,18 +128,6 @@ describe('POST /api/recipes/extract-from-pdf', () => {
       isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),
-    });
-    // Default PDF info with one page with significant text
-    vi.mocked(extractPdfPagesText).mockResolvedValue({
-      pageCount: 1,
-      totalText: 'Recipe content here with more than 200 characters to be considered significant text. This is a test recipe that includes ingredients like flour, sugar, eggs, and butter. Instructions include mixing and baking.',
-      pages: [
-        {
-          pageNumber: 1,
-          textContent: 'Recipe content here with more than 200 characters to be considered significant text. This is a test recipe that includes ingredients like flour, sugar, eggs, and butter. Instructions include mixing and baking.',
-          hasSignificantText: true,
-        },
-      ],
     });
   });
 
@@ -196,7 +191,7 @@ describe('POST /api/recipes/extract-from-pdf', () => {
 
   describe('PDF parsing errors', () => {
     it('returns 400 for password-protected PDFs', async () => {
-      vi.mocked(extractPdfPagesText).mockRejectedValueOnce(
+      vi.mocked(getPdfInfo).mockRejectedValueOnce(
         new Error('password required')
       );
       const request = createMockRequest({ pdfBase64: 'somebase64data' });
@@ -209,10 +204,8 @@ describe('POST /api/recipes/extract-from-pdf', () => {
     });
 
     it('returns 400 when PDF has too many pages', async () => {
-      vi.mocked(extractPdfPagesText).mockResolvedValueOnce({
+      vi.mocked(getPdfInfo).mockResolvedValueOnce({
         pageCount: 51,
-        totalText: '',
-        pages: [],
       });
       const request = createMockRequest({ pdfBase64: 'somebase64data' });
 
@@ -238,18 +231,33 @@ describe('POST /api/recipes/extract-from-pdf', () => {
       expect(data.totalPages).toBe(1);
     });
 
-    it('returns extracted recipes from multiple pages', async () => {
-      vi.mocked(extractPdfPagesText).mockResolvedValue({
+    it('renders PDF page and calls vision API', async () => {
+      const request = createMockRequest({ pdfBase64: 'somebase64data' });
+
+      await POST(request);
+
+      // Should render the page to an image
+      expect(renderPdfPageToImage).toHaveBeenCalledWith(
+        expect.any(Buffer),
+        1  // page number
+      );
+
+      // Should call vision API with the base64 image
+      expect(extractRecipeFromImage).toHaveBeenCalledWith(
+        expect.any(String),  // base64 image data
+        expect.objectContaining({
+          targetLocale: 'en-US',
+        })
+      );
+    });
+
+    it('extracts recipes from multiple pages', async () => {
+      vi.mocked(getPdfInfo).mockResolvedValue({
         pageCount: 2,
-        totalText: 'Page 1 content\n\nPage 2 content',
-        pages: [
-          { pageNumber: 1, textContent: 'A'.repeat(250), hasSignificantText: true },
-          { pageNumber: 2, textContent: 'B'.repeat(250), hasSignificantText: true },
-        ],
       });
 
       // Return different recipes for each page
-      vi.mocked(extractRecipeFromText)
+      vi.mocked(extractRecipeFromImage)
         .mockResolvedValueOnce({
           success: true,
           data: { ...mockExtractedData, title: 'Recipe 1' },
@@ -275,49 +283,22 @@ describe('POST /api/recipes/extract-from-pdf', () => {
       expect(response.status).toBe(201);
       expect(data.recipes).toHaveLength(2);
       expect(data.extractedCount).toBe(2);
-    });
-
-    it('skips pages without significant text', async () => {
-      vi.mocked(extractPdfPagesText).mockResolvedValue({
-        pageCount: 3,
-        totalText: 'Short text\n\nLong content with more than 200 chars...',
-        pages: [
-          { pageNumber: 1, textContent: 'Table of Contents', hasSignificantText: false },
-          { pageNumber: 2, textContent: 'A'.repeat(250), hasSignificantText: true },
-          { pageNumber: 3, textContent: 'Page 3', hasSignificantText: false },
-        ],
-      });
-
-      const request = createMockRequest({ pdfBase64: 'somebase64data' });
-
-      const response = await POST(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(201);
-      expect(data.recipes).toHaveLength(1);
-      expect(data.skippedPages).toContain(1);
-      expect(data.skippedPages).toContain(3);
-      expect(data.skippedPages).not.toContain(2);
+      expect(renderPdfPageToImage).toHaveBeenCalledTimes(2);
     });
 
     it('skips pages where extraction fails', async () => {
-      vi.mocked(extractPdfPagesText).mockResolvedValue({
+      vi.mocked(getPdfInfo).mockResolvedValue({
         pageCount: 2,
-        totalText: 'Content',
-        pages: [
-          { pageNumber: 1, textContent: 'A'.repeat(250), hasSignificantText: true },
-          { pageNumber: 2, textContent: 'B'.repeat(250), hasSignificantText: true },
-        ],
       });
 
-      vi.mocked(extractRecipeFromText)
+      vi.mocked(extractRecipeFromImage)
         .mockResolvedValueOnce({
           success: true,
           data: mockExtractedData,
         })
         .mockResolvedValueOnce({
           success: false,
-          error: 'No recipe found',
+          error: 'No recipe found in image',
         });
 
       const request = createMockRequest({ pdfBase64: 'somebase64data' });
@@ -330,15 +311,14 @@ describe('POST /api/recipes/extract-from-pdf', () => {
       expect(data.skippedPages).toContain(2);
     });
 
-    it('attempts combined extraction when no recipes found on individual pages', async () => {
-      vi.mocked(extractPdfPagesText).mockResolvedValue({
+    it('handles pages where rendering fails', async () => {
+      vi.mocked(getPdfInfo).mockResolvedValue({
         pageCount: 2,
-        totalText: 'Combined recipe content with ingredients and steps spread across pages. ' + 'A'.repeat(200),
-        pages: [
-          { pageNumber: 1, textContent: 'Part 1 short', hasSignificantText: false },
-          { pageNumber: 2, textContent: 'Part 2 short', hasSignificantText: false },
-        ],
       });
+
+      vi.mocked(renderPdfPageToImage)
+        .mockResolvedValueOnce(Buffer.from('fake-png-data'))
+        .mockRejectedValueOnce(new Error('Rendering failed'));
 
       const request = createMockRequest({ pdfBase64: 'somebase64data' });
 
@@ -346,11 +326,8 @@ describe('POST /api/recipes/extract-from-pdf', () => {
       const data = await response.json();
 
       expect(response.status).toBe(201);
-      // Should have tried combined extraction
-      expect(extractRecipeFromText).toHaveBeenCalledWith(
-        expect.stringContaining('Combined recipe content'),
-        expect.any(Object)
-      );
+      expect(data.recipes).toHaveLength(1);
+      expect(data.skippedPages).toContain(2);
     });
   });
 
@@ -369,7 +346,7 @@ describe('POST /api/recipes/extract-from-pdf', () => {
 
       await POST(request);
 
-      expect(extractRecipeFromText).toHaveBeenCalledWith(
+      expect(extractRecipeFromImage).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
           targetLocale: 'de-DE',
@@ -378,9 +355,47 @@ describe('POST /api/recipes/extract-from-pdf', () => {
     });
   });
 
+  describe('image-based PDFs (scanned pages)', () => {
+    it('successfully extracts recipes from image-based PDFs using vision', async () => {
+      // Image-based PDFs are now handled the same as text PDFs
+      // The route renders all pages to images and uses vision API
+      vi.mocked(getPdfInfo).mockResolvedValue({
+        pageCount: 2,
+      });
+
+      vi.mocked(extractRecipeFromImage)
+        .mockResolvedValueOnce({
+          success: true,
+          data: { ...mockExtractedData, title: 'Scanned Recipe 1' },
+        })
+        .mockResolvedValueOnce({
+          success: true,
+          data: { ...mockExtractedData, title: 'Scanned Recipe 2' },
+        });
+
+      vi.mocked(generateSlug)
+        .mockReturnValueOnce('scanned-recipe-1')
+        .mockReturnValueOnce('scanned-recipe-2');
+
+      vi.mocked(getUniqueSlug)
+        .mockResolvedValueOnce('scanned-recipe-1')
+        .mockResolvedValueOnce('scanned-recipe-2');
+
+      const request = createMockRequest({ pdfBase64: 'somebase64data' });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(201);
+      expect(data.recipes).toHaveLength(2);
+      expect(data.extractedCount).toBe(2);
+      expect(data.skippedPages).toEqual([]);
+    });
+  });
+
   describe('error handling', () => {
     it('returns 500 on unexpected PDF parsing error', async () => {
-      vi.mocked(extractPdfPagesText).mockRejectedValueOnce(
+      vi.mocked(getPdfInfo).mockRejectedValueOnce(
         new Error('Unexpected error')
       );
       const request = createMockRequest({ pdfBase64: 'somebase64data' });
@@ -393,9 +408,6 @@ describe('POST /api/recipes/extract-from-pdf', () => {
     });
 
     it('skips page when database error occurs on save', async () => {
-      // Database errors on individual pages are caught and the page is skipped
-      // (for multi-page PDFs, one page failing shouldn't fail the whole request)
-      // Mock createRecipe to always reject to prevent combined text extraction from succeeding
       vi.mocked(createRecipe).mockRejectedValue(new Error('Database error'));
       const request = createMockRequest({ pdfBase64: 'somebase64data' });
 
