@@ -215,6 +215,8 @@ Uses PostgreSQL with the following tables:
 - `image_generation_jobs` - Background job queue for image generation
 - `recipes` - User-scoped recipes with JSONB content and versioning
 - `recipe_ratings` - Multi-user version-aware recipe ratings (1-5 stars with optional comments)
+- `recipe_shares` - Recipe sharing via reference model (recipients see original with version sync)
+- `recipe_forks` - Tracks when shared recipes are forked into independent copies
 - `_migrations` - Migration tracking
 
 All workout, chat, and recipe data is scoped per user (user_id foreign key).
