@@ -15,16 +15,11 @@ jobs:
         with:
           node-version: 20
           # Don't use npm cache - it causes issues with platform-specific optional deps
-      # Delete lockfile and reinstall to get platform-specific optional deps for Linux
-      # This works around npm bug with optional dependencies (https://github.com/npm/cli/issues/4828)
-      # The lockfile generated on macOS doesn't include linux-x64 binaries for rollup, lightningcss, etc.
-      - name: Install dependencies with platform-specific binaries
+      # Install dependencies - optionalDependencies in package.json include Linux binaries
+      - name: Install dependencies
         run: |
           rm -rf node_modules package-lock.json
-          npm cache clean --force
-          npm install --force
-          # Explicitly install platform-specific optional dependencies that npm may miss
-          npm install --save-optional @rollup/rollup-linux-x64-gnu lightningcss-linux-x64-gnu @swc/core-linux-x64-gnu --force || true
+          npm install
           # Verify critical platform-specific packages are installed
           ls node_modules/@rollup/rollup-linux-x64-gnu && echo "rollup linux binary found"
           ls node_modules/lightningcss-linux-x64-gnu && echo "lightningcss linux binary found"
@@ -73,16 +68,11 @@ jobs:
         with:
           node-version: 20
           # Don't use npm cache - it causes issues with platform-specific optional deps
-      # Delete lockfile and reinstall to get platform-specific optional deps for Linux
-      # This works around npm bug with optional dependencies (https://github.com/npm/cli/issues/4828)
-      # The lockfile generated on macOS doesn't include linux-x64 binaries for rollup, lightningcss, etc.
-      - name: Install dependencies with platform-specific binaries
+      # Install dependencies - optionalDependencies in package.json include Linux binaries
+      - name: Install dependencies
         run: |
           rm -rf node_modules package-lock.json
-          npm cache clean --force
-          npm install --force
-          # Explicitly install platform-specific optional dependencies that npm may miss
-          npm install --save-optional @rollup/rollup-linux-x64-gnu lightningcss-linux-x64-gnu @swc/core-linux-x64-gnu --force || true
+          npm install
           # Verify critical platform-specific packages are installed
           ls node_modules/@rollup/rollup-linux-x64-gnu && echo "rollup linux binary found"
           ls node_modules/lightningcss-linux-x64-gnu && echo "lightningcss linux binary found"
@@ -140,14 +130,11 @@ jobs:
         with:
           node-version: 20
           # Don't use npm cache - it causes issues with platform-specific optional deps
-      # Delete lockfile and reinstall to get platform-specific optional deps for Linux
-      # This works around npm bug with optional dependencies (https://github.com/npm/cli/issues/4828)
-      # The lockfile generated on macOS doesn't include linux-x64 binaries for rollup, lightningcss, etc.
-      - name: Install dependencies with platform-specific binaries
+      # Install dependencies - optionalDependencies in package.json include Linux binaries
+      - name: Install dependencies
         run: |
           rm -rf node_modules package-lock.json
-          npm cache clean --force
-          npm install --force
+          npm install
 
       - name: Download blob reports
         uses: actions/download-artifact@v4
