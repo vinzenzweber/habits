@@ -6,7 +6,10 @@ import {
   searchRecipesTool,
   getRecipeTool,
   createRecipeTool,
-  updateRecipeTool
+  updateRecipeTool,
+  translateRecipeTool,
+  SUPPORTED_TRANSLATION_LOCALES,
+  type TranslationLocale
 } from "@/lib/recipe-tools";
 import {
   saveMemory,
@@ -662,6 +665,36 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         required: ["slug"]
       }
     }
+  },
+  {
+    type: "function",
+    function: {
+      name: "translate_recipe",
+      description: "Translate a recipe to a different language and optionally adapt measurements to the target locale. Translates recipe content only (title, description, ingredients, steps), not the app interface. Use get_recipe first to find the recipe ID.",
+      parameters: {
+        type: "object",
+        properties: {
+          recipeId: {
+            type: "number",
+            description: "Recipe ID to translate (get this from get_recipe)"
+          },
+          targetLocale: {
+            type: "string",
+            enum: SUPPORTED_TRANSLATION_LOCALES as unknown as string[],
+            description: "Target locale for translation (e.g., 'de-DE', 'en-US', 'en-GB', 'es-ES', 'fr-FR', 'it-IT')"
+          },
+          adaptMeasurements: {
+            type: "boolean",
+            description: "Whether to convert measurements to target locale system (e.g., cups to ml for metric locales). Default: true"
+          },
+          saveAsNew: {
+            type: "boolean",
+            description: "Whether to save as a new recipe version. Default: false (just preview translation)"
+          }
+        },
+        required: ["recipeId", "targetLocale"]
+      }
+    }
   }
 ];
 
@@ -877,6 +910,22 @@ async function executeTool(
       }
       break;
 
+    case "translate_recipe":
+      try {
+        const translateResult = await translateRecipeTool(
+          openai,
+          userId,
+          args.recipeId,
+          args.targetLocale as TranslationLocale,
+          args.adaptMeasurements ?? true,
+          args.saveAsNew ?? false
+        );
+        result = translateResult;
+      } catch (error) {
+        result = { error: "Failed to translate recipe", message: error instanceof Error ? error.message : "Unknown error" };
+      }
+      break;
+
     default:
       result = { error: `Unknown tool: ${toolCall.function.name}` };
   }
@@ -999,7 +1048,8 @@ ${memoryContext}${pageContextSection}${instructionSection}`;
       search_recipes: "Searching recipes",
       get_recipe: "Fetching recipe",
       create_recipe: "Creating recipe",
-      update_recipe: "Updating recipe"
+      update_recipe: "Updating recipe",
+      translate_recipe: "Translating recipe"
     };
 
     const readableStream = new ReadableStream({

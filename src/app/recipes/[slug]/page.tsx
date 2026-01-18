@@ -112,6 +112,21 @@ export default async function RecipeDetailPage({
                 recipeId={recipe.id}
                 defaultServings={recipeJson.servings}
                 ingredientCount={getIngredientCount(recipeJson)}
+                currentLocale={recipe.locale}
+                translateLabel={t.translate}
+                translateTranslations={{
+                  title: t.translateTitle,
+                  translatingRecipe: t.translatingRecipe,
+                  selectLanguage: t.selectLanguage,
+                  adaptMeasurements: t.adaptMeasurements,
+                  adaptMeasurementsDescription: t.adaptMeasurementsDescription,
+                  preview: t.preview,
+                  saveTranslation: t.saveTranslation,
+                  translating: t.translating,
+                  translationPreview: t.translationPreview,
+                  close: t.close,
+                  cancel: t.cancel,
+                }}
               />
               <ShareRecipeSection
                 recipeSlug={recipe.slug}
