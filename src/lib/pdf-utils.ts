@@ -86,7 +86,10 @@ export async function extractPdfText(pdfBuffer: Buffer): Promise<PdfInfo> {
  * Extract text from each page of a PDF using pdfjs-dist
  */
 export async function extractPdfPagesText(pdfBuffer: Buffer): Promise<PdfInfo> {
-  // Dynamic import to avoid issues with pdfjs-dist worker
+  // Import worker module first to populate globalThis.pdfjsWorker
+  // This is required for server-side usage where Worker threads aren't available
+  await import('pdfjs-dist/legacy/build/pdf.worker.mjs');
+
   const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
 
   // Load the PDF - convert Buffer to Uint8Array for pdfjs-dist compatibility
@@ -139,6 +142,10 @@ export async function extractPageText(
   pdfBuffer: Buffer,
   pageNumber: number
 ): Promise<string> {
+  // Import worker module first to populate globalThis.pdfjsWorker
+  // This is required for server-side usage where Worker threads aren't available
+  await import('pdfjs-dist/legacy/build/pdf.worker.mjs');
+
   const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
 
   // Convert Buffer to Uint8Array for pdfjs-dist compatibility

@@ -18,6 +18,11 @@ vi.mock('pdf-parse', () => ({
   default: vi.fn(),
 }));
 
+// Mock pdfjs-dist worker (must be imported first in actual code)
+vi.mock('pdfjs-dist/legacy/build/pdf.worker.mjs', () => ({
+  WorkerMessageHandler: {},
+}));
+
 // Mock pdfjs-dist
 vi.mock('pdfjs-dist/legacy/build/pdf.mjs', () => ({
   getDocument: vi.fn(),
