@@ -214,6 +214,7 @@ Uses PostgreSQL with the following tables:
 - `exercise_images` - AI-generated exercise illustrations (2 per exercise)
 - `image_generation_jobs` - Background job queue for image generation
 - `recipes` - User-scoped recipes with JSONB content and versioning
+- `recipe_favorites` - User favorites for quick recipe access
 - `recipe_ratings` - Multi-user version-aware recipe ratings (1-5 stars with optional comments)
 - `recipe_shares` - Recipe sharing via reference model (recipients see original with version sync)
 - `recipe_forks` - Tracks when shared recipes are forked into independent copies

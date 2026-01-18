@@ -3,11 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { AddToCollectionModal } from "./AddToCollectionModal";
+import { FavoriteButton } from "./FavoriteButton";
 
 interface RecipeActionButtonsProps {
   recipeSlug: string;
   recipeName: string;
   editLabel: string;
+  initialIsFavorite: boolean;
 }
 
 /**
@@ -18,6 +20,7 @@ export function RecipeActionButtons({
   recipeSlug,
   recipeName,
   editLabel,
+  initialIsFavorite,
 }: RecipeActionButtonsProps) {
   const [showAddToCollectionModal, setShowAddToCollectionModal] =
     useState(false);
@@ -25,6 +28,12 @@ export function RecipeActionButtons({
   return (
     <>
       <div className="flex gap-2">
+        <FavoriteButton
+          recipeSlug={recipeSlug}
+          initialIsFavorite={initialIsFavorite}
+          size="md"
+          className="bg-slate-800 hover:bg-slate-700"
+        />
         <Link
           href={`/recipes/${recipeSlug}/edit`}
           className="inline-flex items-center justify-center rounded-full bg-slate-800 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700"

@@ -7,6 +7,7 @@ import { useState } from "react";
 import { RecipeSummary } from "@/lib/recipe-types";
 import { StarRating } from "./StarRating";
 import { getTagById, getTagColorClass } from "@/lib/predefined-tags";
+import { FavoriteButton } from "./FavoriteButton";
 
 interface RecipeCardProps {
   recipe: RecipeSummary;
@@ -74,6 +75,14 @@ export function RecipeCard({
             🍳
           </div>
         )}
+
+        {/* Favorite button */}
+        <FavoriteButton
+          recipeSlug={recipe.slug}
+          initialIsFavorite={recipe.isFavorite ?? false}
+          size="sm"
+          className="absolute left-2 top-2"
+        />
 
         {/* Add to collection button */}
         {showAddToCollection && onAddToCollection && (
