@@ -39,7 +39,7 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/canvas-confetti": "^1.9.0",
-    "@types/node": "^20",
+    "@types/node": "^25",
     "@types/pdf-parse": "^1.1.5",
     "@types/pg": "^8.15.6",
     "@types/react": "^19",
