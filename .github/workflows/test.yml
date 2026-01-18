@@ -15,13 +15,13 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-      # Clean install with fresh node_modules to ensure platform-specific optional deps are installed
+      # Delete lockfile and reinstall to get platform-specific optional deps for Linux
       # This works around npm bug with optional dependencies (https://github.com/npm/cli/issues/4828)
-      - name: Clean install dependencies
+      # The lockfile generated on macOS doesn't include linux-x64 binaries for rollup, lightningcss, etc.
+      - name: Install dependencies with platform-specific binaries
         run: |
-          rm -rf node_modules
-          npm cache clean --force
-          npm install --include=optional
+          rm -rf node_modules package-lock.json
+          npm install
 
       # Cache Next.js build
       - name: Cache Next.js build
@@ -67,13 +67,13 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-      # Clean install with fresh node_modules to ensure platform-specific optional deps are installed
+      # Delete lockfile and reinstall to get platform-specific optional deps for Linux
       # This works around npm bug with optional dependencies (https://github.com/npm/cli/issues/4828)
-      - name: Clean install dependencies
+      # The lockfile generated on macOS doesn't include linux-x64 binaries for rollup, lightningcss, etc.
+      - name: Install dependencies with platform-specific binaries
         run: |
-          rm -rf node_modules
-          npm cache clean --force
-          npm install --include=optional
+          rm -rf node_modules package-lock.json
+          npm install
 
       # Cache Playwright browsers
       - name: Get Playwright version
@@ -128,13 +128,13 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-      # Clean install with fresh node_modules to ensure platform-specific optional deps are installed
+      # Delete lockfile and reinstall to get platform-specific optional deps for Linux
       # This works around npm bug with optional dependencies (https://github.com/npm/cli/issues/4828)
-      - name: Clean install dependencies
+      # The lockfile generated on macOS doesn't include linux-x64 binaries for rollup, lightningcss, etc.
+      - name: Install dependencies with platform-specific binaries
         run: |
-          rm -rf node_modules
-          npm cache clean --force
-          npm install --include=optional
+          rm -rf node_modules package-lock.json
+          npm install
 
       - name: Download blob reports
         uses: actions/download-artifact@v4
