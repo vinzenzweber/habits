@@ -55,9 +55,10 @@ describe('PhotoCaptureModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Mock the extraction API response
     mockFetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ url: '/api/recipes/images/user1/captured-image' }),
+      json: () => Promise.resolve({ slug: 'test-recipe' }),
     });
     // Default to desktop view
     mockMatchMedia.mockReturnValue({
@@ -216,7 +217,7 @@ describe('PhotoCaptureModal', () => {
   });
 
   describe('upload and callback', () => {
-    it('calls onImageCaptured with URL after successful upload', async () => {
+    it('calls onImageCaptured with slug after successful extraction', async () => {
       const onImageCaptured = vi.fn();
       const user = userEvent.setup();
       render(<PhotoCaptureModal {...defaultProps} onImageCaptured={onImageCaptured} />);
@@ -234,14 +235,14 @@ describe('PhotoCaptureModal', () => {
 
       await waitFor(() => {
         expect(mockFetch).toHaveBeenCalledWith(
-          '/api/recipes/images/upload',
+          '/api/recipes/extract-from-image',
           expect.objectContaining({ method: 'POST' })
         );
-        expect(onImageCaptured).toHaveBeenCalledWith('/api/recipes/images/user1/captured-image');
+        expect(onImageCaptured).toHaveBeenCalledWith({ type: 'extracted', slug: 'test-recipe' });
       });
     });
 
-    it('shows loading state during upload', async () => {
+    it('shows loading state during extraction', async () => {
       // Make fetch take some time
       mockFetch.mockImplementationOnce(
         () =>
@@ -250,7 +251,7 @@ describe('PhotoCaptureModal', () => {
               () =>
                 resolve({
                   ok: true,
-                  json: () => Promise.resolve({ url: '/api/recipes/images/user1/new' }),
+                  json: () => Promise.resolve({ slug: 'new-recipe' }),
                 }),
               100
             )
@@ -271,9 +272,9 @@ describe('PhotoCaptureModal', () => {
 
       await user.click(screen.getByRole('button', { name: /import recipe/i }));
 
-      // Should show uploading state - button text changes to Uploading...
+      // Should show extracting state
       // Use getAllByText since there are two elements with this text (button + overlay)
-      expect(screen.getAllByText('Uploading...').length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/extracting/i).length).toBeGreaterThan(0);
     });
 
     it('shows error on upload failure', async () => {

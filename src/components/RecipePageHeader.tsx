@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { PhotoCaptureModal } from './PhotoCaptureModal';
+import { PhotoCaptureModal, type PhotoCaptureResult } from './PhotoCaptureModal';
 
 const PlusIcon = () => (
   <svg
@@ -42,10 +42,15 @@ export function RecipePageHeader() {
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleImageCaptured = (imageUrl: string) => {
+  const handleImageCaptured = (result: PhotoCaptureResult) => {
     setIsModalOpen(false);
-    // Navigate to new recipe form with pre-filled image
-    router.push(`/recipes/new?image=${encodeURIComponent(imageUrl)}`);
+    if (result.type === 'extracted') {
+      // AI extraction succeeded - navigate to recipe detail page
+      router.push(`/recipes/${result.slug}`);
+    } else {
+      // Fallback: manual creation with uploaded image
+      router.push(`/recipes/new?image=${encodeURIComponent(result.imageUrl)}`);
+    }
   };
 
   return (
