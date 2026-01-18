@@ -16,6 +16,16 @@ jobs:
           node-version: 20
           cache: 'npm'
       - run: npm ci
+
+      # Cache Next.js build
+      - name: Cache Next.js build
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: nextjs-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**') }}
+          restore-keys: |
+            nextjs-${{ hashFiles('package-lock.json') }}-
+
       - run: npm run lint
       - run: npm run test:unit
       - run: npm run build
@@ -26,7 +36,11 @@ jobs:
 
   e2e-tests:
     runs-on: ubuntu-latest
-    needs: unit-tests
+    # Runs in parallel with unit-tests (no needs dependency)
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     services:
       postgres:
         image: postgres:16
@@ -48,12 +62,34 @@ jobs:
           node-version: 20
           cache: 'npm'
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+
+      # Cache Playwright browsers
+      - name: Get Playwright version
+        id: playwright-version
+        run: echo "version=$(npm ls @playwright/test --json | jq -r '.dependencies["@playwright/test"].version')" >> $GITHUB_OUTPUT
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ steps.playwright-version.outputs.version }}
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright system deps only
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
       - name: Run database migrations
         run: npm run db:migrate
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/habits_test
-      - run: npm run test:e2e
+
+      - name: Run E2E tests (shard ${{ matrix.shard }}/2)
+        run: npx playwright test --shard=${{ matrix.shard }}/2
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/habits_test
           NEXTAUTH_SECRET: test-secret-for-ci
@@ -61,8 +97,41 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           # Enable test endpoints in production build for E2E tests
           ALLOW_TEST_ENDPOINTS: true
-      - uses: actions/upload-artifact@v4
-        if: failure()
+
+      - name: Upload blob report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: blob-report-${{ matrix.shard }}
+          path: blob-report/
+          retention-days: 1
+
+  merge-reports:
+    if: always() && needs.e2e-tests.result != 'skipped'
+    needs: e2e-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: npm ci
+
+      - name: Download blob reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: blob-report-*
+          path: all-blob-reports
+          merge-multiple: true
+
+      - name: Merge reports
+        run: npx playwright merge-reports --reporter html ./all-blob-reports
+
+      - name: Upload merged HTML report
+        if: failure() || needs.e2e-tests.result == 'failure'
+        uses: actions/upload-artifact@v4
         with:
           name: playwright-report
           path: playwright-report/
+          retention-days: 30
