@@ -11,10 +11,12 @@ import {
   countActiveFilters,
 } from "@/lib/recipe-filter-utils";
 import { RecipeCard } from "./RecipeCard";
+import type { PredefinedTag, TagCategory } from "@/lib/predefined-tags";
 
 interface RecipeListClientProps {
   initialRecipes: RecipeSummary[];
   availableTags: string[];
+  predefinedTags?: PredefinedTag[];
 }
 
 // ============================================
@@ -89,9 +91,34 @@ const PlusIcon = () => (
 // Component
 // ============================================
 
+// Category color mapping for tag chips
+const CATEGORY_CHIP_COLORS: Record<TagCategory, { selected: string; unselected: string }> = {
+  meal: {
+    selected: "bg-blue-500 text-slate-950",
+    unselected: "bg-blue-500/20 text-blue-400 hover:bg-blue-500/30",
+  },
+  diet: {
+    selected: "bg-green-500 text-slate-950",
+    unselected: "bg-green-500/20 text-green-400 hover:bg-green-500/30",
+  },
+  cuisine: {
+    selected: "bg-orange-500 text-slate-950",
+    unselected: "bg-orange-500/20 text-orange-400 hover:bg-orange-500/30",
+  },
+  category: {
+    selected: "bg-purple-500 text-slate-950",
+    unselected: "bg-purple-500/20 text-purple-400 hover:bg-purple-500/30",
+  },
+  effort: {
+    selected: "bg-yellow-500 text-slate-950",
+    unselected: "bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30",
+  },
+};
+
 export function RecipeListClient({
   initialRecipes,
   availableTags,
+  predefinedTags = [],
 }: RecipeListClientProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -218,17 +245,32 @@ export function RecipeListClient({
           <div className="flex gap-2 pb-1">
             {availableTags.map((tag) => {
               const isSelected = selectedTags.includes(tag);
+              // Find predefined tag for category color
+              const predefinedTag = predefinedTags.find(pt => pt.id === tag);
+              const category = predefinedTag?.category;
+
+              // Get color classes based on category
+              let colorClass: string;
+              if (isSelected) {
+                colorClass = category
+                  ? `${CATEGORY_CHIP_COLORS[category].selected} font-medium`
+                  : "bg-emerald-500 font-medium text-slate-950";
+              } else {
+                colorClass = category
+                  ? CATEGORY_CHIP_COLORS[category].unselected
+                  : "bg-slate-800 text-slate-300 hover:bg-slate-700";
+              }
+
+              // Display label: use German label for predefined, tag ID for custom
+              const displayLabel = predefinedTag?.label || tag;
+
               return (
                 <button
                   key={tag}
                   onClick={() => toggleTag(tag)}
-                  className={`shrink-0 rounded-full px-3 py-1.5 text-sm transition ${
-                    isSelected
-                      ? "bg-emerald-500 font-medium text-slate-950"
-                      : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                  }`}
+                  className={`shrink-0 rounded-full px-3 py-1.5 text-sm transition ${colorClass}`}
                 >
-                  {tag}
+                  {displayLabel}
                 </button>
               );
             })}

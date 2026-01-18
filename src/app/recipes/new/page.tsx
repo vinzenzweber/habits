@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { getUserTags } from '@/lib/recipes';
 import { RecipeForm } from '@/components/RecipeForm';
+import { PREDEFINED_TAGS, TAG_CATEGORIES } from '@/lib/predefined-tags';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,7 +42,12 @@ export default async function NewRecipePage() {
         </h1>
 
         {/* Form */}
-        <RecipeForm existingTags={existingTags} defaultLocale={userLocale} />
+        <RecipeForm
+          existingTags={existingTags}
+          predefinedTags={PREDEFINED_TAGS}
+          tagCategories={TAG_CATEGORIES}
+          defaultLocale={userLocale}
+        />
       </div>
     </main>
   );

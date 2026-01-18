@@ -4,6 +4,7 @@ import { redirect, notFound } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { getRecipeBySlug, getUserTags } from '@/lib/recipes';
 import { RecipeForm } from '@/components/RecipeForm';
+import { PREDEFINED_TAGS, TAG_CATEGORIES } from '@/lib/predefined-tags';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,6 +54,8 @@ export default async function EditRecipePage({ params }: PageProps) {
           initialRecipe={recipe.recipeJson}
           slug={slug}
           existingTags={existingTags}
+          predefinedTags={PREDEFINED_TAGS}
+          tagCategories={TAG_CATEGORIES}
         />
       </div>
     </main>

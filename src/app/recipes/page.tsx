@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { getUserRecipeSummaries, getUserTags } from "@/lib/recipes";
 import { LogoutButton } from "@/components/LogoutButton";
 import { RecipeListClient } from "@/components/RecipeListClient";
+import { PREDEFINED_TAGS } from "@/lib/predefined-tags";
 
 export const dynamic = "force-dynamic";
 
@@ -67,6 +68,7 @@ export default async function RecipesPage() {
           <RecipeListClient
             initialRecipes={recipes}
             availableTags={availableTags}
+            predefinedTags={PREDEFINED_TAGS}
           />
         </Suspense>
       </div>

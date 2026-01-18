@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { RecipeSummary } from "@/lib/recipe-types";
 import { StarRating } from "./StarRating";
+import { getTagById, getTagColorClass } from "@/lib/predefined-tags";
 
 interface RecipeCardProps {
   recipe: RecipeSummary;
@@ -83,14 +84,21 @@ export function RecipeCard({ recipe, href }: RecipeCardProps) {
         {/* Tags */}
         {visibleTags.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
-            {visibleTags.map((tag) => (
-              <span
-                key={tag}
-                className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-400"
-              >
-                {tag}
-              </span>
-            ))}
+            {visibleTags.map((tag) => {
+              // Get predefined tag info for display label and color
+              const predefinedTag = getTagById(tag);
+              const colorClass = getTagColorClass(tag);
+              const displayLabel = predefinedTag?.label || tag;
+
+              return (
+                <span
+                  key={tag}
+                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs ${colorClass}`}
+                >
+                  {displayLabel}
+                </span>
+              );
+            })}
             {extraTagCount > 0 && (
               <span className="inline-flex items-center rounded-full bg-slate-500/10 px-2 py-0.5 text-xs text-slate-400">
                 +{extraTagCount} more
