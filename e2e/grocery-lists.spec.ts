@@ -8,8 +8,9 @@ test.describe('Grocery Lists', () => {
       // Check page title
       await expect(page.getByRole('heading', { name: /grocery lists/i })).toBeVisible()
 
-      // Check for create button
-      await expect(page.getByRole('button', { name: /create/i })).toBeVisible()
+      // Check for create button in header (the one next to the title)
+      // Use first() since there may be multiple create buttons (header + empty state)
+      await expect(page.getByRole('button', { name: /create/i }).first()).toBeVisible()
     })
 
     test('shows empty state when no lists exist', async ({ authenticatedPage: page }) => {
@@ -22,8 +23,8 @@ test.describe('Grocery Lists', () => {
     test('can create a new list', async ({ authenticatedPage: page }) => {
       await page.goto('/grocery-lists')
 
-      // Click create button
-      await page.getByRole('button', { name: /create/i }).click()
+      // Click create button (use first() as there may be multiple create buttons)
+      await page.getByRole('button', { name: /create/i }).first().click()
 
       // Fill in the name
       await page.getByLabel(/list name/i).fill('Weekly Groceries')
@@ -41,7 +42,7 @@ test.describe('Grocery Lists', () => {
     test('shows list card after creating a list', async ({ authenticatedPage: page }) => {
       // First create a list
       await page.goto('/grocery-lists')
-      await page.getByRole('button', { name: /create/i }).click()
+      await page.getByRole('button', { name: /create/i }).first().click()
       await page.getByLabel(/list name/i).fill('Test Shopping List')
       await page.getByRole('button', { name: /create list/i }).click()
 
@@ -60,7 +61,7 @@ test.describe('Grocery Lists', () => {
     test('shows empty state when list has no items', async ({ authenticatedPage: page }) => {
       // Create a list first
       await page.goto('/grocery-lists')
-      await page.getByRole('button', { name: /create/i }).click()
+      await page.getByRole('button', { name: /create/i }).first().click()
       await page.getByLabel(/list name/i).fill('Empty List Test')
       await page.getByRole('button', { name: /create list/i }).click()
 
@@ -73,7 +74,7 @@ test.describe('Grocery Lists', () => {
     test('can add an item to the list', async ({ authenticatedPage: page }) => {
       // Create a list first
       await page.goto('/grocery-lists')
-      await page.getByRole('button', { name: /create/i }).click()
+      await page.getByRole('button', { name: /create/i }).first().click()
       await page.getByLabel(/list name/i).fill('Add Item Test')
       await page.getByRole('button', { name: /create list/i }).click()
 
@@ -99,7 +100,7 @@ test.describe('Grocery Lists', () => {
     test('can check and uncheck items', async ({ authenticatedPage: page }) => {
       // Create a list with an item
       await page.goto('/grocery-lists')
-      await page.getByRole('button', { name: /create/i }).click()
+      await page.getByRole('button', { name: /create/i }).first().click()
       await page.getByLabel(/list name/i).fill('Check Test')
       await page.getByRole('button', { name: /create list/i }).click()
 
@@ -126,7 +127,7 @@ test.describe('Grocery Lists', () => {
     test('can navigate to shopping mode', async ({ authenticatedPage: page }) => {
       // Create a list with items
       await page.goto('/grocery-lists')
-      await page.getByRole('button', { name: /create/i }).click()
+      await page.getByRole('button', { name: /create/i }).first().click()
       await page.getByLabel(/list name/i).fill('Shopping Mode Test')
       await page.getByRole('button', { name: /create list/i }).click()
 
@@ -156,7 +157,7 @@ test.describe('Grocery Lists', () => {
     test('can check items in shopping mode', async ({ authenticatedPage: page }) => {
       // Create a list with items
       await page.goto('/grocery-lists')
-      await page.getByRole('button', { name: /create/i }).click()
+      await page.getByRole('button', { name: /create/i }).first().click()
       await page.getByLabel(/list name/i).fill('Shopping Check Test')
       await page.getByRole('button', { name: /create list/i }).click()
 
@@ -187,7 +188,7 @@ test.describe('Grocery Lists', () => {
     test('can exit shopping mode', async ({ authenticatedPage: page }) => {
       // Create a list
       await page.goto('/grocery-lists')
-      await page.getByRole('button', { name: /create/i }).click()
+      await page.getByRole('button', { name: /create/i }).first().click()
       await page.getByLabel(/list name/i).fill('Exit Test')
       await page.getByRole('button', { name: /create list/i }).click()
 
