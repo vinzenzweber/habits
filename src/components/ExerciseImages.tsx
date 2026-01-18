@@ -16,6 +16,18 @@ const sizeClasses = {
 };
 
 /**
+ * Normalize exercise name for URL paths
+ * Must match server-side normalizeExerciseName in exercise-library.ts
+ */
+function normalizeForUrl(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .trim();
+}
+
+/**
  * Display exercise images with position toggle (start/end position)
  * Left-aligned component for use in exercise cards
  */
@@ -28,7 +40,8 @@ export function ExerciseImages({
   const [loadError, setLoadError] = useState<Record<number, boolean>>({});
   const [isLoading, setIsLoading] = useState<Record<number, boolean>>({ 1: true, 2: true });
 
-  const imageUrl = (index: 1 | 2) => `/api/exercises/${exerciseName}/images/${index}`;
+  const normalizedName = normalizeForUrl(exerciseName);
+  const imageUrl = (index: 1 | 2) => `/api/exercises/${normalizedName}/images/${index}`;
 
   // If both images failed to load, show nothing
   if (loadError[1] && loadError[2]) {
@@ -117,7 +130,8 @@ export function ExerciseImageThumbnail({
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const imageUrl = `/api/exercises/${exerciseName}/images/1`;
+  const normalizedName = normalizeForUrl(exerciseName);
+  const imageUrl = `/api/exercises/${normalizedName}/images/1`;
 
   if (hasError) {
     return null;
