@@ -14,6 +14,7 @@ import type {
   NutritionInfo,
 } from '@/lib/recipe-types';
 import { generateSlug } from '@/lib/recipe-types';
+import type { PredefinedTag, TagCategory, TagCategoryInfo } from '@/lib/predefined-tags';
 
 interface RecipeFormProps {
   /** Initial recipe data for editing, undefined for new recipe */
@@ -22,6 +23,10 @@ interface RecipeFormProps {
   slug?: string;
   /** Available tags for autocomplete */
   existingTags?: string[];
+  /** Predefined tags with category metadata */
+  predefinedTags?: PredefinedTag[];
+  /** Category metadata for UI grouping */
+  tagCategories?: Partial<Record<TagCategory, TagCategoryInfo>>;
   /** Default locale for new recipes (from user preferences) */
   defaultLocale?: string;
 }
@@ -59,7 +64,14 @@ const DEFAULT_FORM_STATE: FormState = {
   images: [],
 };
 
-export function RecipeForm({ initialRecipe, slug, existingTags = [], defaultLocale = 'en-US' }: RecipeFormProps) {
+export function RecipeForm({
+  initialRecipe,
+  slug,
+  existingTags = [],
+  predefinedTags = [],
+  tagCategories = {},
+  defaultLocale = 'en-US',
+}: RecipeFormProps) {
   const router = useRouter();
   const isEditing = Boolean(slug);
 
@@ -262,6 +274,8 @@ export function RecipeForm({ initialRecipe, slug, existingTags = [], defaultLoca
             tags={form.tags}
             onChange={(tags) => updateField('tags', tags)}
             suggestions={existingTags}
+            predefinedTags={predefinedTags}
+            categories={tagCategories}
             disabled={loading}
           />
         </div>

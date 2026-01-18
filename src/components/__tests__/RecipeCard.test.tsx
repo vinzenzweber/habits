@@ -55,9 +55,11 @@ describe("RecipeCard", () => {
 
   it("renders recipe tags (limited to 3)", () => {
     render(<RecipeCard recipe={mockRecipe} />);
+    // "healthy" is custom tag, displayed as-is
     expect(screen.getByText("healthy")).toBeInTheDocument();
-    expect(screen.getByText("quick")).toBeInTheDocument();
-    expect(screen.getByText("vegetarian")).toBeInTheDocument();
+    // "quick" and "vegetarian" are predefined tags, displayed with German labels
+    expect(screen.getByText("Schnell")).toBeInTheDocument();
+    expect(screen.getByText("Vegetarisch")).toBeInTheDocument();
   });
 
   it("renders +N more indicator when more than 3 tags", () => {

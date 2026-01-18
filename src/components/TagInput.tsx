@@ -1,20 +1,35 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import type { PredefinedTag, TagCategory, TagCategoryInfo } from '@/lib/predefined-tags';
 
 interface TagInputProps {
   tags: string[];
   onChange: (tags: string[]) => void;
+  /** Custom tag suggestions (user's existing tags) */
   suggestions?: string[];
+  /** Predefined tags with category metadata */
+  predefinedTags?: PredefinedTag[];
+  /** Category metadata for grouping */
+  categories?: Partial<Record<TagCategory, TagCategoryInfo>>;
   placeholder?: string;
   maxTags?: number;
   disabled?: boolean;
+}
+
+interface GroupedSuggestion {
+  type: 'category-header' | 'predefined' | 'custom-header' | 'custom';
+  id: string;
+  label: string;
+  category?: TagCategory;
 }
 
 export function TagInput({
   tags,
   onChange,
   suggestions = [],
+  predefinedTags = [],
+  categories = {},
   placeholder = 'Add tag...',
   maxTags = 10,
   disabled = false,
@@ -25,22 +40,91 @@ export function TagInput({
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Filter suggestions based on input
-  // Note: Tags are stored in lowercase, so we filter and display suggestions in lowercase
-  // to provide consistent UX (what you see is what you get)
+  // Build grouped suggestions list with category headers
   // Performance note: This computation runs on every render even when dropdown is hidden.
   // This is acceptable as the filter operation is O(n) on a small array and negligible overhead.
-  const filteredSuggestions = useMemo(() => {
+  const groupedSuggestions = useMemo(() => {
     const lowerInput = input.toLowerCase();
-    return suggestions
+    const result: GroupedSuggestion[] = [];
+    const selectedSet = new Set(tags);
+
+    // Group predefined tags by category
+    const categoryMap = new Map<TagCategory, PredefinedTag[]>();
+    for (const tag of predefinedTags) {
+      // Filter by input and exclude already selected
+      if (
+        tag.id.includes(lowerInput) ||
+        tag.label.toLowerCase().includes(lowerInput) ||
+        tag.labelEn.toLowerCase().includes(lowerInput)
+      ) {
+        if (!selectedSet.has(tag.id)) {
+          const existing = categoryMap.get(tag.category) || [];
+          existing.push(tag);
+          categoryMap.set(tag.category, existing);
+        }
+      }
+    }
+
+    // Add predefined tags grouped by category
+    const categoryOrder: TagCategory[] = ['meal', 'diet', 'cuisine', 'category', 'effort'];
+    for (const category of categoryOrder) {
+      const categoryTags = categoryMap.get(category);
+      if (categoryTags && categoryTags.length > 0) {
+        const categoryInfo = categories[category];
+        result.push({
+          type: 'category-header',
+          id: `header-${category}`,
+          label: categoryInfo?.label || category,
+          category,
+        });
+        for (const tag of categoryTags) {
+          result.push({
+            type: 'predefined',
+            id: tag.id,
+            label: tag.label,
+            category: tag.category,
+          });
+        }
+      }
+    }
+
+    // Filter and add custom tags
+    // Note: Tags are stored in lowercase, so we filter and display suggestions in lowercase
+    // to provide consistent UX (what you see is what you get)
+    const predefinedIds = new Set(predefinedTags.map(t => t.id));
+    const customSuggestions = suggestions
       .map(s => s.toLowerCase())
       .filter(
         (s, index, arr) =>
           s.includes(lowerInput) &&
-          !tags.includes(s) &&
+          !selectedSet.has(s) &&
+          !predefinedIds.has(s) &&
           arr.indexOf(s) === index // dedupe after lowercase conversion
       );
-  }, [suggestions, input, tags]);
+
+    if (customSuggestions.length > 0) {
+      result.push({
+        type: 'custom-header',
+        id: 'header-custom',
+        label: 'Your tags',
+      });
+      for (const tag of customSuggestions) {
+        result.push({
+          type: 'custom',
+          id: tag,
+          label: tag,
+        });
+      }
+    }
+
+    return result;
+  }, [suggestions, predefinedTags, categories, input, tags]);
+
+  // Get only selectable items (not headers) for keyboard navigation
+  const selectableItems = useMemo(
+    () => groupedSuggestions.filter(s => s.type === 'predefined' || s.type === 'custom'),
+    [groupedSuggestions]
+  );
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -70,8 +154,8 @@ export function TagInput({
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (selectedIndex >= 0 && filteredSuggestions[selectedIndex]) {
-        addTag(filteredSuggestions[selectedIndex]);
+      if (selectedIndex >= 0 && selectableItems[selectedIndex]) {
+        addTag(selectableItems[selectedIndex].id);
       } else if (input.trim()) {
         addTag(input);
       }
@@ -80,7 +164,7 @@ export function TagInput({
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
       setSelectedIndex((prev) =>
-        prev < filteredSuggestions.length - 1 ? prev + 1 : prev
+        prev < selectableItems.length - 1 ? prev + 1 : prev
       );
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
@@ -89,7 +173,7 @@ export function TagInput({
       setShowSuggestions(false);
       setSelectedIndex(-1);
     }
-  }, [input, tags, filteredSuggestions, selectedIndex, addTag, removeTag]);
+  }, [input, tags, selectableItems, selectedIndex, addTag, removeTag]);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setInput(e.target.value);
@@ -98,6 +182,23 @@ export function TagInput({
   }, []);
 
   const canAddMore = tags.length < maxTags;
+
+  // Get category color class for tag display
+  const getCategoryColor = (category?: TagCategory): string => {
+    const colors: Record<TagCategory, string> = {
+      meal: 'bg-blue-500/20 text-blue-400',
+      diet: 'bg-green-500/20 text-green-400',
+      cuisine: 'bg-orange-500/20 text-orange-400',
+      category: 'bg-purple-500/20 text-purple-400',
+      effort: 'bg-yellow-500/20 text-yellow-400',
+    };
+    return category ? colors[category] : 'bg-slate-700';
+  };
+
+  // Find the index in selectableItems for a given suggestion
+  const getSelectableIndex = (suggestionId: string): number => {
+    return selectableItems.findIndex(s => s.id === suggestionId);
+  };
 
   return (
     <div ref={containerRef} className="relative">
@@ -150,24 +251,50 @@ export function TagInput({
       </div>
 
       {/* Suggestions dropdown */}
-      {showSuggestions && filteredSuggestions.length > 0 && !disabled && (
-        <div className="absolute z-10 w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg max-h-48 overflow-auto">
-          {filteredSuggestions.map((suggestion, index) => (
-            <button
-              key={suggestion}
-              type="button"
-              onClick={() => addTag(suggestion)}
-              className={`
-                w-full px-4 py-2 text-left text-sm transition
-                ${index === selectedIndex
-                  ? 'bg-slate-700 text-emerald-400'
-                  : 'hover:bg-slate-700'
-                }
-              `}
-            >
-              {suggestion}
-            </button>
-          ))}
+      {showSuggestions && groupedSuggestions.length > 0 && !disabled && (
+        <div className="absolute z-10 w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg max-h-64 overflow-auto">
+          {groupedSuggestions.map((suggestion) => {
+            // Headers are not selectable
+            if (suggestion.type === 'category-header' || suggestion.type === 'custom-header') {
+              return (
+                <div
+                  key={suggestion.id}
+                  className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider bg-slate-850 border-t border-slate-700 first:border-t-0"
+                >
+                  {suggestion.label}
+                </div>
+              );
+            }
+
+            // Selectable items
+            const selectableIdx = getSelectableIndex(suggestion.id);
+            const isSelected = selectableIdx === selectedIndex;
+
+            return (
+              <button
+                key={suggestion.id}
+                type="button"
+                onClick={() => addTag(suggestion.id)}
+                className={`
+                  w-full px-4 py-2 text-left text-sm transition flex items-center gap-2
+                  ${isSelected
+                    ? 'bg-slate-700 text-emerald-400'
+                    : 'hover:bg-slate-700'
+                  }
+                `}
+              >
+                {suggestion.type === 'predefined' && suggestion.category && (
+                  <span className={`px-1.5 py-0.5 text-xs rounded ${getCategoryColor(suggestion.category)}`}>
+                    {suggestion.category.charAt(0).toUpperCase()}
+                  </span>
+                )}
+                <span>{suggestion.label}</span>
+                {suggestion.type === 'predefined' && suggestion.label !== suggestion.id && (
+                  <span className="text-xs text-slate-500 ml-auto">{suggestion.id}</span>
+                )}
+              </button>
+            );
+          })}
         </div>
       )}
 
