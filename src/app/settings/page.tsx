@@ -24,6 +24,7 @@ export default async function SettingsPage() {
             unitSystem: session.user.unitSystem,
             defaultRecipeLocale: session.user.defaultRecipeLocale,
             showMeasurementConversions: session.user.showMeasurementConversions,
+            userRegionTimezone: session.user.userRegionTimezone,
           }}
           userName={session.user.name ?? undefined}
           userEmail={session.user.email ?? undefined}

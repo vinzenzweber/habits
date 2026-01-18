@@ -225,12 +225,15 @@ describe('POST /api/recipes/extract-from-image', () => {
       expect(data.slug).toBe('test-recipe');
     });
 
-    it('calls extractRecipeFromImage with base64 data', async () => {
+    it('calls extractRecipeFromImage with base64 data and user preferences', async () => {
       const request = createMockRequest({ imageBase64: 'somebase64data' });
 
       await POST(request);
 
-      expect(extractRecipeFromImage).toHaveBeenCalledWith('somebase64data');
+      expect(extractRecipeFromImage).toHaveBeenCalledWith('somebase64data', {
+        targetLocale: 'en-US',
+        targetRegion: expect.any(String),
+      });
     });
 
     it('generates slug from extracted title', async () => {

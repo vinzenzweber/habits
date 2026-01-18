@@ -16,6 +16,7 @@ import { createRecipe, getUniqueSlug } from "@/lib/recipes";
 import { generateSlug } from "@/lib/recipe-types";
 import { saveRecipeImage, getRecipeImageUrl } from "@/lib/recipe-image-storage";
 import { generateImageId } from "@/lib/image-utils";
+import { getRegionFromTimezone } from "@/lib/user-preferences";
 
 export const runtime = "nodejs";
 
@@ -48,8 +49,16 @@ export async function POST(request: Request) {
       );
     }
 
-    // Extract recipe from image using GPT-4 Vision
-    const extractionResult = await extractRecipeFromImage(imageBase64);
+    // Get user preferences for recipe extraction
+    const recipeLocale = session.user.defaultRecipeLocale || session.user.locale || 'en-US';
+    const userRegionTimezone = session.user.userRegionTimezone || session.user.timezone || 'UTC';
+    const userRegion = getRegionFromTimezone(userRegionTimezone);
+
+    // Extract recipe from image using GPT-4 Vision with user preferences
+    const extractionResult = await extractRecipeFromImage(imageBase64, {
+      targetLocale: recipeLocale,
+      targetRegion: userRegion,
+    });
 
     if (!extractionResult.success) {
       return Response.json(

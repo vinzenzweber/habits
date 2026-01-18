@@ -6,10 +6,13 @@ import {
   isValidUserPreferences,
   isValidRecipeLocale,
   getDefaultUnitSystemForLocale,
+  getRegionFromTimezone,
   COMMON_TIMEZONES,
   SUPPORTED_LOCALES,
   UNIT_SYSTEMS,
   RECIPE_LOCALE_OPTIONS,
+  REGION_OPTIONS,
+  TIMEZONE_TO_REGION,
   DEFAULT_PREFERENCES,
   DEFAULT_RECIPE_PREFERENCES,
   type UserPreferences,
@@ -116,6 +119,65 @@ describe("User Preferences", () => {
         expect(DEFAULT_RECIPE_PREFERENCES.defaultRecipeLocale).toBeNull();
         expect(DEFAULT_RECIPE_PREFERENCES.measurementSystem).toBe("metric");
         expect(DEFAULT_RECIPE_PREFERENCES.showMeasurementConversions).toBe(false);
+        expect(DEFAULT_RECIPE_PREFERENCES.userRegionTimezone).toBeNull();
+      });
+    });
+
+    describe("TIMEZONE_TO_REGION", () => {
+      it("contains expected region mappings", () => {
+        expect(TIMEZONE_TO_REGION["Europe/Vienna"]).toBe("Austria");
+        expect(TIMEZONE_TO_REGION["Europe/Berlin"]).toBe("Germany");
+        expect(TIMEZONE_TO_REGION["Europe/Zurich"]).toBe("Switzerland");
+        expect(TIMEZONE_TO_REGION["Europe/London"]).toBe("United Kingdom");
+        expect(TIMEZONE_TO_REGION["America/New_York"]).toBe("United States (East Coast)");
+        expect(TIMEZONE_TO_REGION["Australia/Sydney"]).toBe("Australia");
+      });
+
+      it("has human-readable region names (no timezone codes)", () => {
+        Object.values(TIMEZONE_TO_REGION).forEach(region => {
+          // Region names should not contain slashes (timezone format)
+          expect(region).not.toContain("/");
+          // Region names should be human-readable (at least 3 chars)
+          expect(region.length).toBeGreaterThanOrEqual(3);
+        });
+      });
+    });
+
+    describe("REGION_OPTIONS", () => {
+      it("contains auto-detect option", () => {
+        expect(REGION_OPTIONS.some(opt => opt.value === "")).toBe(true);
+        expect(REGION_OPTIONS.find(opt => opt.value === "")?.label).toBe("Auto-detect from browser");
+      });
+
+      it("contains expected region options", () => {
+        expect(REGION_OPTIONS.some(opt => opt.value === "Europe/Vienna")).toBe(true);
+        expect(REGION_OPTIONS.some(opt => opt.value === "Europe/Berlin")).toBe(true);
+        expect(REGION_OPTIONS.some(opt => opt.value === "Europe/Zurich")).toBe(true);
+        expect(REGION_OPTIONS.some(opt => opt.value === "America/New_York")).toBe(true);
+      });
+
+      it("has descriptive labels with region names", () => {
+        const viennaOption = REGION_OPTIONS.find(opt => opt.value === "Europe/Vienna");
+        expect(viennaOption?.label).toContain("Austria");
+        expect(viennaOption?.label).toContain("Vienna");
+
+        const berlinOption = REGION_OPTIONS.find(opt => opt.value === "Europe/Berlin");
+        expect(berlinOption?.label).toContain("Germany");
+        expect(berlinOption?.label).toContain("Berlin");
+      });
+
+      it("has unique values", () => {
+        const values = REGION_OPTIONS.map(opt => opt.value);
+        const uniqueValues = new Set(values);
+        expect(uniqueValues.size).toBe(values.length);
+      });
+
+      it("has valid timezone values (except auto-detect)", () => {
+        REGION_OPTIONS.forEach(opt => {
+          if (opt.value !== "") {
+            expect(isValidTimezone(opt.value)).toBe(true);
+          }
+        });
       });
     });
   });
@@ -312,6 +374,39 @@ describe("User Preferences", () => {
     it("returns metric for unknown locales", () => {
       expect(getDefaultUnitSystemForLocale("unknown")).toBe("metric");
       expect(getDefaultUnitSystemForLocale("")).toBe("metric");
+    });
+  });
+
+  describe("getRegionFromTimezone", () => {
+    it("maps known timezones to region names", () => {
+      expect(getRegionFromTimezone("Europe/Vienna")).toBe("Austria");
+      expect(getRegionFromTimezone("Europe/Berlin")).toBe("Germany");
+      expect(getRegionFromTimezone("Europe/Zurich")).toBe("Switzerland");
+      expect(getRegionFromTimezone("Europe/London")).toBe("United Kingdom");
+      expect(getRegionFromTimezone("America/New_York")).toBe("United States (East Coast)");
+      expect(getRegionFromTimezone("America/Los_Angeles")).toBe("United States (West Coast)");
+    });
+
+    it("extracts city name for unknown timezones", () => {
+      expect(getRegionFromTimezone("Europe/Warsaw")).toBe("Warsaw");
+      expect(getRegionFromTimezone("Asia/Bangkok")).toBe("Bangkok");
+      expect(getRegionFromTimezone("Africa/Cairo")).toBe("Cairo");
+    });
+
+    it("handles timezones with underscores in city names", () => {
+      expect(getRegionFromTimezone("America/Los_Angeles")).toBe("United States (West Coast)");
+      // Unknown timezone with underscore should convert to spaces
+      expect(getRegionFromTimezone("America/Sao_Paulo")).toBe("Sao Paulo");
+    });
+
+    it("handles three-part timezones", () => {
+      // Should extract the last part (city)
+      expect(getRegionFromTimezone("America/Indiana/Indianapolis")).toBe("Indianapolis");
+    });
+
+    it("returns Unknown Region for invalid formats", () => {
+      expect(getRegionFromTimezone("UTC")).toBe("Unknown Region");
+      expect(getRegionFromTimezone("GMT")).toBe("Unknown Region");
     });
   });
 });

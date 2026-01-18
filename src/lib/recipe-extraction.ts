@@ -5,6 +5,7 @@
 
 import OpenAI from 'openai';
 import type { RecipeJson, NutritionInfo, IngredientGroup, RecipeStep } from './recipe-types';
+import { getRegionalIngredientContext } from './regional-ingredients';
 
 // Lazy initialization to avoid requiring OPENAI_API_KEY at build time
 let _openai: OpenAI | null = null;
@@ -194,13 +195,49 @@ function parseSteps(raw: unknown): RecipeStep[] {
 }
 
 /**
+ * User preferences for recipe extraction
+ */
+export interface ExtractionPreferences {
+  targetLocale?: string;   // Target language/locale for the recipe
+  targetRegion?: string;   // Target region for ingredient names (e.g., "Austria", "Germany")
+}
+
+/**
+ * Build the extraction prompt with optional user preferences
+ */
+function buildExtractionPrompt(preferences?: ExtractionPreferences): string {
+  let additionalInstructions = '';
+
+  if (preferences?.targetLocale || preferences?.targetRegion) {
+    additionalInstructions = '\n\nAdditional requirements:';
+
+    if (preferences.targetLocale) {
+      additionalInstructions += `\n- Output the recipe in ${preferences.targetLocale} language`;
+      additionalInstructions += `\n- Set locale to "${preferences.targetLocale}"`;
+    }
+
+    if (preferences.targetRegion) {
+      additionalInstructions += `\n- Adapt ingredient names to ${preferences.targetRegion} regional terminology`;
+      additionalInstructions += `\n- ${getRegionalIngredientContext(preferences.targetRegion)}`;
+    }
+  }
+
+  return EXTRACTION_PROMPT + additionalInstructions;
+}
+
+/**
  * Extract recipe data from a base64-encoded image using GPT-4 Vision
  *
  * @param imageBase64 - Base64-encoded image data (without data URL prefix)
+ * @param preferences - Optional user preferences for locale and region adaptation
  * @returns Extraction result with either the parsed recipe data or an error message
  */
-export async function extractRecipeFromImage(imageBase64: string): Promise<ExtractionResult> {
+export async function extractRecipeFromImage(
+  imageBase64: string,
+  preferences?: ExtractionPreferences
+): Promise<ExtractionResult> {
   const openai = getOpenAI();
+  const prompt = buildExtractionPrompt(preferences);
 
   try {
     const response = await openai.chat.completions.create({
@@ -209,7 +246,7 @@ export async function extractRecipeFromImage(imageBase64: string): Promise<Extra
         {
           role: 'user',
           content: [
-            { type: 'text', text: EXTRACTION_PROMPT },
+            { type: 'text', text: prompt },
             {
               type: 'image_url',
               image_url: {

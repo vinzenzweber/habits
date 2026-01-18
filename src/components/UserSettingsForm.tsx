@@ -9,6 +9,8 @@ import {
   SUPPORTED_LOCALES,
   UNIT_SYSTEMS,
   RECIPE_LOCALE_OPTIONS,
+  REGION_OPTIONS,
+  getRegionFromTimezone,
 } from '@/lib/user-preferences';
 
 interface UserSettingsFormProps {
@@ -28,6 +30,7 @@ export function UserSettingsForm({
   const [unitSystem, setUnitSystem] = useState<UnitSystem>(initialPreferences.unitSystem);
   const [defaultRecipeLocale, setDefaultRecipeLocale] = useState(initialPreferences.defaultRecipeLocale ?? '');
   const [showMeasurementConversions, setShowMeasurementConversions] = useState(initialPreferences.showMeasurementConversions);
+  const [userRegionTimezone, setUserRegionTimezone] = useState(initialPreferences.userRegionTimezone ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -48,6 +51,7 @@ export function UserSettingsForm({
           unitSystem,
           defaultRecipeLocale,
           showMeasurementConversions,
+          userRegionTimezone,
         }),
       });
 
@@ -209,6 +213,48 @@ export function UserSettingsForm({
             </select>
             <p className="text-slate-500 text-xs mt-1">
               Language used when the AI creates new recipes for you
+            </p>
+          </div>
+
+          {/* Ingredient Region */}
+          <div className="mb-4">
+            <label htmlFor="userRegionTimezone" className="block text-sm mb-2 text-slate-300">
+              Ingredient Region
+            </label>
+            <div className="flex gap-2">
+              <select
+                id="userRegionTimezone"
+                value={userRegionTimezone}
+                onChange={(e) => setUserRegionTimezone(e.target.value)}
+                disabled={saving}
+                className="flex-1 p-3 rounded bg-slate-800 border border-slate-700 focus:border-emerald-500 outline-none disabled:opacity-50 text-slate-100"
+              >
+                {REGION_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+                {/* Show custom timezone if not in predefined list */}
+                {userRegionTimezone && !REGION_OPTIONS.some(r => r.value === userRegionTimezone) && (
+                  <option value={userRegionTimezone}>
+                    {getRegionFromTimezone(userRegionTimezone)}
+                  </option>
+                )}
+              </select>
+              <button
+                type="button"
+                onClick={() => {
+                  const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                  setUserRegionTimezone(detected);
+                }}
+                disabled={saving}
+                className="px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm disabled:opacity-50"
+              >
+                Detect
+              </button>
+            </div>
+            <p className="text-slate-500 text-xs mt-1">
+              Adapts ingredient names to your region (e.g., Austrian &quot;Schlagobers&quot; vs. German &quot;Sahne&quot;)
             </p>
           </div>
 

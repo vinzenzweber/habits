@@ -11,6 +11,8 @@ import {
   SUPPORTED_TRANSLATION_LOCALES,
   type TranslationLocale
 } from "@/lib/recipe-tools";
+import { getRegionFromTimezone } from "@/lib/user-preferences";
+import { getRegionalIngredientContext } from "@/lib/regional-ingredients";
 import {
   saveMemory,
   getMemories,
@@ -683,6 +685,10 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
             enum: SUPPORTED_TRANSLATION_LOCALES as unknown as string[],
             description: "Target locale for translation (e.g., 'de-DE', 'en-US', 'en-GB', 'es-ES', 'fr-FR', 'it-IT')"
           },
+          targetRegion: {
+            type: "string",
+            description: "Target user region for ingredient name adaptation (e.g., 'Austria', 'Germany', 'Switzerland', 'United Kingdom'). If not provided, uses the user's region preference."
+          },
           adaptMeasurements: {
             type: "boolean",
             description: "Whether to convert measurements to target locale system (e.g., cups to ml for metric locales). Default: true"
@@ -703,7 +709,8 @@ async function executeTool(
   openai: OpenAI,
   userId: string,
   toolCall: OpenAI.Chat.Completions.ChatCompletionMessageToolCall,
-  recipeLocale: string = 'en-US'
+  recipeLocale: string = 'en-US',
+  userRegion: string | null = null
 ): Promise<string> {
   // Only handle function tool calls
   if (toolCall.type !== 'function') {
@@ -913,11 +920,14 @@ async function executeTool(
 
     case "translate_recipe":
       try {
+        // Use provided targetRegion if specified, otherwise use user's region preference
+        const targetRegion = args.targetRegion || userRegion;
         const translateResult = await translateRecipeTool(
           openai,
           userId,
           args.recipeId,
           args.targetLocale as TranslationLocale,
+          targetRegion,
           args.adaptMeasurements ?? true,
           args.saveAsNew ?? false
         );
@@ -1006,6 +1016,12 @@ export async function POST(request: Request) {
     // Recipe locale: use specific preference if set, otherwise fall back to general locale
     const recipeLocale = session.user.defaultRecipeLocale || userLocale;
 
+    // Get user region for recipe ingredient adaptation
+    // Use explicit region preference if set, otherwise derive from timezone
+    const userRegionTimezone = session.user.userRegionTimezone || userTimezone;
+    const userRegion = getRegionFromTimezone(userRegionTimezone);
+    const regionalIngredientContext = getRegionalIngredientContext(userRegion);
+
     // Format unit system description for AI
     const unitSystemDescription = userUnitSystem === 'metric'
       ? 'kilograms (kg), centimeters (cm), and Celsius (°C)'
@@ -1020,8 +1036,12 @@ export async function POST(request: Request) {
 **User Preferences:**
 - Unit System: ${userUnitSystem} (use ${unitSystemDescription} for all measurements)
 - Default Recipe Language: ${recipeLocale}
+- User Region: ${userRegion}
 - When discussing weights, measurements, temperatures, or creating recipes/workout content, always use the user's preferred unit system
-- When creating new recipes, use ${recipeLocale} for the recipe content (titles, descriptions, ingredients, instructions)
+- When creating new recipes:
+  - Use ${recipeLocale} for the recipe content language (titles, descriptions, instructions)
+  - Adapt ingredient names to ${userRegion} regional terminology
+  - ${regionalIngredientContext}
 
 **User Profile (from memory):**
 ${memoryContext}${pageContextSection}${instructionSection}`;
@@ -1093,7 +1113,7 @@ ${memoryContext}${pageContextSection}${instructionSection}`;
               const displayName = TOOL_DISPLAY_NAMES[toolName] || toolName;
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "tool_start", tool: displayName })}\n\n`));
 
-              const result = await executeTool(openai, userId, toolCall, recipeLocale);
+              const result = await executeTool(openai, userId, toolCall, recipeLocale, userRegion);
               apiMessages.push({
                 role: "tool",
                 tool_call_id: toolCall.id,

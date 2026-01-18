@@ -14,12 +14,55 @@ export interface RecipePreferences {
   defaultRecipeLocale: string | null;  // null = use general locale
   measurementSystem: UnitSystem;        // reuses existing unit system
   showMeasurementConversions: boolean;
+  userRegionTimezone: string | null;    // null = auto-detect from timezone
 }
 
 export interface UserPreferencesWithRecipe extends UserPreferences {
   defaultRecipeLocale: string | null;
   showMeasurementConversions: boolean;
+  userRegionTimezone: string | null;
 }
+
+// Timezone to region name mapping (for AI prompts)
+// Maps timezone codes to human-readable region names for ingredient localization
+export const TIMEZONE_TO_REGION: Record<string, string> = {
+  'Europe/Vienna': 'Austria',
+  'Europe/Berlin': 'Germany',
+  'Europe/Zurich': 'Switzerland',
+  'Europe/Paris': 'France',
+  'Europe/Rome': 'Italy',
+  'Europe/Madrid': 'Spain',
+  'Europe/London': 'United Kingdom',
+  'Europe/Amsterdam': 'Netherlands',
+  'America/New_York': 'United States (East Coast)',
+  'America/Los_Angeles': 'United States (West Coast)',
+  'America/Chicago': 'United States (Midwest)',
+  'America/Denver': 'United States (Mountain)',
+  'Australia/Sydney': 'Australia',
+  'Australia/Melbourne': 'Australia',
+  'Asia/Tokyo': 'Japan',
+  'Asia/Shanghai': 'China',
+  'Asia/Singapore': 'Singapore',
+  'Pacific/Auckland': 'New Zealand',
+};
+
+// Region options for dropdown selection (displayed as regions, stored as timezones)
+export const REGION_OPTIONS = [
+  { value: '', label: 'Auto-detect from browser' },
+  { value: 'Europe/Vienna', label: 'Austria (Vienna)' },
+  { value: 'Europe/Berlin', label: 'Germany (Berlin)' },
+  { value: 'Europe/Zurich', label: 'Switzerland (Zurich)' },
+  { value: 'Europe/Paris', label: 'France (Paris)' },
+  { value: 'Europe/Rome', label: 'Italy (Rome)' },
+  { value: 'Europe/Madrid', label: 'Spain (Madrid)' },
+  { value: 'Europe/London', label: 'United Kingdom (London)' },
+  { value: 'Europe/Amsterdam', label: 'Netherlands (Amsterdam)' },
+  { value: 'America/New_York', label: 'United States (East Coast)' },
+  { value: 'America/Los_Angeles', label: 'United States (West Coast)' },
+  { value: 'America/Chicago', label: 'United States (Midwest)' },
+  { value: 'Australia/Sydney', label: 'Australia (Sydney)' },
+  { value: 'Asia/Tokyo', label: 'Japan (Tokyo)' },
+] as const;
 
 // Common timezones for dropdown selection
 export const COMMON_TIMEZONES = [
@@ -91,6 +134,7 @@ export const DEFAULT_RECIPE_PREFERENCES: RecipePreferences = {
   defaultRecipeLocale: null,  // inherit from general locale
   measurementSystem: 'metric',
   showMeasurementConversions: false,
+  userRegionTimezone: null,   // auto-detect from timezone
 };
 
 /**
@@ -165,4 +209,26 @@ export function isValidRecipeLocale(locale: string | null | undefined): boolean 
 export function getDefaultUnitSystemForLocale(locale: string): UnitSystem {
   const imperialLocales = ['en-US', 'my-MM', 'lr-LR'];
   return imperialLocales.includes(locale) ? 'imperial' : 'metric';
+}
+
+/**
+ * Get human-readable region name from timezone
+ * Used for AI prompts - never expose timezone codes to AI
+ */
+export function getRegionFromTimezone(timezone: string): string {
+  return TIMEZONE_TO_REGION[timezone] || extractRegionFromTimezone(timezone);
+}
+
+/**
+ * Extract a reasonable region name from a timezone code
+ * Fallback for timezones not in our mapping
+ */
+function extractRegionFromTimezone(timezone: string): string {
+  // Extract city from format "Continent/City" or "Continent/Region/City"
+  const parts = timezone.split('/');
+  if (parts.length >= 2) {
+    // Get the last part (city) and replace underscores with spaces
+    return parts[parts.length - 1].replace(/_/g, ' ');
+  }
+  return 'Unknown Region';
 }
