@@ -218,9 +218,12 @@ Uses PostgreSQL with the following tables:
 - `recipe_ratings` - Multi-user version-aware recipe ratings (1-5 stars with optional comments)
 - `recipe_shares` - Recipe sharing via reference model (recipients see original with version sync)
 - `recipe_forks` - Tracks when shared recipes are forked into independent copies
+- `grocery_lists` - User-owned grocery/shopping lists
+- `grocery_list_shares` - Grocery list sharing with view/edit permissions
+- `grocery_list_items` - Items in grocery lists with check-off tracking
 - `_migrations` - Migration tracking
 
-All workout, chat, and recipe data is scoped per user (user_id foreign key).
+All workout, chat, recipe, and grocery data is scoped per user (user_id foreign key).
 Exercise library is global (shared across all users).
 
 ## Environment Variables
