@@ -5,9 +5,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   validateImageFile,
+  validateImportFile,
   MAX_FILE_SIZE_MB,
   MAX_FILE_SIZE_BYTES,
   ALLOWED_IMAGE_TYPES,
+  ALLOWED_PDF_TYPES,
   generateImageId,
 } from '../image-utils';
 import { createMockFile } from './fixtures/recipe-fixtures';
@@ -202,6 +204,110 @@ describe('image-utils', () => {
       expect(ALLOWED_IMAGE_TYPES).toContain('image/heic');
       expect(ALLOWED_IMAGE_TYPES).toContain('image/heif');
       expect(ALLOWED_IMAGE_TYPES).toHaveLength(6);
+    });
+
+    it('exports ALLOWED_PDF_TYPES with expected types', () => {
+      expect(ALLOWED_PDF_TYPES).toContain('application/pdf');
+      expect(ALLOWED_PDF_TYPES).toHaveLength(1);
+    });
+  });
+
+  describe('validateImportFile', () => {
+    describe('valid file types', () => {
+      it('accepts image files and returns fileType: image', () => {
+        const file = createMockFile('test.jpg', 'image/jpeg', 1024);
+        const result = validateImportFile(file);
+        expect(result.valid).toBe(true);
+        expect(result.fileType).toBe('image');
+        expect(result.error).toBeUndefined();
+      });
+
+      it('accepts PNG files', () => {
+        const file = createMockFile('test.png', 'image/png', 1024);
+        const result = validateImportFile(file);
+        expect(result.valid).toBe(true);
+        expect(result.fileType).toBe('image');
+      });
+
+      it('accepts PDF files and returns fileType: pdf', () => {
+        const file = createMockFile('test.pdf', 'application/pdf', 1024);
+        const result = validateImportFile(file);
+        expect(result.valid).toBe(true);
+        expect(result.fileType).toBe('pdf');
+        expect(result.error).toBeUndefined();
+      });
+
+      it('accepts all allowed image types', () => {
+        ALLOWED_IMAGE_TYPES.forEach((type) => {
+          const file = createMockFile('test', type, 1024);
+          const result = validateImportFile(file);
+          expect(result.valid).toBe(true);
+          expect(result.fileType).toBe('image');
+        });
+      });
+    });
+
+    describe('invalid file types', () => {
+      it('rejects text files', () => {
+        const file = createMockFile('test.txt', 'text/plain', 1024);
+        const result = validateImportFile(file);
+        expect(result.valid).toBe(false);
+        expect(result.error).toContain('Unsupported file type');
+        expect(result.fileType).toBeUndefined();
+      });
+
+      it('rejects SVG files', () => {
+        const file = createMockFile('test.svg', 'image/svg+xml', 1024);
+        const result = validateImportFile(file);
+        expect(result.valid).toBe(false);
+        expect(result.error).toContain('Unsupported file type');
+      });
+
+      it('rejects BMP files', () => {
+        const file = createMockFile('test.bmp', 'image/bmp', 1024);
+        const result = validateImportFile(file);
+        expect(result.valid).toBe(false);
+        expect(result.error).toContain('Unsupported file type');
+      });
+
+      it('lists allowed types in error message', () => {
+        const file = createMockFile('test.txt', 'text/plain', 1024);
+        const result = validateImportFile(file);
+        expect(result.error).toContain('JPEG');
+        expect(result.error).toContain('PNG');
+        expect(result.error).toContain('PDF');
+      });
+    });
+
+    describe('file size validation', () => {
+      it('accepts files under the size limit', () => {
+        const file = createMockFile('test.pdf', 'application/pdf', 1024 * 1024);
+        const result = validateImportFile(file);
+        expect(result.valid).toBe(true);
+      });
+
+      it('accepts files exactly at the size limit', () => {
+        const file = createMockFile('test.pdf', 'application/pdf', MAX_FILE_SIZE_BYTES);
+        const result = validateImportFile(file);
+        expect(result.valid).toBe(true);
+      });
+
+      it('rejects files exceeding the size limit', () => {
+        const file = createMockFile('test.pdf', 'application/pdf', MAX_FILE_SIZE_BYTES + 1);
+        const result = validateImportFile(file);
+        expect(result.valid).toBe(false);
+        expect(result.error).toContain('File too large');
+        expect(result.error).toContain(`${MAX_FILE_SIZE_MB}MB`);
+      });
+    });
+
+    describe('edge cases', () => {
+      it('validates type before size for invalid types', () => {
+        const file = createMockFile('test.txt', 'text/plain', MAX_FILE_SIZE_BYTES + 1);
+        const result = validateImportFile(file);
+        expect(result.valid).toBe(false);
+        expect(result.error).toContain('Unsupported file type');
+      });
     });
   });
 });

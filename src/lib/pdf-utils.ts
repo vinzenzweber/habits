@@ -1,0 +1,186 @@
+/**
+ * PDF utilities for recipe extraction
+ * Handles PDF parsing, text extraction, and page-to-image conversion
+ */
+
+// pdf-parse uses CommonJS exports, so we import it this way
+import * as pdfParse from 'pdf-parse';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const pdf = (pdfParse as any).default || pdfParse;
+
+// Constants
+export const MAX_PDF_SIZE_MB = 10;
+export const MAX_PDF_SIZE_BYTES = MAX_PDF_SIZE_MB * 1024 * 1024;
+export const MAX_PDF_PAGES = 50;
+
+// Minimum text length to consider a page as text-based (vs image-based)
+export const MIN_TEXT_LENGTH_FOR_TEXT_EXTRACTION = 200;
+
+export interface PdfValidationResult {
+  valid: boolean;
+  error?: string;
+}
+
+export interface PdfPageInfo {
+  pageNumber: number;
+  textContent: string;
+  hasSignificantText: boolean;
+}
+
+export interface PdfInfo {
+  pageCount: number;
+  totalText: string;
+  pages: PdfPageInfo[];
+}
+
+/**
+ * Validate a PDF file before processing
+ */
+export function validatePdfFile(file: File): PdfValidationResult {
+  if (file.type !== 'application/pdf') {
+    return { valid: false, error: 'Invalid file type. Expected PDF.' };
+  }
+
+  if (file.size > MAX_PDF_SIZE_BYTES) {
+    return { valid: false, error: `PDF too large. Maximum size: ${MAX_PDF_SIZE_MB}MB` };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Validate PDF size from base64 string
+ */
+export function validatePdfBase64Size(base64: string): PdfValidationResult {
+  // Base64 is ~33% larger than binary, so calculate approximate size
+  const approximateBytes = Math.ceil(base64.length * 0.75);
+
+  if (approximateBytes > MAX_PDF_SIZE_BYTES) {
+    return { valid: false, error: `PDF too large. Maximum size: ${MAX_PDF_SIZE_MB}MB` };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Extract text content from PDF buffer
+ */
+export async function extractPdfText(pdfBuffer: Buffer): Promise<PdfInfo> {
+  const data = await pdf(pdfBuffer);
+
+  if (data.numpages > MAX_PDF_PAGES) {
+    throw new Error(`PDF has too many pages (${data.numpages}). Maximum: ${MAX_PDF_PAGES}`);
+  }
+
+  // pdf-parse returns combined text from all pages
+  // For per-page content, we'll need to use pdfjs-dist
+  return {
+    pageCount: data.numpages,
+    totalText: data.text,
+    pages: [], // Will be populated by extractPdfPagesText
+  };
+}
+
+/**
+ * Extract text from each page of a PDF using pdfjs-dist
+ */
+export async function extractPdfPagesText(pdfBuffer: Buffer): Promise<PdfInfo> {
+  // Dynamic import to avoid issues with pdfjs-dist worker
+  const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+
+  // Load the PDF
+  const loadingTask = pdfjsLib.getDocument({ data: pdfBuffer });
+  const pdfDoc = await loadingTask.promise;
+
+  if (pdfDoc.numPages > MAX_PDF_PAGES) {
+    throw new Error(`PDF has too many pages (${pdfDoc.numPages}). Maximum: ${MAX_PDF_PAGES}`);
+  }
+
+  const pages: PdfPageInfo[] = [];
+  let totalText = '';
+
+  // Extract text from each page
+  for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+    const page = await pdfDoc.getPage(pageNum);
+    const textContent = await page.getTextContent();
+
+    const pageText = textContent.items
+      .map((item) => {
+        if ('str' in item) {
+          return item.str;
+        }
+        return '';
+      })
+      .join(' ')
+      .trim();
+
+    pages.push({
+      pageNumber: pageNum,
+      textContent: pageText,
+      hasSignificantText: pageText.length >= MIN_TEXT_LENGTH_FOR_TEXT_EXTRACTION,
+    });
+
+    totalText += pageText + '\n\n';
+  }
+
+  return {
+    pageCount: pdfDoc.numPages,
+    totalText: totalText.trim(),
+    pages,
+  };
+}
+
+/**
+ * Extract text from a specific PDF page
+ */
+export async function extractPageText(
+  pdfBuffer: Buffer,
+  pageNumber: number
+): Promise<string> {
+  const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+
+  const loadingTask = pdfjsLib.getDocument({ data: pdfBuffer });
+  const pdfDoc = await loadingTask.promise;
+
+  if (pageNumber < 1 || pageNumber > pdfDoc.numPages) {
+    throw new Error(`Invalid page number: ${pageNumber}. PDF has ${pdfDoc.numPages} pages.`);
+  }
+
+  const page = await pdfDoc.getPage(pageNumber);
+  const textContent = await page.getTextContent();
+
+  return textContent.items
+    .map((item) => {
+      if ('str' in item) {
+        return item.str;
+      }
+      return '';
+    })
+    .join(' ')
+    .trim();
+}
+
+/**
+ * Check if a PDF is password-protected
+ */
+export async function isPdfPasswordProtected(pdfBuffer: Buffer): Promise<boolean> {
+  try {
+    const data = await pdf(pdfBuffer);
+    // If we can read the PDF, it's not password-protected
+    return data.numpages === 0 && data.text === '';
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('password')) {
+      return true;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Get page count from a PDF buffer
+ */
+export async function getPdfPageCount(pdfBuffer: Buffer): Promise<number> {
+  const data = await pdf(pdfBuffer);
+  return data.numpages;
+}

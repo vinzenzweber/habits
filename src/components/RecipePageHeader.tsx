@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { PhotoCaptureModal, type PhotoCaptureResult } from './PhotoCaptureModal';
+import { RecipeImportModal, type RecipeImportResult } from './RecipeImportModal';
 
 const PlusIcon = () => (
   <svg
@@ -42,13 +42,17 @@ export function RecipePageHeader() {
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleImageCaptured = (result: PhotoCaptureResult) => {
-    setIsModalOpen(false);
+  const handleImageCaptured = (result: RecipeImportResult) => {
     if (result.type === 'extracted') {
       // AI extraction succeeded - navigate to recipe detail page
+      setIsModalOpen(false);
       router.push(`/recipes/${result.slug}`);
+    } else if (result.type === 'extracted-multiple') {
+      // Multiple recipes extracted from PDF - modal will show results
+      // Don't close modal here, let user navigate from the results
     } else {
       // Fallback: manual creation with uploaded image
+      setIsModalOpen(false);
       router.push(`/recipes/new?image=${encodeURIComponent(result.imageUrl)}`);
     }
   };
@@ -63,8 +67,8 @@ export function RecipePageHeader() {
           <button
             onClick={() => setIsModalOpen(true)}
             className="inline-flex items-center justify-center rounded-xl bg-slate-700 p-2.5 text-slate-100 transition hover:bg-slate-600"
-            aria-label="Import recipe from photo"
-            title="Import from photo"
+            aria-label="Import recipe from photo or PDF"
+            title="Import from photo or PDF"
           >
             <CameraIcon />
           </button>
@@ -78,7 +82,7 @@ export function RecipePageHeader() {
         </div>
       </section>
 
-      <PhotoCaptureModal
+      <RecipeImportModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onImageCaptured={handleImageCaptured}

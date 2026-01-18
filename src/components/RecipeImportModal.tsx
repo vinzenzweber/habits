@@ -2,16 +2,23 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import Image from 'next/image';
-import { validateImageFile, resizeImage, MAX_FILE_SIZE_MB } from '@/lib/image-utils';
+import { useRouter } from 'next/navigation';
+import {
+  validateImportFile,
+  resizeImage,
+  MAX_FILE_SIZE_MB,
+  type ImportFileType,
+} from '@/lib/image-utils';
 
-export type PhotoCaptureResult =
+export type RecipeImportResult =
   | { type: 'extracted'; slug: string }
+  | { type: 'extracted-multiple'; recipes: Array<{ slug: string; title: string; pageNumber: number }>; skippedPages: number[] }
   | { type: 'uploaded'; imageUrl: string };
 
-interface PhotoCaptureModalProps {
+interface RecipeImportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onImageCaptured: (result: PhotoCaptureResult) => void;
+  onImageCaptured: (result: RecipeImportResult) => void;
 }
 
 const CameraIcon = () => (
@@ -53,14 +60,50 @@ const UploadIcon = () => (
   </svg>
 );
 
-export function PhotoCaptureModal({ isOpen, onClose, onImageCaptured }: PhotoCaptureModalProps) {
+const PdfIcon = () => (
+  <svg className="w-16 h-16 text-red-400 mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"
+    />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14 2v6h6" />
+    <text x="6" y="17" fontSize="6" fill="currentColor" stroke="none" fontWeight="bold">PDF</text>
+  </svg>
+);
+
+const CheckIcon = () => (
+  <svg className="w-12 h-12 text-emerald-400 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+  </svg>
+);
+
+// Accepted file types for input
+const ACCEPTED_FILE_TYPES = 'image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,application/pdf';
+
+export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeImportModalProps) {
+  const router = useRouter();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [fileType, setFileType] = useState<ImportFileType | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
+
+  // PDF extraction progress
+  const [extractionProgress, setExtractionProgress] = useState({
+    currentPage: 0,
+    totalPages: 0,
+  });
+
+  // Import results for multi-recipe PDFs
+  const [importResults, setImportResults] = useState<{
+    recipes: Array<{ slug: string; title: string; pageNumber: number }>;
+    skippedPages: number[];
+  } | null>(null);
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -97,10 +140,13 @@ export function PhotoCaptureModal({ isOpen, onClose, onImageCaptured }: PhotoCap
         URL.revokeObjectURL(previewUrl);
         setPreviewUrl(null);
       }
+      setFileType(null);
       setError(null);
       setIsUploading(false);
       setIsExtracting(false);
       setDragOver(false);
+      setExtractionProgress({ currentPage: 0, totalPages: 0 });
+      setImportResults(null);
     }
   }, [isOpen, previewUrl]);
 
@@ -112,20 +158,31 @@ export function PhotoCaptureModal({ isOpen, onClose, onImageCaptured }: PhotoCap
     e.target.value = '';
 
     setError(null);
+    setImportResults(null);
 
     // Validate file
-    const validation = validateImageFile(file);
+    const validation = validateImportFile(file);
     if (!validation.valid) {
       setError(validation.error || 'Invalid file');
       return;
     }
 
-    // Create preview
-    const url = URL.createObjectURL(file);
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
+    setFileType(validation.fileType || null);
+
+    // Create preview for images only
+    if (validation.fileType === 'image') {
+      const url = URL.createObjectURL(file);
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+      setPreviewUrl(url);
+    } else {
+      // Clear preview for PDFs
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+      setPreviewUrl(null);
     }
-    setPreviewUrl(url);
     setSelectedFile(file);
   }, [previewUrl]);
 
@@ -137,20 +194,31 @@ export function PhotoCaptureModal({ isOpen, onClose, onImageCaptured }: PhotoCap
     if (!file) return;
 
     setError(null);
+    setImportResults(null);
 
     // Validate file
-    const validation = validateImageFile(file);
+    const validation = validateImportFile(file);
     if (!validation.valid) {
       setError(validation.error || 'Invalid file');
       return;
     }
 
-    // Create preview
-    const url = URL.createObjectURL(file);
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
+    setFileType(validation.fileType || null);
+
+    // Create preview for images only
+    if (validation.fileType === 'image') {
+      const url = URL.createObjectURL(file);
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+      setPreviewUrl(url);
+    } else {
+      // Clear preview for PDFs
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+      setPreviewUrl(null);
     }
-    setPreviewUrl(url);
     setSelectedFile(file);
   }, [previewUrl]);
 
@@ -170,7 +238,10 @@ export function PhotoCaptureModal({ isOpen, onClose, onImageCaptured }: PhotoCap
     }
     setPreviewUrl(null);
     setSelectedFile(null);
+    setFileType(null);
     setError(null);
+    setImportResults(null);
+    setExtractionProgress({ currentPage: 0, totalPages: 0 });
   }, [previewUrl]);
 
   /**
@@ -181,7 +252,7 @@ export function PhotoCaptureModal({ isOpen, onClose, onImageCaptured }: PhotoCap
       const reader = new FileReader();
       reader.onload = () => {
         const result = reader.result as string;
-        // Remove data URL prefix (data:image/...;base64,)
+        // Remove data URL prefix (data:image/...;base64, or data:application/pdf;base64,)
         const base64 = result.split(',')[1];
         resolve(base64);
       };
@@ -198,28 +269,56 @@ export function PhotoCaptureModal({ isOpen, onClose, onImageCaptured }: PhotoCap
     setError(null);
 
     try {
-      // Resize image client-side first
-      const resizedBlob = await resizeImage(selectedFile);
+      if (fileType === 'pdf') {
+        // Handle PDF extraction
+        const base64 = await fileToBase64(selectedFile);
 
-      // Convert resized blob to base64
-      const resizedFile = new File([resizedBlob], 'recipe.jpg', { type: 'image/jpeg' });
-      const base64 = await fileToBase64(resizedFile);
+        const response = await fetch('/api/recipes/extract-from-pdf', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pdfBase64: base64 }),
+        });
 
-      // Call the extraction API
-      const response = await fetch('/api/recipes/extract-from-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: base64 }),
-      });
+        const data = await response.json();
 
-      const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to extract recipe from PDF');
+        }
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to extract recipe');
+        // Handle results
+        if (data.recipes.length === 0) {
+          throw new Error('No recipes found in the PDF. Please try a different file.');
+        } else if (data.recipes.length === 1) {
+          // Single recipe - navigate directly
+          onImageCaptured({ type: 'extracted', slug: data.recipes[0].slug });
+        } else {
+          // Multiple recipes - show results
+          setImportResults({
+            recipes: data.recipes,
+            skippedPages: data.skippedPages,
+          });
+        }
+      } else {
+        // Handle image extraction (existing logic)
+        const resizedBlob = await resizeImage(selectedFile);
+        const resizedFile = new File([resizedBlob], 'recipe.jpg', { type: 'image/jpeg' });
+        const base64 = await fileToBase64(resizedFile);
+
+        const response = await fetch('/api/recipes/extract-from-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageBase64: base64 }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to extract recipe');
+        }
+
+        // Notify parent with the extracted recipe slug
+        onImageCaptured({ type: 'extracted', slug: data.slug });
       }
-
-      // Notify parent with the extracted recipe slug
-      onImageCaptured({ type: 'extracted', slug: data.slug });
     } catch (err) {
       console.error('Extraction error:', err);
       setError(err instanceof Error ? err.message : 'Failed to extract recipe');
@@ -227,7 +326,7 @@ export function PhotoCaptureModal({ isOpen, onClose, onImageCaptured }: PhotoCap
       setIsUploading(false);
       setIsExtracting(false);
     }
-  }, [selectedFile, onImageCaptured, fileToBase64]);
+  }, [selectedFile, fileType, onImageCaptured, fileToBase64]);
 
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;
@@ -235,9 +334,15 @@ export function PhotoCaptureModal({ isOpen, onClose, onImageCaptured }: PhotoCap
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  const handleRecipeClick = (slug: string) => {
+    onClose();
+    router.push(`/recipes/${slug}`);
+  };
+
   if (!isOpen) return null;
 
-  const hasPreview = Boolean(previewUrl && selectedFile);
+  const hasPreview = Boolean(selectedFile);
+  const showImportResults = importResults !== null;
 
   return (
     <>
@@ -258,7 +363,7 @@ export function PhotoCaptureModal({ isOpen, onClose, onImageCaptured }: PhotoCap
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-700">
           <h2 className="text-lg font-semibold">
-            {hasPreview ? 'Review Photo' : 'Import Recipe'}
+            {showImportResults ? 'Import Complete' : hasPreview ? 'Review File' : 'Import Recipe'}
           </h2>
           <button
             onClick={onClose}
@@ -278,25 +383,83 @@ export function PhotoCaptureModal({ isOpen, onClose, onImageCaptured }: PhotoCap
             </div>
           )}
 
-          {hasPreview ? (
+          {showImportResults ? (
+            // Import results step (for multi-recipe PDFs)
+            <div className="space-y-4">
+              <div className="text-center">
+                <CheckIcon />
+                <h3 className="text-lg font-semibold mt-2">Import Complete</h3>
+              </div>
+
+              <div className="bg-slate-800 rounded-lg p-4 space-y-2">
+                <p className="text-emerald-400">
+                  ✓ {importResults.recipes.length} recipe{importResults.recipes.length !== 1 ? 's' : ''} imported
+                </p>
+                {importResults.skippedPages.length > 0 && (
+                  <p className="text-slate-400 text-sm">
+                    {importResults.skippedPages.length} page{importResults.skippedPages.length !== 1 ? 's' : ''} skipped (no recipe detected)
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {importResults.recipes.map((recipe) => (
+                  <button
+                    key={recipe.slug}
+                    onClick={() => handleRecipeClick(recipe.slug)}
+                    className="w-full text-left p-3 bg-slate-700 hover:bg-slate-600 rounded-lg transition"
+                  >
+                    <span className="text-white">{recipe.title}</span>
+                    {recipe.pageNumber > 0 && (
+                      <span className="text-slate-400 text-sm ml-2">(page {recipe.pageNumber})</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={onClose}
+                className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-medium transition"
+              >
+                Done
+              </button>
+            </div>
+          ) : hasPreview ? (
             // Preview step
             <div className="space-y-4">
-              {/* Image preview */}
+              {/* File preview */}
               <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-slate-800">
-                <Image
-                  src={previewUrl!}
-                  alt="Recipe preview"
-                  fill
-                  className="object-contain"
-                  unoptimized
-                />
+                {fileType === 'pdf' ? (
+                  // PDF preview
+                  <div className="flex flex-col items-center justify-center h-full p-6">
+                    <PdfIcon />
+                    <p className="font-medium text-white text-center break-all">{selectedFile?.name}</p>
+                    <p className="text-sm text-slate-400 mt-1">
+                      Click Import to extract recipes
+                    </p>
+                  </div>
+                ) : (
+                  // Image preview
+                  <Image
+                    src={previewUrl!}
+                    alt="Recipe preview"
+                    fill
+                    className="object-contain"
+                    unoptimized
+                  />
+                )}
                 {isUploading && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                     <div className="text-center">
                       <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
                       <p className="text-sm text-white">
-                        {isExtracting ? 'Extracting recipe...' : 'Uploading...'}
+                        {isExtracting ? 'Extracting recipe...' : 'Processing...'}
                       </p>
+                      {isExtracting && fileType === 'pdf' && extractionProgress.totalPages > 0 && (
+                        <p className="text-xs text-slate-300 mt-1">
+                          Page {extractionProgress.currentPage} of {extractionProgress.totalPages}
+                        </p>
+                      )}
                       {isExtracting && (
                         <p className="text-xs text-slate-300 mt-1">
                           This may take a few seconds
@@ -311,7 +474,7 @@ export function PhotoCaptureModal({ isOpen, onClose, onImageCaptured }: PhotoCap
               <div className="text-sm text-slate-400">
                 <p>{selectedFile!.name}</p>
                 <p>{formatFileSize(selectedFile!.size)}</p>
-                {selectedFile!.size > MAX_FILE_SIZE_MB * 0.8 * 1024 * 1024 && (
+                {fileType === 'image' && selectedFile!.size > MAX_FILE_SIZE_MB * 0.8 * 1024 * 1024 && (
                   <p className="text-amber-400 mt-1">
                     Large file - will be resized before upload
                   </p>
@@ -325,14 +488,14 @@ export function PhotoCaptureModal({ isOpen, onClose, onImageCaptured }: PhotoCap
                   disabled={isUploading}
                   className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isUploading ? (isExtracting ? 'Extracting...' : 'Uploading...') : 'Import Recipe'}
+                  {isUploading ? (isExtracting ? 'Extracting...' : 'Processing...') : 'Import Recipe'}
                 </button>
                 <button
                   onClick={handleReset}
                   disabled={isUploading}
                   className="w-full py-3 bg-slate-700 hover:bg-slate-600 rounded-xl font-medium transition disabled:opacity-50"
                 >
-                  Choose Different Photo
+                  Choose Different File
                 </button>
                 <button
                   onClick={onClose}
@@ -362,17 +525,17 @@ export function PhotoCaptureModal({ isOpen, onClose, onImageCaptured }: PhotoCap
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif"
+                  accept={ACCEPTED_FILE_TYPES}
                   onChange={handleFileSelect}
                   className="hidden"
                 />
                 <div className="text-slate-400">
                   <UploadIcon />
                   <p className="text-sm">
-                    Drop image here or <span className="text-emerald-400">browse</span>
+                    Drop file here or <span className="text-emerald-400">browse</span>
                   </p>
                   <p className="text-xs mt-2 text-slate-500">
-                    JPEG, PNG, WebP, GIF, HEIC up to {MAX_FILE_SIZE_MB}MB
+                    JPEG, PNG, WebP, GIF, HEIC, or PDF up to {MAX_FILE_SIZE_MB}MB
                   </p>
                 </div>
               </div>
@@ -399,7 +562,7 @@ export function PhotoCaptureModal({ isOpen, onClose, onImageCaptured }: PhotoCap
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif"
+                accept={ACCEPTED_FILE_TYPES}
                 onChange={handleFileSelect}
                 className="hidden"
               />
@@ -419,11 +582,11 @@ export function PhotoCaptureModal({ isOpen, onClose, onImageCaptured }: PhotoCap
                 className="w-full flex items-center justify-center gap-3 py-6 bg-slate-800 hover:bg-slate-700 rounded-xl transition"
               >
                 <GalleryIcon />
-                <span className="font-medium">Choose from Library</span>
+                <span className="font-medium">Choose File</span>
               </button>
 
               <p className="text-xs text-center text-slate-500">
-                JPEG, PNG, WebP, GIF, HEIC up to {MAX_FILE_SIZE_MB}MB
+                JPEG, PNG, WebP, GIF, HEIC, or PDF up to {MAX_FILE_SIZE_MB}MB
               </p>
 
               <button
@@ -439,3 +602,7 @@ export function PhotoCaptureModal({ isOpen, onClose, onImageCaptured }: PhotoCap
     </>
   );
 }
+
+// Re-export for backwards compatibility during transition
+export { RecipeImportModal as PhotoCaptureModal };
+export type { RecipeImportResult as PhotoCaptureResult };

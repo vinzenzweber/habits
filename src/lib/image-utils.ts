@@ -18,9 +18,21 @@ export const ALLOWED_IMAGE_TYPES = [
   'image/heif',
 ];
 
+// Allowed PDF types
+export const ALLOWED_PDF_TYPES = ['application/pdf'];
+
+// File type discriminator
+export type ImportFileType = 'image' | 'pdf';
+
 export interface ImageValidationResult {
   valid: boolean;
   error?: string;
+}
+
+export interface ImportFileValidationResult {
+  valid: boolean;
+  error?: string;
+  fileType?: ImportFileType;
 }
 
 /**
@@ -122,4 +134,31 @@ export async function resizeImage(file: File): Promise<Blob> {
 export function generateImageId(): string {
   // Use crypto.randomUUID() for robust, collision-resistant ID generation
   return crypto.randomUUID();
+}
+
+/**
+ * Validate a file for recipe import (supports both images and PDFs)
+ */
+export function validateImportFile(file: File): ImportFileValidationResult {
+  const isImage = ALLOWED_IMAGE_TYPES.includes(file.type);
+  const isPdf = ALLOWED_PDF_TYPES.includes(file.type);
+
+  if (!isImage && !isPdf) {
+    return {
+      valid: false,
+      error: 'Unsupported file type. Allowed: JPEG, PNG, WebP, GIF, HEIC, or PDF',
+    };
+  }
+
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    return {
+      valid: false,
+      error: `File too large. Maximum size: ${MAX_FILE_SIZE_MB}MB`,
+    };
+  }
+
+  return {
+    valid: true,
+    fileType: isPdf ? 'pdf' : 'image',
+  };
 }
