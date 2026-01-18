@@ -3,10 +3,10 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-// Only show on main list pages (home, recipes, and settings)
+// Only show on main list pages (home, recipes, grocery-lists, and settings)
 // Note: Auth pages (/login, /register, /onboarding) are already excluded
 // because they're not in VISIBLE_PATHS, but this is documented here for clarity
-const VISIBLE_PATHS = ['/', '/recipes', '/settings'];
+const VISIBLE_PATHS = ['/', '/recipes', '/grocery-lists', '/settings'];
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -21,7 +21,7 @@ export function BottomNav() {
       <div className="flex h-full items-center justify-evenly max-w-3xl mx-auto px-4">
         <Link
           href="/"
-          className={`flex flex-col items-center justify-center gap-1 px-6 py-2 ${
+          className={`flex flex-col items-center justify-center gap-1 px-4 py-2 ${
             pathname === '/' ? 'text-emerald-400' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -34,7 +34,7 @@ export function BottomNav() {
 
         <Link
           href="/recipes"
-          className={`flex flex-col items-center justify-center gap-1 px-6 py-2 ${
+          className={`flex flex-col items-center justify-center gap-1 px-4 py-2 ${
             pathname === '/recipes' ? 'text-emerald-400' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -46,8 +46,21 @@ export function BottomNav() {
         </Link>
 
         <Link
+          href="/grocery-lists"
+          className={`flex flex-col items-center justify-center gap-1 px-4 py-2 ${
+            pathname === '/grocery-lists' ? 'text-emerald-400' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          {/* Shopping cart icon */}
+          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+          <span className="text-xs font-medium">Groceries</span>
+        </Link>
+
+        <Link
           href="/settings"
-          className={`flex flex-col items-center justify-center gap-1 px-6 py-2 ${
+          className={`flex flex-col items-center justify-center gap-1 px-4 py-2 ${
             pathname === '/settings' ? 'text-emerald-400' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
