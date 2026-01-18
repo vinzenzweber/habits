@@ -29,8 +29,8 @@ test.describe('Grocery Lists', () => {
       // Fill in the name
       await page.getByLabel(/list name/i).fill('Weekly Groceries')
 
-      // Submit
-      await page.getByRole('button', { name: /create list/i }).click()
+      // Submit - use the button in the modal dialog
+      await page.getByRole('dialog').getByRole('button', { name: /create list/i }).click()
 
       // Should navigate to the new list detail page
       await expect(page).toHaveURL(/\/grocery-lists\/\d+/, { timeout: 5000 })
@@ -44,7 +44,7 @@ test.describe('Grocery Lists', () => {
       await page.goto('/grocery-lists')
       await page.getByRole('button', { name: /create/i }).first().click()
       await page.getByLabel(/list name/i).fill('Test Shopping List')
-      await page.getByRole('button', { name: /create list/i }).click()
+      await page.getByRole('dialog').getByRole('button', { name: /create list/i }).click()
 
       // Wait for navigation to detail page
       await expect(page).toHaveURL(/\/grocery-lists\/\d+/, { timeout: 5000 })
@@ -63,7 +63,7 @@ test.describe('Grocery Lists', () => {
       await page.goto('/grocery-lists')
       await page.getByRole('button', { name: /create/i }).first().click()
       await page.getByLabel(/list name/i).fill('Empty List Test')
-      await page.getByRole('button', { name: /create list/i }).click()
+      await page.getByRole('dialog').getByRole('button', { name: /create list/i }).click()
 
       await expect(page).toHaveURL(/\/grocery-lists\/\d+/, { timeout: 5000 })
 
@@ -76,7 +76,7 @@ test.describe('Grocery Lists', () => {
       await page.goto('/grocery-lists')
       await page.getByRole('button', { name: /create/i }).first().click()
       await page.getByLabel(/list name/i).fill('Add Item Test')
-      await page.getByRole('button', { name: /create list/i }).click()
+      await page.getByRole('dialog').getByRole('button', { name: /create list/i }).click()
 
       await expect(page).toHaveURL(/\/grocery-lists\/\d+/, { timeout: 5000 })
 
@@ -102,7 +102,7 @@ test.describe('Grocery Lists', () => {
       await page.goto('/grocery-lists')
       await page.getByRole('button', { name: /create/i }).first().click()
       await page.getByLabel(/list name/i).fill('Check Test')
-      await page.getByRole('button', { name: /create list/i }).click()
+      await page.getByRole('dialog').getByRole('button', { name: /create list/i }).click()
 
       await expect(page).toHaveURL(/\/grocery-lists\/\d+/, { timeout: 5000 })
 
@@ -129,7 +129,7 @@ test.describe('Grocery Lists', () => {
       await page.goto('/grocery-lists')
       await page.getByRole('button', { name: /create/i }).first().click()
       await page.getByLabel(/list name/i).fill('Shopping Mode Test')
-      await page.getByRole('button', { name: /create list/i }).click()
+      await page.getByRole('dialog').getByRole('button', { name: /create list/i }).click()
 
       await expect(page).toHaveURL(/\/grocery-lists\/\d+/, { timeout: 5000 })
 
@@ -159,7 +159,7 @@ test.describe('Grocery Lists', () => {
       await page.goto('/grocery-lists')
       await page.getByRole('button', { name: /create/i }).first().click()
       await page.getByLabel(/list name/i).fill('Shopping Check Test')
-      await page.getByRole('button', { name: /create list/i }).click()
+      await page.getByRole('dialog').getByRole('button', { name: /create list/i }).click()
 
       await expect(page).toHaveURL(/\/grocery-lists\/\d+/, { timeout: 5000 })
 
@@ -190,7 +190,7 @@ test.describe('Grocery Lists', () => {
       await page.goto('/grocery-lists')
       await page.getByRole('button', { name: /create/i }).first().click()
       await page.getByLabel(/list name/i).fill('Exit Test')
-      await page.getByRole('button', { name: /create list/i }).click()
+      await page.getByRole('dialog').getByRole('button', { name: /create list/i }).click()
 
       await expect(page).toHaveURL(/\/grocery-lists\/\d+/, { timeout: 5000 })
 

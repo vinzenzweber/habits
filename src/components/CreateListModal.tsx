@@ -109,6 +109,9 @@ export function CreateListModal({
 
       {/* Modal */}
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-list-title"
         className="fixed z-50 flex flex-col bg-slate-900
           inset-x-0 bottom-0 rounded-t-2xl max-h-[90vh]
           md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2
@@ -116,7 +119,7 @@ export function CreateListModal({
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-700 p-4">
-          <h2 className="text-lg font-semibold">Create Grocery List</h2>
+          <h2 id="create-list-title" className="text-lg font-semibold">Create Grocery List</h2>
           <button
             onClick={onClose}
             className="rounded p-1 text-slate-400 transition hover:text-white"
