@@ -4,10 +4,14 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import { validateImageFile, resizeImage, MAX_FILE_SIZE_MB } from '@/lib/image-utils';
 
+export type PhotoCaptureResult =
+  | { type: 'extracted'; slug: string }
+  | { type: 'uploaded'; imageUrl: string };
+
 interface PhotoCaptureModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onImageCaptured: (imageUrl: string) => void;
+  onImageCaptured: (result: PhotoCaptureResult) => void;
 }
 
 const CameraIcon = () => (
@@ -53,6 +57,7 @@ export function PhotoCaptureModal({ isOpen, onClose, onImageCaptured }: PhotoCap
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
@@ -94,6 +99,7 @@ export function PhotoCaptureModal({ isOpen, onClose, onImageCaptured }: PhotoCap
       }
       setError(null);
       setIsUploading(false);
+      setIsExtracting(false);
       setDragOver(false);
     }
   }, [isOpen, previewUrl]);
@@ -167,41 +173,61 @@ export function PhotoCaptureModal({ isOpen, onClose, onImageCaptured }: PhotoCap
     setError(null);
   }, [previewUrl]);
 
+  /**
+   * Convert a File to a base64 string (without the data URL prefix)
+   */
+  const fileToBase64 = useCallback((file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Remove data URL prefix (data:image/...;base64,)
+        const base64 = result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }, []);
+
   const handleExtractRecipe = useCallback(async () => {
     if (!selectedFile) return;
 
     setIsUploading(true);
+    setIsExtracting(true);
     setError(null);
 
     try {
-      // Resize image client-side
+      // Resize image client-side first
       const resizedBlob = await resizeImage(selectedFile);
 
-      // Upload to server
-      const formData = new FormData();
-      formData.append('image', resizedBlob, `recipe-photo.jpg`);
+      // Convert resized blob to base64
+      const resizedFile = new File([resizedBlob], 'recipe.jpg', { type: 'image/jpeg' });
+      const base64 = await fileToBase64(resizedFile);
 
-      const response = await fetch('/api/recipes/images/upload', {
+      // Call the extraction API
+      const response = await fetch('/api/recipes/extract-from-image', {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: base64 }),
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Upload failed');
-      }
 
       const data = await response.json();
 
-      // Notify parent with the uploaded image URL
-      onImageCaptured(data.url);
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to extract recipe');
+      }
+
+      // Notify parent with the extracted recipe slug
+      onImageCaptured({ type: 'extracted', slug: data.slug });
     } catch (err) {
-      console.error('Upload error:', err);
-      setError(err instanceof Error ? err.message : 'Upload failed');
+      console.error('Extraction error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to extract recipe');
     } finally {
       setIsUploading(false);
+      setIsExtracting(false);
     }
-  }, [selectedFile, onImageCaptured]);
+  }, [selectedFile, onImageCaptured, fileToBase64]);
 
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;
@@ -268,7 +294,14 @@ export function PhotoCaptureModal({ isOpen, onClose, onImageCaptured }: PhotoCap
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                     <div className="text-center">
                       <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                      <p className="text-sm text-white">Uploading...</p>
+                      <p className="text-sm text-white">
+                        {isExtracting ? 'Extracting recipe...' : 'Uploading...'}
+                      </p>
+                      {isExtracting && (
+                        <p className="text-xs text-slate-300 mt-1">
+                          This may take a few seconds
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}
@@ -292,7 +325,7 @@ export function PhotoCaptureModal({ isOpen, onClose, onImageCaptured }: PhotoCap
                   disabled={isUploading}
                   className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isUploading ? 'Uploading...' : 'Import Recipe'}
+                  {isUploading ? (isExtracting ? 'Extracting...' : 'Uploading...') : 'Import Recipe'}
                 </button>
                 <button
                   onClick={handleReset}
