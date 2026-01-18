@@ -318,3 +318,124 @@ export function toRecipeJson(
     sourceType: 'ai_generated',
   };
 }
+
+/**
+ * GPT prompt for text-based recipe extraction
+ */
+const TEXT_EXTRACTION_PROMPT = `Extract the recipe from the following text and return it as JSON.
+
+Return ONLY valid JSON with this exact structure:
+{
+  "title": "Recipe name",
+  "description": "Brief 1-2 sentence description",
+  "servings": <number>,
+  "prepTimeMinutes": <number or null if not visible>,
+  "cookTimeMinutes": <number or null if not visible>,
+  "locale": "en-US" or "de-DE" based on language detected,
+  "tags": ["tag1", "tag2"],
+  "nutrition": {
+    "calories": <number>,
+    "protein": <number in grams>,
+    "carbohydrates": <number in grams>,
+    "fat": <number in grams>
+  },
+  "ingredientGroups": [
+    {
+      "name": "Group name (e.g., 'Main Ingredients', 'Sauce')",
+      "ingredients": [
+        { "name": "ingredient name", "quantity": <number>, "unit": "unit string" }
+      ]
+    }
+  ],
+  "steps": [
+    { "number": 1, "instruction": "Step instruction text" }
+  ]
+}
+
+Important rules:
+- If nutrition info is not visible, estimate reasonable values based on the ingredients
+- Group ingredients logically (e.g., separate sauces, toppings, main dish)
+- If quantities are vague (e.g., "some salt"), use reasonable defaults (e.g., 0.5, "tsp")
+- Detect the language and set locale accordingly (de-DE for German, en-US for English, etc.)
+- Tags should include: meal type (breakfast/lunch/dinner), dietary info (vegetarian/vegan), cuisine type
+
+If the text does not contain a recipe, return:
+{ "error": "No recipe found in text" }
+
+Recipe text:
+`;
+
+/**
+ * Build the text extraction prompt with optional user preferences
+ */
+function buildTextExtractionPrompt(preferences?: ExtractionPreferences): string {
+  let additionalInstructions = '';
+
+  if (preferences?.targetLocale || preferences?.targetRegion) {
+    additionalInstructions = '\n\nAdditional requirements:';
+
+    if (preferences.targetLocale) {
+      additionalInstructions += `\n- Output the recipe in ${preferences.targetLocale} language`;
+      additionalInstructions += `\n- Set locale to "${preferences.targetLocale}"`;
+    }
+
+    if (preferences.targetRegion) {
+      additionalInstructions += `\n- Adapt ingredient names to ${preferences.targetRegion} regional terminology`;
+      additionalInstructions += `\n- ${getRegionalIngredientContext(preferences.targetRegion)}`;
+    }
+  }
+
+  return TEXT_EXTRACTION_PROMPT + additionalInstructions;
+}
+
+/**
+ * Extract recipe data from plain text using GPT
+ *
+ * @param text - The recipe text to extract from
+ * @param preferences - Optional user preferences for locale and region adaptation
+ * @returns Extraction result with either the parsed recipe data or an error message
+ */
+export async function extractRecipeFromText(
+  text: string,
+  preferences?: ExtractionPreferences
+): Promise<ExtractionResult> {
+  const openai = getOpenAI();
+  const basePrompt = buildTextExtractionPrompt(preferences);
+  const prompt = basePrompt + '\n\n' + text;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 4000,
+      response_format: { type: 'json_object' },
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      return { success: false, error: 'No response from model' };
+    }
+
+    // Parse the JSON response
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(content);
+    } catch {
+      return { success: false, error: 'Invalid JSON response from model' };
+    }
+
+    return parseExtractionResponse(parsed);
+  } catch (error) {
+    // Handle specific OpenAI errors
+    if (error instanceof OpenAI.APIError) {
+      if (error.status === 429) {
+        return { success: false, error: 'Too many requests. Please wait a moment and try again.' };
+      }
+      console.error('OpenAI API error:', error.message);
+      return { success: false, error: 'Failed to analyze text. Please try again.' };
+    }
+
+    console.error('Text extraction error:', error);
+    return { success: false, error: 'Recipe extraction failed. Please try again.' };
+  }
+}

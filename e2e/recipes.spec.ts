@@ -294,7 +294,7 @@ test.describe('Recipe Feature', () => {
       await authenticatedPage.goto('/recipes');
 
       // Camera button should be visible
-      const cameraButton = authenticatedPage.getByRole('button', { name: /import recipe from photo/i });
+      const cameraButton = authenticatedPage.getByRole('button', { name: /import recipe from photo or pdf/i });
       await expect(cameraButton).toBeVisible();
     });
 
@@ -302,7 +302,7 @@ test.describe('Recipe Feature', () => {
       await authenticatedPage.goto('/recipes');
 
       // Click camera button
-      const cameraButton = authenticatedPage.getByRole('button', { name: /import recipe from photo/i });
+      const cameraButton = authenticatedPage.getByRole('button', { name: /import recipe from photo or pdf/i });
       await cameraButton.click();
 
       // Modal should open with "Import Recipe" heading
@@ -313,7 +313,7 @@ test.describe('Recipe Feature', () => {
       await authenticatedPage.goto('/recipes');
 
       // Open modal
-      const cameraButton = authenticatedPage.getByRole('button', { name: /import recipe from photo/i });
+      const cameraButton = authenticatedPage.getByRole('button', { name: /import recipe from photo or pdf/i });
       await cameraButton.click();
 
       // Cancel button should be visible
@@ -324,7 +324,7 @@ test.describe('Recipe Feature', () => {
       await authenticatedPage.goto('/recipes');
 
       // Open modal
-      const cameraButton = authenticatedPage.getByRole('button', { name: /import recipe from photo/i });
+      const cameraButton = authenticatedPage.getByRole('button', { name: /import recipe from photo or pdf/i });
       await cameraButton.click();
 
       // Click cancel
@@ -339,7 +339,7 @@ test.describe('Recipe Feature', () => {
       await authenticatedPage.goto('/recipes');
 
       // Open modal
-      const cameraButton = authenticatedPage.getByRole('button', { name: /import recipe from photo/i });
+      const cameraButton = authenticatedPage.getByRole('button', { name: /import recipe from photo or pdf/i });
       await cameraButton.click();
 
       // Click close button (×)
@@ -355,12 +355,12 @@ test.describe('Recipe Feature', () => {
       await authenticatedPage.setViewportSize({ width: 1024, height: 768 });
       await authenticatedPage.goto('/recipes');
 
-      // Open modal
-      const cameraButton = authenticatedPage.getByRole('button', { name: /import recipe from photo/i });
-      await cameraButton.click();
+      // Open modal (now supports both photos and PDFs)
+      const importButton = authenticatedPage.getByRole('button', { name: /import recipe from photo or pdf/i });
+      await importButton.click();
 
-      // Should show drop zone text
-      await expect(authenticatedPage.getByText(/drop image here/i)).toBeVisible();
+      // Should show drop zone text (updated for PDF support)
+      await expect(authenticatedPage.getByText(/drop file here/i)).toBeVisible();
     });
 
     test('mobile view shows camera and library buttons', async ({ authenticatedPage }) => {
@@ -368,13 +368,13 @@ test.describe('Recipe Feature', () => {
       await authenticatedPage.setViewportSize({ width: 375, height: 667 });
       await authenticatedPage.goto('/recipes');
 
-      // Open modal
-      const cameraButton = authenticatedPage.getByRole('button', { name: /import recipe from photo/i });
-      await cameraButton.click();
+      // Open modal (now supports both photos and PDFs)
+      const importButton = authenticatedPage.getByRole('button', { name: /import recipe from photo or pdf/i });
+      await importButton.click();
 
-      // Should show camera and library buttons
+      // Should show camera and library buttons (updated for PDF support)
       await expect(authenticatedPage.getByText('Take Photo')).toBeVisible();
-      await expect(authenticatedPage.getByText('Choose from Library')).toBeVisible();
+      await expect(authenticatedPage.getByText('Choose File')).toBeVisible();
     });
   });
 

@@ -5,6 +5,9 @@ import {
   type ExtractedRecipeData,
 } from '../recipe-extraction';
 
+// Note: extractRecipeFromText tests are covered by API route tests
+// The function uses lazy-initialized OpenAI which is difficult to mock in unit tests
+
 describe('parseExtractionResponse', () => {
   it('successfully parses a complete recipe response', () => {
     const rawResponse = {
