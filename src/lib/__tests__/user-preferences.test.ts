@@ -4,11 +4,14 @@ import {
   isValidLocale,
   isValidUnitSystem,
   isValidUserPreferences,
+  isValidRecipeLocale,
   getDefaultUnitSystemForLocale,
   COMMON_TIMEZONES,
   SUPPORTED_LOCALES,
   UNIT_SYSTEMS,
+  RECIPE_LOCALE_OPTIONS,
   DEFAULT_PREFERENCES,
+  DEFAULT_RECIPE_PREFERENCES,
   type UserPreferences,
 } from "../user-preferences";
 
@@ -80,6 +83,39 @@ describe("User Preferences", () => {
         expect(DEFAULT_PREFERENCES.locale).toBe("en-US");
         expect(DEFAULT_PREFERENCES.unitSystem).toBe("metric");
         expect(isValidUserPreferences(DEFAULT_PREFERENCES)).toBe(true);
+      });
+    });
+
+    describe("RECIPE_LOCALE_OPTIONS", () => {
+      it("contains expected recipe locales", () => {
+        expect(RECIPE_LOCALE_OPTIONS.length).toBeGreaterThan(0);
+        expect(RECIPE_LOCALE_OPTIONS.some(l => l.value === "")).toBe(true); // inherit option
+        expect(RECIPE_LOCALE_OPTIONS.some(l => l.value === "de-DE")).toBe(true);
+        expect(RECIPE_LOCALE_OPTIONS.some(l => l.value === "en-US")).toBe(true);
+        expect(RECIPE_LOCALE_OPTIONS.some(l => l.value === "fr-FR")).toBe(true);
+      });
+
+      it("has descriptive labels", () => {
+        RECIPE_LOCALE_OPTIONS.forEach(opt => {
+          expect(opt.label.length).toBeGreaterThan(0);
+        });
+      });
+
+      it("has valid locale values (except inherit option)", () => {
+        RECIPE_LOCALE_OPTIONS.forEach(opt => {
+          // Empty string is valid (inherit)
+          if (opt.value !== "") {
+            expect(isValidLocale(opt.value)).toBe(true);
+          }
+        });
+      });
+    });
+
+    describe("DEFAULT_RECIPE_PREFERENCES", () => {
+      it("has valid default values", () => {
+        expect(DEFAULT_RECIPE_PREFERENCES.defaultRecipeLocale).toBeNull();
+        expect(DEFAULT_RECIPE_PREFERENCES.measurementSystem).toBe("metric");
+        expect(DEFAULT_RECIPE_PREFERENCES.showMeasurementConversions).toBe(false);
       });
     });
   });
@@ -216,6 +252,38 @@ describe("User Preferences", () => {
         timezone: "UTC",
         unitSystem: "metric",
       })).toBe(false);
+    });
+  });
+
+  describe("isValidRecipeLocale", () => {
+    it("returns true for null (inherit from general locale)", () => {
+      expect(isValidRecipeLocale(null)).toBe(true);
+    });
+
+    it("returns true for undefined (inherit from general locale)", () => {
+      expect(isValidRecipeLocale(undefined)).toBe(true);
+    });
+
+    it("returns true for empty string (inherit from general locale)", () => {
+      expect(isValidRecipeLocale("")).toBe(true);
+    });
+
+    it("returns true for valid BCP 47 locales", () => {
+      expect(isValidRecipeLocale("en-US")).toBe(true);
+      expect(isValidRecipeLocale("de-DE")).toBe(true);
+      expect(isValidRecipeLocale("fr-FR")).toBe(true);
+      expect(isValidRecipeLocale("es-ES")).toBe(true);
+    });
+
+    it("returns true for language-only codes", () => {
+      expect(isValidRecipeLocale("en")).toBe(true);
+      expect(isValidRecipeLocale("de")).toBe(true);
+    });
+
+    it("returns false for invalid locales", () => {
+      expect(isValidRecipeLocale("not a locale!")).toBe(false);
+      expect(isValidRecipeLocale("123-456")).toBe(false);
+      expect(isValidRecipeLocale("@#$%")).toBe(false);
     });
   });
 

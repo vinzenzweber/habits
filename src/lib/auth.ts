@@ -47,9 +47,11 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
         let timezone = 'UTC';
         let locale = 'en-US';
         let unitSystem: UnitSystem = 'metric';
+        let defaultRecipeLocale: string | null = null;
+        let showMeasurementConversions = false;
         try {
           const extendedResult = await query(
-            `SELECT onboarding_completed, timezone, locale, unit_system FROM users WHERE id = $1`,
+            `SELECT onboarding_completed, timezone, locale, unit_system, default_recipe_locale, show_measurement_conversions FROM users WHERE id = $1`,
             [user.id]
           );
           const row = extendedResult.rows[0];
@@ -57,6 +59,8 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
           timezone = row?.timezone ?? 'UTC';
           locale = row?.locale ?? 'en-US';
           unitSystem = (row?.unit_system as UnitSystem) ?? 'metric';
+          defaultRecipeLocale = row?.default_recipe_locale ?? null;
+          showMeasurementConversions = row?.show_measurement_conversions ?? false;
         } catch {
           // Columns don't exist yet - use defaults
         }
@@ -70,7 +74,9 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
           onboardingCompleted,
           timezone,
           locale,
-          unitSystem
+          unitSystem,
+          defaultRecipeLocale,
+          showMeasurementConversions
         };
       }
     })
@@ -92,13 +98,15 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
         token.timezone = (user as { timezone?: string }).timezone ?? 'UTC';
         token.locale = (user as { locale?: string }).locale ?? 'en-US';
         token.unitSystem = (user as { unitSystem?: UnitSystem }).unitSystem ?? 'metric';
+        token.defaultRecipeLocale = (user as { defaultRecipeLocale?: string | null }).defaultRecipeLocale ?? null;
+        token.showMeasurementConversions = (user as { showMeasurementConversions?: boolean }).showMeasurementConversions ?? false;
       }
 
       // Session update triggered - merge new preferences into token
       // Only update specific preference fields (security: prevent arbitrary token modification)
       if (trigger === "update" && session?.user) {
         console.log('[auth:jwt] Session update triggered', { userId: token.id });
-        const userData = session.user as { timezone?: string; locale?: string; unitSystem?: UnitSystem; onboardingCompleted?: boolean };
+        const userData = session.user as { timezone?: string; locale?: string; unitSystem?: UnitSystem; onboardingCompleted?: boolean; defaultRecipeLocale?: string | null; showMeasurementConversions?: boolean };
         if (userData.timezone !== undefined) {
           token.timezone = userData.timezone;
         }
@@ -111,6 +119,12 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
         if (userData.onboardingCompleted !== undefined) {
           token.onboardingCompleted = userData.onboardingCompleted;
         }
+        if (userData.defaultRecipeLocale !== undefined) {
+          token.defaultRecipeLocale = userData.defaultRecipeLocale;
+        }
+        if (userData.showMeasurementConversions !== undefined) {
+          token.showMeasurementConversions = userData.showMeasurementConversions;
+        }
       }
 
       return token;
@@ -121,6 +135,8 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
         session.user.timezone = token.timezone as string;
         session.user.locale = token.locale as string;
         session.user.unitSystem = token.unitSystem as UnitSystem;
+        session.user.defaultRecipeLocale = (token.defaultRecipeLocale as string | null) ?? null;
+        session.user.showMeasurementConversions = (token.showMeasurementConversions as boolean) ?? false;
       }
       return session;
     }

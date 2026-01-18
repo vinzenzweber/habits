@@ -4,7 +4,8 @@ import {
   isValidTimezone,
   isValidLocale,
   isValidUnitSystem,
-  type UserPreferences,
+  isValidRecipeLocale,
+  type UserPreferencesWithRecipe,
   type UnitSystem,
 } from "@/lib/user-preferences";
 
@@ -21,8 +22,14 @@ export async function GET() {
   }
 
   try {
-    const result = await query<{ timezone: string; locale: string; unit_system: string }>(
-      `SELECT timezone, locale, unit_system FROM users WHERE id = $1`,
+    const result = await query<{
+      timezone: string;
+      locale: string;
+      unit_system: string;
+      default_recipe_locale: string | null;
+      show_measurement_conversions: boolean;
+    }>(
+      `SELECT timezone, locale, unit_system, default_recipe_locale, show_measurement_conversions FROM users WHERE id = $1`,
       [session.user.id]
     );
 
@@ -31,10 +38,12 @@ export async function GET() {
     }
 
     const row = result.rows[0];
-    const preferences: UserPreferences = {
+    const preferences: UserPreferencesWithRecipe = {
       timezone: row.timezone ?? 'UTC',
       locale: row.locale ?? 'en-US',
       unitSystem: (row.unit_system as UnitSystem) ?? 'metric',
+      defaultRecipeLocale: row.default_recipe_locale ?? null,
+      showMeasurementConversions: row.show_measurement_conversions ?? false,
     };
 
     return Response.json(preferences);
@@ -56,7 +65,7 @@ export async function PUT(request: Request) {
 
   try {
     const body = await request.json();
-    const { timezone, locale, unitSystem } = body;
+    const { timezone, locale, unitSystem, defaultRecipeLocale, showMeasurementConversions } = body;
 
     // Validate all fields
     const errors: string[] = [];
@@ -73,13 +82,21 @@ export async function PUT(request: Request) {
       errors.push("Invalid unit system (must be 'metric' or 'imperial')");
     }
 
+    if (defaultRecipeLocale !== undefined && !isValidRecipeLocale(defaultRecipeLocale)) {
+      errors.push("Invalid default recipe locale format");
+    }
+
+    if (showMeasurementConversions !== undefined && typeof showMeasurementConversions !== 'boolean') {
+      errors.push("Show measurement conversions must be a boolean");
+    }
+
     if (errors.length > 0) {
       return Response.json({ error: errors.join(", ") }, { status: 400 });
     }
 
     // Build the update query dynamically based on provided fields
     const updates: string[] = [];
-    const values: (string | number)[] = [];
+    const values: (string | number | boolean | null)[] = [];
     let paramIndex = 1;
 
     if (timezone !== undefined) {
@@ -100,6 +117,19 @@ export async function PUT(request: Request) {
       paramIndex++;
     }
 
+    if (defaultRecipeLocale !== undefined) {
+      // Convert empty string to null for database storage
+      updates.push(`default_recipe_locale = $${paramIndex}`);
+      values.push(defaultRecipeLocale === '' ? null : defaultRecipeLocale);
+      paramIndex++;
+    }
+
+    if (showMeasurementConversions !== undefined) {
+      updates.push(`show_measurement_conversions = $${paramIndex}`);
+      values.push(showMeasurementConversions);
+      paramIndex++;
+    }
+
     if (updates.length === 0) {
       return Response.json({ error: "No valid fields to update" }, { status: 400 });
     }
@@ -113,16 +143,24 @@ export async function PUT(request: Request) {
     );
 
     // Fetch and return the updated preferences
-    const result = await query<{ timezone: string; locale: string; unit_system: string }>(
-      `SELECT timezone, locale, unit_system FROM users WHERE id = $1`,
+    const result = await query<{
+      timezone: string;
+      locale: string;
+      unit_system: string;
+      default_recipe_locale: string | null;
+      show_measurement_conversions: boolean;
+    }>(
+      `SELECT timezone, locale, unit_system, default_recipe_locale, show_measurement_conversions FROM users WHERE id = $1`,
       [session.user.id]
     );
 
     const row = result.rows[0];
-    const updatedPreferences: UserPreferences = {
+    const updatedPreferences: UserPreferencesWithRecipe = {
       timezone: row.timezone ?? 'UTC',
       locale: row.locale ?? 'en-US',
       unitSystem: (row.unit_system as UnitSystem) ?? 'metric',
+      defaultRecipeLocale: row.default_recipe_locale ?? null,
+      showMeasurementConversions: row.show_measurement_conversions ?? false,
     };
 
     // Trigger session update with new preferences to refresh the JWT
@@ -133,6 +171,8 @@ export async function PUT(request: Request) {
           timezone: updatedPreferences.timezone,
           locale: updatedPreferences.locale,
           unitSystem: updatedPreferences.unitSystem,
+          defaultRecipeLocale: updatedPreferences.defaultRecipeLocale,
+          showMeasurementConversions: updatedPreferences.showMeasurementConversions,
         },
       });
     } catch (sessionUpdateError) {

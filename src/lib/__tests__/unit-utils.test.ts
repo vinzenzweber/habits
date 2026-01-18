@@ -6,6 +6,7 @@ import {
   mlToFlOz,
   formatWeight,
   convertIngredientUnit,
+  formatIngredientWithConversion,
 } from '../unit-utils';
 
 describe('unit-utils', () => {
@@ -239,6 +240,81 @@ describe('unit-utils', () => {
           quantity: 3.5,
           unit: 'oz',
         });
+      });
+    });
+  });
+
+  describe('formatIngredientWithConversion', () => {
+    describe('without conversion display', () => {
+      it('returns only converted value when showConversion is false', () => {
+        expect(formatIngredientWithConversion(500, 'ml', 'metric', false)).toBe('500 ml');
+        expect(formatIngredientWithConversion(500, 'ml', 'imperial', false)).toBe('16.9 fl oz');
+      });
+
+      it('handles unit-agnostic ingredients', () => {
+        expect(formatIngredientWithConversion(2, 'cloves', 'metric', false)).toBe('2 cloves');
+        expect(formatIngredientWithConversion(3, 'pieces', 'imperial', false)).toBe('3 pieces');
+      });
+    });
+
+    describe('with conversion display', () => {
+      it('shows both metric and imperial when showConversion is true (metric primary)', () => {
+        const result = formatIngredientWithConversion(500, 'ml', 'metric', true);
+        expect(result).toBe('500 ml (16.9 fl oz)');
+      });
+
+      it('shows both imperial and metric when showConversion is true (imperial primary)', () => {
+        const result = formatIngredientWithConversion(2, 'cups', 'imperial', true);
+        expect(result).toBe('2 cups (473 ml)');
+      });
+
+      it('shows grams with ounce conversion', () => {
+        const result = formatIngredientWithConversion(100, 'g', 'metric', true);
+        expect(result).toBe('100 g (3.5 oz)');
+      });
+
+      it('shows ounces with gram conversion', () => {
+        const result = formatIngredientWithConversion(4, 'oz', 'imperial', true);
+        expect(result).toBe('4 oz (113 g)');
+      });
+
+      it('shows kilograms with pound conversion', () => {
+        const result = formatIngredientWithConversion(1, 'kg', 'metric', true);
+        expect(result).toBe('1 kg (2.2 lbs)');
+      });
+
+      it('shows pounds with kilogram conversion', () => {
+        const result = formatIngredientWithConversion(2.2, 'lbs', 'imperial', true);
+        expect(result).toBe('2.2 lbs (1 kg)');
+      });
+
+      it('shows liters with cup conversion', () => {
+        const result = formatIngredientWithConversion(1, 'l', 'metric', true);
+        expect(result).toBe('1 l (4.2 cups)');
+      });
+    });
+
+    describe('unit-agnostic with conversion enabled', () => {
+      it('does not show conversion for piece-like units even when enabled', () => {
+        expect(formatIngredientWithConversion(2, 'cloves', 'metric', true)).toBe('2 cloves');
+        expect(formatIngredientWithConversion(1, 'pinch', 'imperial', true)).toBe('1 pinch');
+        expect(formatIngredientWithConversion(3, 'pieces', 'metric', true)).toBe('3 pieces');
+      });
+
+      it('does not show conversion for empty unit', () => {
+        expect(formatIngredientWithConversion(1, '', 'metric', true)).toBe('1 ');
+      });
+    });
+
+    describe('edge cases', () => {
+      it('handles zero quantity', () => {
+        expect(formatIngredientWithConversion(0, 'g', 'metric', true)).toBe('0 g (0 oz)');
+      });
+
+      it('handles case-insensitive units (preserves original case for same-system)', () => {
+        // When unit is already in target system, case is preserved
+        expect(formatIngredientWithConversion(100, 'G', 'metric', true)).toBe('100 G (3.5 oz)');
+        expect(formatIngredientWithConversion(100, 'ML', 'metric', true)).toBe('100 ML (3.4 fl oz)');
       });
     });
   });
