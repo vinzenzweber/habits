@@ -16,6 +16,8 @@ jobs:
           node-version: 20
           cache: 'npm'
       - run: npm ci
+      # Workaround for npm optional dependencies bug (https://github.com/npm/cli/issues/4828)
+      - run: npm rebuild rollup lightningcss
 
       # Cache Next.js build
       - name: Cache Next.js build
@@ -62,6 +64,8 @@ jobs:
           node-version: 20
           cache: 'npm'
       - run: npm ci
+      # Workaround for npm optional dependencies bug (https://github.com/npm/cli/issues/4828)
+      - run: npm rebuild rollup lightningcss
 
       # Cache Playwright browsers
       - name: Get Playwright version
@@ -117,6 +121,8 @@ jobs:
           node-version: 20
           cache: 'npm'
       - run: npm ci
+      # Workaround for npm optional dependencies bug (https://github.com/npm/cli/issues/4828)
+      - run: npm rebuild rollup lightningcss
 
       - name: Download blob reports
         uses: actions/download-artifact@v4
