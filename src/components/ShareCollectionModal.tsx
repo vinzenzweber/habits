@@ -43,6 +43,20 @@ export function ShareCollectionModal({
     }
   }, [isOpen]);
 
+  // Close modal on Escape key (only when not loading)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && state !== "loading") {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose, state]);
+
   const handleShare = async () => {
     if (!email.trim() || !collection) return;
 
@@ -88,6 +102,9 @@ export function ShareCollectionModal({
 
       {/* Modal */}
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="share-collection-title"
         className={`fixed z-50 flex flex-col bg-slate-900
           inset-x-0 bottom-0 max-h-[90vh] rounded-t-2xl
           md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2
@@ -95,7 +112,7 @@ export function ShareCollectionModal({
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-700 p-4">
-          <h2 className="text-lg font-semibold">
+          <h2 id="share-collection-title" className="text-lg font-semibold">
             {state === "success" ? "Collection Shared!" : "Share Collection"}
           </h2>
           {state !== "loading" && (

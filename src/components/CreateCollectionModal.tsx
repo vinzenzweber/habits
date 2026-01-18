@@ -8,6 +8,7 @@ interface CreateCollectionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (collection: Collection) => void;
+  onDelete?: () => void;
   editingCollection?: CollectionWithRecipes | null;
 }
 
@@ -19,6 +20,7 @@ export function CreateCollectionModal({
   isOpen,
   onClose,
   onSave,
+  onDelete,
   editingCollection,
 }: CreateCollectionModalProps) {
   const [name, setName] = useState("");
@@ -47,6 +49,20 @@ export function CreateCollectionModal({
       setShowDeleteConfirm(false);
     }
   }, [isOpen, editingCollection]);
+
+  // Close modal on Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,8 +122,8 @@ export function CreateCollectionModal({
       }
 
       onClose();
-      // Trigger a page refresh to update the collections list
-      window.location.reload();
+      // Notify parent to refresh the collections list
+      onDelete?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
@@ -129,6 +145,9 @@ export function CreateCollectionModal({
 
       {/* Modal */}
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-collection-title"
         className={`fixed z-50 flex flex-col bg-slate-900
           inset-x-0 bottom-0 max-h-[90vh] rounded-t-2xl
           md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2
@@ -136,7 +155,7 @@ export function CreateCollectionModal({
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-700 p-4">
-          <h2 className="text-lg font-semibold">
+          <h2 id="create-collection-title" className="text-lg font-semibold">
             {isEditMode ? "Edit Collection" : "Create Collection"}
           </h2>
           <button

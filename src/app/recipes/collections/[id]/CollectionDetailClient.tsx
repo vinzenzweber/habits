@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 
@@ -162,6 +162,11 @@ export function CollectionDetailClient({
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
         onSave={handleCollectionSaved}
+        onDelete={() => {
+          // Navigate to collections list after deletion
+          router.push("/recipes/collections");
+          router.refresh();
+        }}
         editingCollection={collection}
       />
 
@@ -215,9 +220,11 @@ function AddRecipeToCollectionModal({
   const [error, setError] = useState<string | null>(null);
   const [selectedSlugs, setSelectedSlugs] = useState<Set<string>>(new Set());
 
-  // Fetch user's recipes
-  useState(() => {
+  // Fetch user's recipes when modal opens
+  useEffect(() => {
     const fetchRecipes = async () => {
+      setIsLoading(true);
+      setError(null);
       try {
         const response = await fetch("/api/recipes");
         if (!response.ok) throw new Error("Failed to fetch recipes");
@@ -236,7 +243,21 @@ function AddRecipeToCollectionModal({
     if (isOpen) {
       fetchRecipes();
     }
-  });
+  }, [isOpen, existingRecipeSlugs]);
+
+  // Close modal on Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
   const toggleRecipe = (slug: string) => {
     setSelectedSlugs((prev) => {
@@ -259,24 +280,49 @@ function AddRecipeToCollectionModal({
     setIsSaving(true);
     setError(null);
 
+    const failedRecipes: string[] = [];
+
     try {
       // Get recipe IDs and add each to collection
       for (const slug of selectedSlugs) {
-        // Get recipe ID
-        const recipeRes = await fetch(`/api/recipes/${slug}`);
-        if (!recipeRes.ok) continue;
-        const recipeData = await recipeRes.json();
+        try {
+          // Get recipe ID
+          const recipeRes = await fetch(`/api/recipes/${slug}`);
+          if (!recipeRes.ok) {
+            failedRecipes.push(slug);
+            continue;
+          }
+          const recipeData = await recipeRes.json();
 
-        // Add to collection
-        await fetch(`/api/collections/${collectionId}/recipes`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ recipeId: recipeData.recipe.id }),
-        });
+          // Add to collection
+          const addRes = await fetch(`/api/collections/${collectionId}/recipes`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ recipeId: recipeData.recipe.id }),
+          });
+
+          if (!addRes.ok) {
+            failedRecipes.push(recipeData.recipe.title || slug);
+          }
+        } catch {
+          failedRecipes.push(slug);
+        }
       }
 
-      onSuccess();
-      onClose();
+      if (failedRecipes.length > 0) {
+        if (failedRecipes.length === selectedSlugs.size) {
+          // All failed
+          setError(`Failed to add recipes: ${failedRecipes.join(", ")}`);
+        } else {
+          // Partial failure - still close but show what failed
+          setError(`Some recipes could not be added: ${failedRecipes.join(", ")}`);
+          onSuccess();
+          onClose();
+        }
+      } else {
+        onSuccess();
+        onClose();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
@@ -297,6 +343,9 @@ function AddRecipeToCollectionModal({
 
       {/* Modal */}
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-recipes-title"
         className={`fixed z-50 flex flex-col bg-slate-900
           inset-x-0 bottom-0 max-h-[90vh] rounded-t-2xl
           md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2
@@ -304,7 +353,7 @@ function AddRecipeToCollectionModal({
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-700 p-4">
-          <h2 className="text-lg font-semibold">Add Recipes</h2>
+          <h2 id="add-recipes-title" className="text-lg font-semibold">Add Recipes</h2>
           <button
             onClick={onClose}
             className="text-2xl leading-none text-slate-400 hover:text-white"

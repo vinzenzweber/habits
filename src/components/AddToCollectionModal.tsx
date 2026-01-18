@@ -43,10 +43,11 @@ export function AddToCollectionModal({
     setError(null);
 
     try {
-      // Fetch collections and recipe in parallel
-      const [collectionsRes, recipeRes] = await Promise.all([
+      // Fetch collections, recipe, and membership in parallel (single request each)
+      const [collectionsRes, recipeRes, membershipRes] = await Promise.all([
         fetch("/api/collections"),
         fetch(`/api/recipes/${recipeSlug}`),
+        fetch(`/api/collections/membership?recipeSlug=${encodeURIComponent(recipeSlug)}`),
       ]);
 
       if (!collectionsRes.ok) {
@@ -55,36 +56,28 @@ export function AddToCollectionModal({
       if (!recipeRes.ok) {
         throw new Error("Recipe not found");
       }
+      if (!membershipRes.ok) {
+        throw new Error("Failed to check collection membership");
+      }
 
       const collectionsData = await collectionsRes.json();
       const recipeData = await recipeRes.json();
+      const membershipData = await membershipRes.json();
 
       setRecipeId(recipeData.recipe.id);
 
-      // For each collection, check if the recipe is already in it
-      const collectionsWithState = await Promise.all(
-        collectionsData.collections.map(
-          async (collection: CollectionSummary) => {
-            // Fetch collection details to check if recipe is already added
-            const detailRes = await fetch(`/api/collections/${collection.id}`);
-            if (detailRes.ok) {
-              const detail = await detailRes.json();
-              const isAlreadyAdded = detail.collection.recipes?.some(
-                (r: { slug: string }) => r.slug === recipeSlug
-              );
-              return {
-                ...collection,
-                isSelected: isAlreadyAdded,
-                wasAlreadyAdded: isAlreadyAdded,
-              };
-            }
-            return {
-              ...collection,
-              isSelected: false,
-              wasAlreadyAdded: false,
-            };
-          }
-        )
+      // Use the membership data to determine which collections already contain the recipe
+      const collectionIdsWithRecipe = new Set<number>(membershipData.collectionIds);
+
+      const collectionsWithState = collectionsData.collections.map(
+        (collection: CollectionSummary) => {
+          const isAlreadyAdded = collectionIdsWithRecipe.has(collection.id);
+          return {
+            ...collection,
+            isSelected: isAlreadyAdded,
+            wasAlreadyAdded: isAlreadyAdded,
+          };
+        }
       );
 
       setCollections(collectionsWithState);
@@ -107,6 +100,20 @@ export function AddToCollectionModal({
       setError(null);
     }
   }, [isOpen]);
+
+  // Close modal on Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
   const toggleCollection = (collectionId: number) => {
     setCollections((prev) =>
@@ -136,9 +143,11 @@ export function AddToCollectionModal({
       const { collection } = await response.json();
 
       // Add new collection to list, selected by default
+      // New collections have 0 recipes initially
       setCollections((prev) => [
         {
           ...collection,
+          recipeCount: 0,
           isSelected: true,
           wasAlreadyAdded: false,
         },
@@ -212,6 +221,9 @@ export function AddToCollectionModal({
 
       {/* Modal */}
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-to-collection-title"
         className={`fixed z-50 flex flex-col bg-slate-900
           inset-x-0 bottom-0 max-h-[90vh] rounded-t-2xl
           md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2
@@ -219,7 +231,7 @@ export function AddToCollectionModal({
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-700 p-4">
-          <h2 className="text-lg font-semibold">Add to Collection</h2>
+          <h2 id="add-to-collection-title" className="text-lg font-semibold">Add to Collection</h2>
           <button
             onClick={onClose}
             className="text-2xl leading-none text-slate-400 hover:text-white"
