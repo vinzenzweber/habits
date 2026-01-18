@@ -15,11 +15,13 @@ jobs:
         with:
           node-version: 20
           # Don't use npm cache - it causes issues with platform-specific optional deps
-      # Install dependencies - optionalDependencies in package.json include Linux binaries
+      # Install dependencies with explicit Linux platform binaries
       - name: Install dependencies
         run: |
           rm -rf node_modules package-lock.json
           npm install
+          # Explicitly install Linux platform binaries (npm has bugs with optionalDeps)
+          npm install @rollup/rollup-linux-x64-gnu lightningcss-linux-x64-gnu --no-save
           # Verify critical platform-specific packages are installed
           ls node_modules/@rollup/rollup-linux-x64-gnu && echo "rollup linux binary found"
           ls node_modules/lightningcss-linux-x64-gnu && echo "lightningcss linux binary found"
@@ -68,11 +70,13 @@ jobs:
         with:
           node-version: 20
           # Don't use npm cache - it causes issues with platform-specific optional deps
-      # Install dependencies - optionalDependencies in package.json include Linux binaries
+      # Install dependencies with explicit Linux platform binaries
       - name: Install dependencies
         run: |
           rm -rf node_modules package-lock.json
           npm install
+          # Explicitly install Linux platform binaries (npm has bugs with optionalDeps)
+          npm install @rollup/rollup-linux-x64-gnu lightningcss-linux-x64-gnu --no-save
           # Verify critical platform-specific packages are installed
           ls node_modules/@rollup/rollup-linux-x64-gnu && echo "rollup linux binary found"
           ls node_modules/lightningcss-linux-x64-gnu && echo "lightningcss linux binary found"
