@@ -80,8 +80,8 @@ test.describe('Grocery Lists', () => {
 
       await expect(page).toHaveURL(/\/grocery-lists\/\d+/, { timeout: 5000 })
 
-      // Click add item button
-      await page.getByRole('button', { name: /add item/i }).click()
+      // Click add item button (the one on the page to open the modal)
+      await page.getByRole('button', { name: /add item/i }).first().click()
 
       // Fill in item name
       await page.getByLabel(/item name/i).fill('Apples')
@@ -89,8 +89,8 @@ test.describe('Grocery Lists', () => {
       // Add quantity
       await page.getByLabel(/quantity/i).fill('5')
 
-      // Submit
-      await page.getByRole('button', { name: /add item/i }).click()
+      // Submit - click the last "Add Item" button (the submit button in the modal)
+      await page.getByRole('button', { name: /add item/i }).last().click()
 
       // Should see the item in the list
       await expect(page.getByText('Apples')).toBeVisible()
@@ -106,10 +106,11 @@ test.describe('Grocery Lists', () => {
 
       await expect(page).toHaveURL(/\/grocery-lists\/\d+/, { timeout: 5000 })
 
-      // Add an item
-      await page.getByRole('button', { name: /add item/i }).click()
+      // Add an item - click the page button first to open modal
+      await page.getByRole('button', { name: /add item/i }).first().click()
       await page.getByLabel(/item name/i).fill('Milk')
-      await page.getByRole('button', { name: /add item/i }).click()
+      // Click the modal's submit button
+      await page.getByRole('button', { name: /add item/i }).last().click()
 
       // Close the modal
       await page.getByRole('button', { name: /done/i }).click()
@@ -133,10 +134,11 @@ test.describe('Grocery Lists', () => {
 
       await expect(page).toHaveURL(/\/grocery-lists\/\d+/, { timeout: 5000 })
 
-      // Add an item
-      await page.getByRole('button', { name: /add item/i }).click()
+      // Add an item - click the page button first to open modal
+      await page.getByRole('button', { name: /add item/i }).first().click()
       await page.getByLabel(/item name/i).fill('Bread')
-      await page.getByRole('button', { name: /add item/i }).click()
+      // Click the modal's submit button
+      await page.getByRole('button', { name: /add item/i }).last().click()
       await page.getByRole('button', { name: /done/i }).click()
 
       // Click shopping mode button
@@ -163,12 +165,14 @@ test.describe('Grocery Lists', () => {
 
       await expect(page).toHaveURL(/\/grocery-lists\/\d+/, { timeout: 5000 })
 
-      // Add items
-      await page.getByRole('button', { name: /add item/i }).click()
+      // Add items - click the page button first to open modal
+      await page.getByRole('button', { name: /add item/i }).first().click()
       await page.getByLabel(/item name/i).fill('Eggs')
-      await page.getByRole('button', { name: /add item/i }).click()
+      // Click the modal's submit button
+      await page.getByRole('button', { name: /add item/i }).last().click()
       await page.getByLabel(/item name/i).fill('Butter')
-      await page.getByRole('button', { name: /add item/i }).click()
+      // Click the modal's submit button
+      await page.getByRole('button', { name: /add item/i }).last().click()
       await page.getByRole('button', { name: /done/i }).click()
 
       // Navigate to shopping mode
