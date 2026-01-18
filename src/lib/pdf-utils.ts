@@ -89,8 +89,9 @@ export async function extractPdfPagesText(pdfBuffer: Buffer): Promise<PdfInfo> {
   // Dynamic import to avoid issues with pdfjs-dist worker
   const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
 
-  // Load the PDF
-  const loadingTask = pdfjsLib.getDocument({ data: pdfBuffer });
+  // Load the PDF - convert Buffer to Uint8Array for pdfjs-dist compatibility
+  const pdfData = new Uint8Array(pdfBuffer);
+  const loadingTask = pdfjsLib.getDocument({ data: pdfData });
   const pdfDoc = await loadingTask.promise;
 
   if (pdfDoc.numPages > MAX_PDF_PAGES) {
@@ -140,7 +141,9 @@ export async function extractPageText(
 ): Promise<string> {
   const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
 
-  const loadingTask = pdfjsLib.getDocument({ data: pdfBuffer });
+  // Convert Buffer to Uint8Array for pdfjs-dist compatibility
+  const pdfData = new Uint8Array(pdfBuffer);
+  const loadingTask = pdfjsLib.getDocument({ data: pdfData });
   const pdfDoc = await loadingTask.promise;
 
   if (pageNumber < 1 || pageNumber > pdfDoc.numPages) {
