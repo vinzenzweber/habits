@@ -12,9 +12,9 @@ const CTA_CLASSES =
   "inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2";
 
 type WorkoutPageProps = {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
 };
 
 function formatDuration(seconds: number) {
