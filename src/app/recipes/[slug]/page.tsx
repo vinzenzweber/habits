@@ -10,6 +10,7 @@ import {
   getRatingHistory,
 } from "@/lib/recipe-ratings";
 import { isRecipeFavorite } from "@/lib/recipe-favorites";
+import { getIngredientCount } from "@/lib/recipe-types";
 import { getRecipeDetailTranslations } from "@/lib/translations/recipe-detail";
 import { getRecipeSharingTranslations } from "@/lib/translations/recipe-sharing";
 import { convertIngredientUnit } from "@/lib/unit-utils";
@@ -108,6 +109,9 @@ export default async function RecipeDetailPage({
                 recipeName={recipe.title}
                 editLabel={t.edit}
                 initialIsFavorite={isFavorite}
+                recipeId={recipe.id}
+                defaultServings={recipeJson.servings}
+                ingredientCount={getIngredientCount(recipeJson)}
               />
               <ShareRecipeSection
                 recipeSlug={recipe.slug}
