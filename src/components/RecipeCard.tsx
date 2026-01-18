@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { RecipeSummary } from "@/lib/recipe-types";
+import { StarRating } from "./StarRating";
 
 interface RecipeCardProps {
   recipe: RecipeSummary;
@@ -93,6 +94,18 @@ export function RecipeCard({ recipe, href }: RecipeCardProps) {
             {extraTagCount > 0 && (
               <span className="inline-flex items-center rounded-full bg-slate-500/10 px-2 py-0.5 text-xs text-slate-400">
                 +{extraTagCount} more
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Rating */}
+        {recipe.averageRating !== undefined && recipe.averageRating > 0 && (
+          <div className="flex items-center gap-1">
+            <StarRating rating={recipe.averageRating} size="sm" />
+            {recipe.ratingCount !== undefined && (
+              <span className="text-xs text-slate-500">
+                ({recipe.ratingCount})
               </span>
             )}
           </div>

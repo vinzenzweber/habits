@@ -4,10 +4,17 @@ import { notFound } from "next/navigation";
 
 import { auth } from "@/lib/auth";
 import { getRecipeBySlug } from "@/lib/recipes";
+import {
+  getVersionRatings,
+  getUserRatingForVersion,
+  getRatingHistory,
+} from "@/lib/recipe-ratings";
 import { getRecipeDetailTranslations } from "@/lib/translations/recipe-detail";
 import { convertIngredientUnit } from "@/lib/unit-utils";
 import { RecipeImageGallery } from "@/components/RecipeImageGallery";
 import { PageContextSetter } from "@/components/PageContextSetter";
+import { RecipeRatingSection } from "@/components/RecipeRatingSection";
+import { RatingHistorySection } from "@/components/RatingHistorySection";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +57,13 @@ export default async function RecipeDetailPage({
   const userLocale = session?.user?.locale ?? 'en-US';
   const userUnitSystem = session?.user?.unitSystem ?? 'metric';
   const t = getRecipeDetailTranslations(userLocale);
+
+  // Fetch rating data for current version
+  const [versionStats, userRating, ratingHistory] = await Promise.all([
+    getVersionRatings(recipe.id, recipe.version),
+    getUserRatingForVersion(recipe.id, recipe.version),
+    getRatingHistory(recipe.id),
+  ]);
 
   const { recipeJson } = recipe;
 
@@ -216,6 +230,23 @@ export default async function RecipeDetailPage({
           </section>
         )}
 
+        {/* Rating Section */}
+        <RecipeRatingSection
+          recipeSlug={recipe.slug}
+          recipeVersion={recipe.version}
+          initialUserRating={userRating?.rating}
+          initialAverageRating={versionStats.averageRating}
+          initialRatingCount={versionStats.ratingCount}
+          translations={{
+            yourRating: t.yourRating,
+            averageRating: t.averageRating,
+            ratings: t.ratings,
+            addComment: t.addComment,
+            submitRating: t.submitRating,
+            ratingSubmitted: t.ratingSubmitted,
+          }}
+        />
+
         {/* Ingredients Section */}
         <section
           className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/50 backdrop-blur"
@@ -279,6 +310,18 @@ export default async function RecipeDetailPage({
             ))}
           </ol>
         </section>
+
+        {/* Rating History Section */}
+        <RatingHistorySection
+          history={ratingHistory}
+          currentVersion={recipe.version}
+          translations={{
+            ratingHistory: t.ratingHistory,
+            version: t.version,
+            noRatings: t.noRatings,
+            ratings: t.ratings,
+          }}
+        />
       </div>
     </main>
   );
