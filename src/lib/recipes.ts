@@ -292,6 +292,7 @@ export async function getUserRecipeSummaries(): Promise<RecipeSummary[]> {
 
   // Query only the columns needed for RecipeSummary
   // Uses JSON extraction to avoid loading full recipe_json (which contains steps, ingredientGroups, etc.)
+  // Includes LEFT JOIN to aggregate ratings from recipe_ratings table
   const result = await query<{
     slug: string;
     title: string;
@@ -312,20 +313,31 @@ export async function getUserRecipeSummaries(): Promise<RecipeSummary[]> {
     is_favorite: boolean | null;
     rating: number | null;
     updated_at: Date;
+    avg_rating: number | null;
+    rating_count: number;
   }>(
-    `SELECT slug, title, description, tags,
-            (recipe_json->>'servings')::int as servings,
-            (recipe_json->>'prepTimeMinutes')::int as prep_time_minutes,
-            (recipe_json->>'cookTimeMinutes')::int as cook_time_minutes,
-            recipe_json->'images' as images,
-            recipe_json->'nutrition' as nutrition,
-            recipe_json->>'description' as recipe_description,
-            (recipe_json->>'isFavorite')::boolean as is_favorite,
-            (recipe_json->>'rating')::float as rating,
-            updated_at
-     FROM recipes
-     WHERE user_id = $1 AND is_active = true
-     ORDER BY updated_at DESC`,
+    `SELECT r.slug, r.title, r.description, r.tags,
+            (r.recipe_json->>'servings')::int as servings,
+            (r.recipe_json->>'prepTimeMinutes')::int as prep_time_minutes,
+            (r.recipe_json->>'cookTimeMinutes')::int as cook_time_minutes,
+            r.recipe_json->'images' as images,
+            r.recipe_json->'nutrition' as nutrition,
+            r.recipe_json->>'description' as recipe_description,
+            (r.recipe_json->>'isFavorite')::boolean as is_favorite,
+            (r.recipe_json->>'rating')::float as rating,
+            r.updated_at,
+            COALESCE(ratings.avg_rating, 0) as avg_rating,
+            COALESCE(ratings.rating_count, 0) as rating_count
+     FROM recipes r
+     LEFT JOIN (
+       SELECT recipe_id, recipe_version,
+              AVG(rating)::float as avg_rating,
+              COUNT(*)::int as rating_count
+       FROM recipe_ratings
+       GROUP BY recipe_id, recipe_version
+     ) ratings ON ratings.recipe_id = r.id AND ratings.recipe_version = r.version
+     WHERE r.user_id = $1 AND r.is_active = true
+     ORDER BY r.updated_at DESC`,
     [userId]
   );
 
@@ -347,6 +359,11 @@ export async function getUserRecipeSummaries(): Promise<RecipeSummary[]> {
       isFavorite: row.is_favorite ?? false,
       rating: row.rating ?? undefined,
       updatedAt: row.updated_at,
+      averageRating:
+        row.avg_rating && row.avg_rating > 0
+          ? Math.round(row.avg_rating * 10) / 10
+          : undefined,
+      ratingCount: row.rating_count > 0 ? row.rating_count : undefined,
     };
   });
 }

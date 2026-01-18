@@ -84,6 +84,9 @@ export type RecipeSummary = {
   isFavorite?: boolean;
   rating?: number;
   updatedAt?: Date;
+  // Aggregate rating data from recipe_ratings table
+  averageRating?: number;
+  ratingCount?: number;
 };
 
 // ============================================
@@ -316,4 +319,66 @@ export function isValidRecipeJson(obj: unknown): obj is RecipeJson {
     recipe.images.every(isValidRecipeImage) &&
     typeof recipe.locale === "string"
   );
+}
+
+// ============================================
+// Rating Types
+// ============================================
+
+/**
+ * A single rating for a recipe version
+ */
+export type RecipeRating = {
+  id: number;
+  userId: number;
+  userName: string;
+  recipeId: number;
+  recipeVersion: number;
+  rating: number;
+  comment?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+/**
+ * Aggregate rating stats for a recipe version
+ */
+export type VersionRatingStats = {
+  version: number;
+  averageRating: number;
+  ratingCount: number;
+  ratings: {
+    userId: number;
+    userName: string;
+    rating: number;
+    comment?: string;
+    createdAt: string;
+  }[];
+};
+
+/**
+ * Rating history across all versions of a recipe
+ */
+export type RatingHistory = VersionRatingStats[];
+
+/**
+ * Input for creating/updating a rating
+ */
+export type CreateRatingInput = {
+  rating: number;
+  comment?: string;
+};
+
+/**
+ * Database row type for recipe_ratings
+ */
+export interface RecipeRatingRow {
+  id: number;
+  user_id: number;
+  recipe_id: number;
+  recipe_version: number;
+  rating: number;
+  comment: string | null;
+  created_at: Date;
+  updated_at: Date;
 }

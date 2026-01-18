@@ -19,6 +19,16 @@ export type RecipeDetailTranslations = {
   fiber: string;
   ingredients: string;
   instructions: string;
+  // Rating translations
+  yourRating: string;
+  averageRating: string;
+  ratings: string;
+  addComment: string;
+  submitRating: string;
+  ratingSubmitted: string;
+  ratingHistory: string;
+  version: string;
+  noRatings: string;
 };
 
 const translations: Record<string, RecipeDetailTranslations> = {
@@ -38,6 +48,15 @@ const translations: Record<string, RecipeDetailTranslations> = {
     fiber: 'Fiber',
     ingredients: 'Ingredients',
     instructions: 'Instructions',
+    yourRating: 'Your rating',
+    averageRating: 'Average',
+    ratings: 'ratings',
+    addComment: 'Add a comment (optional)',
+    submitRating: 'Submit rating',
+    ratingSubmitted: 'Rating submitted!',
+    ratingHistory: 'Rating History',
+    version: 'Version',
+    noRatings: 'No ratings yet',
   },
   'de-DE': {
     backToRecipes: '← Zurück zu Rezepten',
@@ -55,6 +74,15 @@ const translations: Record<string, RecipeDetailTranslations> = {
     fiber: 'Ballaststoffe',
     ingredients: 'Zutaten',
     instructions: 'Zubereitung',
+    yourRating: 'Deine Bewertung',
+    averageRating: 'Durchschnitt',
+    ratings: 'Bewertungen',
+    addComment: 'Kommentar hinzufügen (optional)',
+    submitRating: 'Bewertung abgeben',
+    ratingSubmitted: 'Bewertung gespeichert!',
+    ratingHistory: 'Bewertungsverlauf',
+    version: 'Version',
+    noRatings: 'Noch keine Bewertungen',
   },
   'fr-FR': {
     backToRecipes: '← Retour aux recettes',
@@ -72,6 +100,15 @@ const translations: Record<string, RecipeDetailTranslations> = {
     fiber: 'Fibres',
     ingredients: 'Ingrédients',
     instructions: 'Instructions',
+    yourRating: 'Votre note',
+    averageRating: 'Moyenne',
+    ratings: 'notes',
+    addComment: 'Ajouter un commentaire (optionnel)',
+    submitRating: 'Soumettre la note',
+    ratingSubmitted: 'Note enregistrée !',
+    ratingHistory: 'Historique des notes',
+    version: 'Version',
+    noRatings: 'Pas encore de notes',
   },
   'es-ES': {
     backToRecipes: '← Volver a recetas',
@@ -89,6 +126,15 @@ const translations: Record<string, RecipeDetailTranslations> = {
     fiber: 'Fibra',
     ingredients: 'Ingredientes',
     instructions: 'Instrucciones',
+    yourRating: 'Tu valoración',
+    averageRating: 'Promedio',
+    ratings: 'valoraciones',
+    addComment: 'Añadir comentario (opcional)',
+    submitRating: 'Enviar valoración',
+    ratingSubmitted: '¡Valoración enviada!',
+    ratingHistory: 'Historial de valoraciones',
+    version: 'Versión',
+    noRatings: 'Sin valoraciones aún',
   },
   'it-IT': {
     backToRecipes: '← Torna alle ricette',
@@ -106,6 +152,15 @@ const translations: Record<string, RecipeDetailTranslations> = {
     fiber: 'Fibre',
     ingredients: 'Ingredienti',
     instructions: 'Istruzioni',
+    yourRating: 'La tua valutazione',
+    averageRating: 'Media',
+    ratings: 'valutazioni',
+    addComment: 'Aggiungi un commento (opzionale)',
+    submitRating: 'Invia valutazione',
+    ratingSubmitted: 'Valutazione inviata!',
+    ratingHistory: 'Cronologia valutazioni',
+    version: 'Versione',
+    noRatings: 'Nessuna valutazione ancora',
   },
   'nl-NL': {
     backToRecipes: '← Terug naar recepten',
@@ -123,6 +178,15 @@ const translations: Record<string, RecipeDetailTranslations> = {
     fiber: 'Vezels',
     ingredients: 'Ingrediënten',
     instructions: 'Bereiding',
+    yourRating: 'Jouw beoordeling',
+    averageRating: 'Gemiddeld',
+    ratings: 'beoordelingen',
+    addComment: 'Voeg een opmerking toe (optioneel)',
+    submitRating: 'Beoordeling indienen',
+    ratingSubmitted: 'Beoordeling opgeslagen!',
+    ratingHistory: 'Beoordelingsgeschiedenis',
+    version: 'Versie',
+    noRatings: 'Nog geen beoordelingen',
   },
   'pt-BR': {
     backToRecipes: '← Voltar para receitas',
@@ -140,6 +204,15 @@ const translations: Record<string, RecipeDetailTranslations> = {
     fiber: 'Fibras',
     ingredients: 'Ingredientes',
     instructions: 'Modo de preparo',
+    yourRating: 'Sua avaliação',
+    averageRating: 'Média',
+    ratings: 'avaliações',
+    addComment: 'Adicionar comentário (opcional)',
+    submitRating: 'Enviar avaliação',
+    ratingSubmitted: 'Avaliação enviada!',
+    ratingHistory: 'Histórico de avaliações',
+    version: 'Versão',
+    noRatings: 'Sem avaliações ainda',
   },
   'ja-JP': {
     backToRecipes: '← レシピ一覧に戻る',
@@ -157,6 +230,15 @@ const translations: Record<string, RecipeDetailTranslations> = {
     fiber: '食物繊維',
     ingredients: '材料',
     instructions: '作り方',
+    yourRating: 'あなたの評価',
+    averageRating: '平均',
+    ratings: '件の評価',
+    addComment: 'コメントを追加（任意）',
+    submitRating: '評価を送信',
+    ratingSubmitted: '評価が送信されました！',
+    ratingHistory: '評価履歴',
+    version: 'バージョン',
+    noRatings: 'まだ評価がありません',
   },
   'zh-CN': {
     backToRecipes: '← 返回食谱列表',
@@ -174,6 +256,15 @@ const translations: Record<string, RecipeDetailTranslations> = {
     fiber: '膳食纤维',
     ingredients: '食材',
     instructions: '做法',
+    yourRating: '您的评分',
+    averageRating: '平均',
+    ratings: '条评分',
+    addComment: '添加评论（可选）',
+    submitRating: '提交评分',
+    ratingSubmitted: '评分已提交！',
+    ratingHistory: '评分历史',
+    version: '版本',
+    noRatings: '暂无评分',
   },
 };
 
