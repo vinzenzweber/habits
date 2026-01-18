@@ -14,13 +14,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          # Don't use npm cache - it causes issues with platform-specific optional deps
       # Delete lockfile and reinstall to get platform-specific optional deps for Linux
       # This works around npm bug with optional dependencies (https://github.com/npm/cli/issues/4828)
       # The lockfile generated on macOS doesn't include linux-x64 binaries for rollup, lightningcss, etc.
       - name: Install dependencies with platform-specific binaries
         run: |
           rm -rf node_modules package-lock.json
+          npm cache clean --force
           npm install
 
       # Cache Next.js build
@@ -66,13 +67,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          # Don't use npm cache - it causes issues with platform-specific optional deps
       # Delete lockfile and reinstall to get platform-specific optional deps for Linux
       # This works around npm bug with optional dependencies (https://github.com/npm/cli/issues/4828)
       # The lockfile generated on macOS doesn't include linux-x64 binaries for rollup, lightningcss, etc.
       - name: Install dependencies with platform-specific binaries
         run: |
           rm -rf node_modules package-lock.json
+          npm cache clean --force
           npm install
 
       # Cache Playwright browsers
@@ -127,13 +129,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          # Don't use npm cache - it causes issues with platform-specific optional deps
       # Delete lockfile and reinstall to get platform-specific optional deps for Linux
       # This works around npm bug with optional dependencies (https://github.com/npm/cli/issues/4828)
       # The lockfile generated on macOS doesn't include linux-x64 binaries for rollup, lightningcss, etc.
       - name: Install dependencies with platform-specific binaries
         run: |
           rm -rf node_modules package-lock.json
+          npm cache clean --force
           npm install
 
       - name: Download blob reports
