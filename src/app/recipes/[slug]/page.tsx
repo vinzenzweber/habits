@@ -15,6 +15,7 @@ import { RecipeImageGallery } from "@/components/RecipeImageGallery";
 import { PageContextSetter } from "@/components/PageContextSetter";
 import { RecipeRatingSection } from "@/components/RecipeRatingSection";
 import { RatingHistorySection } from "@/components/RatingHistorySection";
+import { RecipeActionButtons } from "@/components/RecipeActionButtons";
 
 export const dynamic = "force-dynamic";
 
@@ -96,21 +97,12 @@ export default async function RecipeDetailPage({
             </div>
 
             {/* Action buttons */}
-            <div className="flex gap-2">
-              <Link
-                href={`/recipes/${slug}/edit`}
-                className="inline-flex items-center justify-center rounded-full bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 transition"
-              >
-                {t.edit}
-              </Link>
-              <button
-                disabled
-                className="inline-flex cursor-not-allowed items-center justify-center rounded-full bg-slate-800 px-4 py-2 text-sm font-medium text-slate-500"
-                title="Coming soon"
-              >
-                {t.share}
-              </button>
-            </div>
+            <RecipeActionButtons
+              recipeSlug={slug}
+              recipeName={recipe.title}
+              editLabel={t.edit}
+              shareLabel={t.share}
+            />
           </div>
         </header>
 

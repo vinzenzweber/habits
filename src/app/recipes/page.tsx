@@ -3,9 +3,11 @@ import { Suspense } from "react";
 
 import { auth } from "@/lib/auth";
 import { getUserRecipeSummaries, getUserTags } from "@/lib/recipes";
+import { getUserCollections, getReceivedCollections } from "@/lib/collection-db";
 import { LogoutButton } from "@/components/LogoutButton";
 import { RecipeListClient } from "@/components/RecipeListClient";
 import { RecipePageHeader } from "@/components/RecipePageHeader";
+import { CollectionsSectionWrapper } from "@/components/CollectionsSectionWrapper";
 import { PREDEFINED_TAGS } from "@/lib/predefined-tags";
 
 export const dynamic = "force-dynamic";
@@ -16,10 +18,14 @@ export default async function RecipesPage() {
     redirect("/login");
   }
 
+  const userId = Number(session.user.id);
+
   // Parallel data fetching
-  const [recipes, availableTags] = await Promise.all([
+  const [recipes, availableTags, collections, receivedCollections] = await Promise.all([
     getUserRecipeSummaries(),
     getUserTags(),
+    getUserCollections(userId),
+    getReceivedCollections(userId),
   ]);
 
   return (
@@ -35,6 +41,12 @@ export default async function RecipesPage() {
 
         {/* Title section with Add and Camera buttons */}
         <RecipePageHeader />
+
+        {/* Collections section */}
+        <CollectionsSectionWrapper
+          initialCollections={collections}
+          initialReceivedCollections={receivedCollections}
+        />
 
         {/* Search, filter, and recipe list - wrapped in Suspense for useSearchParams */}
         <Suspense fallback={<RecipeListSkeleton />}>
