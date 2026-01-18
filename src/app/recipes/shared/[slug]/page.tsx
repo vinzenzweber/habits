@@ -1,73 +1,91 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
-import { getRecipeBySlug } from "@/lib/recipes";
-import {
-  getVersionRatings,
-  getUserRatingForVersion,
-  getRatingHistory,
-} from "@/lib/recipe-ratings";
+import { query } from "@/lib/db";
+import { getSharedRecipeById } from "@/lib/recipe-sharing";
 import { getRecipeDetailTranslations } from "@/lib/translations/recipe-detail";
 import { getRecipeSharingTranslations } from "@/lib/translations/recipe-sharing";
 import { convertIngredientUnit } from "@/lib/unit-utils";
 import { RecipeImageGallery } from "@/components/RecipeImageGallery";
 import { PageContextSetter } from "@/components/PageContextSetter";
-import { RecipeRatingSection } from "@/components/RecipeRatingSection";
-import { RatingHistorySection } from "@/components/RatingHistorySection";
-import { ShareRecipeSection } from "@/components/ShareRecipeSection";
+import { SharedRecipeBadge } from "@/components/SharedRecipeBadge";
+import { ForkButton } from "@/components/ForkButton";
 
 export const dynamic = "force-dynamic";
 
-type RecipeDetailPageProps = {
+type SharedRecipeDetailPageProps = {
   params: Promise<{
     slug: string;
   }>;
 };
 
+async function getRecipeIdFromSlug(slug: string): Promise<number | null> {
+  const result = await query<{ id: number }>(
+    `SELECT id FROM recipes WHERE slug = $1 AND is_active = true ORDER BY version DESC LIMIT 1`,
+    [slug]
+  );
+  return result.rows[0]?.id ?? null;
+}
+
 export async function generateMetadata({
   params,
-}: RecipeDetailPageProps): Promise<Metadata> {
-  const { slug } = await params;
-  const recipe = await getRecipeBySlug(slug);
+}: SharedRecipeDetailPageProps): Promise<Metadata> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { title: "Unauthorized — FitStreak" };
+  }
 
-  if (!recipe) {
-    return {
-      title: "Recipe not found — FitStreak",
-    };
+  const { slug } = await params;
+  const recipeId = await getRecipeIdFromSlug(slug);
+
+  if (!recipeId) {
+    return { title: "Recipe not found — FitStreak" };
+  }
+
+  const userId = parseInt(session.user.id, 10);
+  const sharedRecipe = await getSharedRecipeById(userId, recipeId);
+
+  if (!sharedRecipe) {
+    return { title: "Recipe not found — FitStreak" };
   }
 
   return {
-    title: `${recipe.title} | FitStreak`,
-    description: recipe.description ?? recipe.recipeJson.description,
+    title: `${sharedRecipe.recipe.title} | FitStreak`,
+    description: sharedRecipe.recipe.description ?? sharedRecipe.recipe.recipeJson.description,
   };
 }
 
-export default async function RecipeDetailPage({
+export default async function SharedRecipeDetailPage({
   params,
-}: RecipeDetailPageProps) {
-  const { slug } = await params;
-  const recipe = await getRecipeBySlug(slug);
+}: SharedRecipeDetailPageProps) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    redirect("/login");
+  }
 
-  if (!recipe) {
+  const { slug } = await params;
+  const recipeId = await getRecipeIdFromSlug(slug);
+
+  if (!recipeId) {
+    notFound();
+  }
+
+  const userId = parseInt(session.user.id, 10);
+  const sharedRecipe = await getSharedRecipeById(userId, recipeId);
+
+  if (!sharedRecipe) {
     notFound();
   }
 
   // Get user's locale and unit system preferences
-  const session = await auth();
-  const userLocale = session?.user?.locale ?? 'en-US';
-  const userUnitSystem = session?.user?.unitSystem ?? 'metric';
+  const userLocale = session.user.locale ?? 'en-US';
+  const userUnitSystem = session.user.unitSystem ?? 'metric';
   const t = getRecipeDetailTranslations(userLocale);
   const sharingT = getRecipeSharingTranslations(userLocale);
 
-  // Fetch rating data for current version
-  const [versionStats, userRating, ratingHistory] = await Promise.all([
-    getVersionRatings(recipe.id, recipe.version),
-    getUserRatingForVersion(recipe.id, recipe.version),
-    getRatingHistory(recipe.id),
-  ]);
-
+  const { recipe, owner, permission, forkInfo } = sharedRecipe;
   const { recipeJson } = recipe;
 
   return (
@@ -78,11 +96,25 @@ export default async function RecipeDetailPage({
         <header className="flex flex-col gap-6">
           <div className="flex items-center justify-between">
             <Link
-              href="/recipes"
+              href="/recipes?tab=shared"
               className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400 transition hover:text-white"
             >
               {t.backToRecipes}
             </Link>
+          </div>
+
+          {/* Owner Badge */}
+          <div className="flex items-center gap-2">
+            <SharedRecipeBadge variant="from" ownerName={owner.name} />
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs ${
+                permission === "edit"
+                  ? "bg-amber-500/20 text-amber-400"
+                  : "bg-slate-500/20 text-slate-400"
+              }`}
+            >
+              {permission === "edit" ? sharingT.canEdit : sharingT.canView}
+            </span>
           </div>
 
           {/* Title Section */}
@@ -100,16 +132,22 @@ export default async function RecipeDetailPage({
 
             {/* Action buttons */}
             <div className="flex gap-2">
-              <Link
-                href={`/recipes/${slug}/edit`}
-                className="inline-flex items-center justify-center rounded-full bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 transition"
-              >
-                {t.edit}
-              </Link>
-              <ShareRecipeSection
-                recipeSlug={recipe.slug}
-                translations={sharingT}
-              />
+              {permission === "edit" && (
+                <Link
+                  href={`/recipes/${slug}/edit`}
+                  className="inline-flex items-center justify-center rounded-full bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 transition"
+                >
+                  {t.edit}
+                </Link>
+              )}
+              {forkInfo && (
+                <ForkButton
+                  recipeSlug={recipe.slug}
+                  alreadyForked={forkInfo.alreadyForked}
+                  forkedRecipeSlug={forkInfo.forkedRecipeSlug}
+                  translations={sharingT}
+                />
+              )}
             </div>
           </div>
         </header>
@@ -230,23 +268,6 @@ export default async function RecipeDetailPage({
           </section>
         )}
 
-        {/* Rating Section */}
-        <RecipeRatingSection
-          recipeSlug={recipe.slug}
-          recipeVersion={recipe.version}
-          initialUserRating={userRating?.rating}
-          initialAverageRating={versionStats.averageRating}
-          initialRatingCount={versionStats.ratingCount}
-          translations={{
-            yourRating: t.yourRating,
-            averageRating: t.averageRating,
-            ratings: t.ratings,
-            addComment: t.addComment,
-            submitRating: t.submitRating,
-            ratingSubmitted: t.ratingSubmitted,
-          }}
-        />
-
         {/* Ingredients Section */}
         <section
           className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/50 backdrop-blur"
@@ -310,18 +331,6 @@ export default async function RecipeDetailPage({
             ))}
           </ol>
         </section>
-
-        {/* Rating History Section */}
-        <RatingHistorySection
-          history={ratingHistory}
-          currentVersion={recipe.version}
-          translations={{
-            ratingHistory: t.ratingHistory,
-            version: t.version,
-            noRatings: t.noRatings,
-            ratings: t.ratings,
-          }}
-        />
       </div>
     </main>
   );
