@@ -14,6 +14,8 @@ export const ALLOWED_IMAGE_TYPES = [
   'image/png',
   'image/webp',
   'image/gif',
+  'image/heic',
+  'image/heif',
 ];
 
 export interface ImageValidationResult {
@@ -28,7 +30,7 @@ export function validateImageFile(file: File): ImageValidationResult {
   if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
     return {
       valid: false,
-      error: `Invalid file type. Allowed: JPEG, PNG, WebP, GIF`,
+      error: `Invalid file type. Allowed: JPEG, PNG, WebP, GIF, HEIC`,
     };
   }
 
