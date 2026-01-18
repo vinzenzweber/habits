@@ -4,11 +4,13 @@ import { Suspense } from "react";
 import { auth } from "@/lib/auth";
 import { getUserRecipeSummaries, getUserTags } from "@/lib/recipes";
 import { getUserCollections, getReceivedCollections } from "@/lib/collection-db";
+import { getSharedWithMe } from "@/lib/recipe-sharing";
 import { LogoutButton } from "@/components/LogoutButton";
 import { RecipeListClient } from "@/components/RecipeListClient";
 import { RecipePageHeader } from "@/components/RecipePageHeader";
 import { CollectionsSectionWrapper } from "@/components/CollectionsSectionWrapper";
 import { PREDEFINED_TAGS } from "@/lib/predefined-tags";
+import { getRecipeSharingTranslations } from "@/lib/translations/recipe-sharing";
 
 export const dynamic = "force-dynamic";
 
@@ -19,13 +21,16 @@ export default async function RecipesPage() {
   }
 
   const userId = Number(session.user.id);
+  const userLocale = session.user.locale ?? 'en-US';
+  const sharingTranslations = getRecipeSharingTranslations(userLocale);
 
   // Parallel data fetching
-  const [recipes, availableTags, collections, receivedCollections] = await Promise.all([
+  const [recipes, availableTags, collections, receivedCollections, sharedRecipes] = await Promise.all([
     getUserRecipeSummaries(),
     getUserTags(),
     getUserCollections(userId),
     getReceivedCollections(userId),
+    getSharedWithMe(userId),
   ]);
 
   return (
@@ -54,6 +59,8 @@ export default async function RecipesPage() {
             initialRecipes={recipes}
             availableTags={availableTags}
             predefinedTags={PREDEFINED_TAGS}
+            sharedRecipes={sharedRecipes}
+            sharingTranslations={sharingTranslations}
           />
         </Suspense>
       </div>

@@ -502,3 +502,66 @@ export async function getRecipeVersions(
     isActive: row.is_active,
   }));
 }
+
+// ============================================
+// Shared Recipe Access Functions
+// ============================================
+
+/**
+ * Get a recipe by ID (for shared recipe access)
+ * This bypasses user scoping - use only with proper access checks
+ */
+export async function getRecipeById(recipeId: number): Promise<Recipe | null> {
+  const result = await query<RecipeRow>(
+    `SELECT * FROM recipes
+     WHERE id = $1 AND is_active = true`,
+    [recipeId]
+  );
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  return rowToRecipe(result.rows[0]);
+}
+
+/**
+ * Get version history for a recipe by ID (for shared recipe access)
+ * This bypasses user scoping - use only with proper access checks
+ */
+export async function getRecipeVersionsById(
+  recipeId: number,
+  options?: { limit?: number; offset?: number }
+): Promise<RecipeVersion[]> {
+  let queryText = `SELECT version, title, description, created_at, is_active
+     FROM recipes
+     WHERE id = $1
+     ORDER BY version DESC`;
+  const values: (number | string)[] = [recipeId];
+
+  if (options?.limit !== undefined) {
+    queryText += ` LIMIT $${values.length + 1}`;
+    values.push(options.limit);
+  }
+
+  if (options?.offset !== undefined) {
+    queryText += ` OFFSET $${values.length + 1}`;
+    values.push(options.offset);
+  }
+
+  const result = await query<{
+    version: number;
+    title: string;
+    description: string | null;
+    created_at: Date;
+    is_active: boolean;
+  }>(queryText, values);
+
+  return result.rows.map((row) => ({
+    version: row.version,
+    title: row.title,
+    description: row.description,
+    createdAt: row.created_at,
+    isActive: row.is_active,
+  }));
+}

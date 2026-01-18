@@ -8,17 +8,16 @@ interface RecipeActionButtonsProps {
   recipeSlug: string;
   recipeName: string;
   editLabel: string;
-  shareLabel: string;
 }
 
 /**
- * Client component for recipe action buttons (Edit, Add to Collection, Share).
+ * Client component for recipe action buttons (Edit, Add to Collection).
+ * Share functionality is handled by ShareRecipeSection component.
  */
 export function RecipeActionButtons({
   recipeSlug,
   recipeName,
   editLabel,
-  shareLabel,
 }: RecipeActionButtonsProps) {
   const [showAddToCollectionModal, setShowAddToCollectionModal] =
     useState(false);
@@ -51,13 +50,6 @@ export function RecipeActionButtons({
             />
           </svg>
           <span className="hidden sm:inline">Add to Collection</span>
-        </button>
-        <button
-          disabled
-          className="inline-flex cursor-not-allowed items-center justify-center rounded-full bg-slate-800 px-4 py-2 text-sm font-medium text-slate-500"
-          title="Coming soon"
-        >
-          {shareLabel}
         </button>
       </div>
 
