@@ -29,6 +29,8 @@ interface RecipeFormProps {
   tagCategories?: Partial<Record<TagCategory, TagCategoryInfo>>;
   /** Default locale for new recipes (from user preferences) */
   defaultLocale?: string;
+  /** Initial image URL (from photo capture redirect) */
+  initialImageUrl?: string;
 }
 
 interface FormState {
@@ -71,6 +73,7 @@ export function RecipeForm({
   predefinedTags = [],
   tagCategories = {},
   defaultLocale = 'en-US',
+  initialImageUrl,
 }: RecipeFormProps) {
   const router = useRouter();
   const isEditing = Boolean(slug);
@@ -88,6 +91,13 @@ export function RecipeForm({
         ingredientGroups: initialRecipe.ingredientGroups,
         steps: initialRecipe.steps,
         images: initialRecipe.images,
+      };
+    }
+    // If initialImageUrl is provided (from photo capture), pre-populate images
+    if (initialImageUrl) {
+      return {
+        ...DEFAULT_FORM_STATE,
+        images: [{ url: initialImageUrl, isPrimary: true }],
       };
     }
     return DEFAULT_FORM_STATE;

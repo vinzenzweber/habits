@@ -199,7 +199,9 @@ describe('image-utils', () => {
       expect(ALLOWED_IMAGE_TYPES).toContain('image/png');
       expect(ALLOWED_IMAGE_TYPES).toContain('image/webp');
       expect(ALLOWED_IMAGE_TYPES).toContain('image/gif');
-      expect(ALLOWED_IMAGE_TYPES).toHaveLength(4);
+      expect(ALLOWED_IMAGE_TYPES).toContain('image/heic');
+      expect(ALLOWED_IMAGE_TYPES).toContain('image/heif');
+      expect(ALLOWED_IMAGE_TYPES).toHaveLength(6);
     });
   });
 });

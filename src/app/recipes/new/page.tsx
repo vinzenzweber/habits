@@ -8,7 +8,11 @@ import { PREDEFINED_TAGS, TAG_CATEGORIES } from '@/lib/predefined-tags';
 
 export const dynamic = 'force-dynamic';
 
-export default async function NewRecipePage() {
+export default async function NewRecipePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ image?: string }>;
+}) {
   const session = await auth();
   if (!session?.user) {
     redirect('/login');
@@ -19,6 +23,10 @@ export default async function NewRecipePage() {
 
   // Get existing tags for autocomplete
   const existingTags = await getUserTags();
+
+  // Get initial image URL from search params (if redirected from photo capture)
+  const params = await searchParams;
+  const initialImageUrl = params.image;
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
@@ -47,6 +55,7 @@ export default async function NewRecipePage() {
           predefinedTags={PREDEFINED_TAGS}
           tagCategories={TAG_CATEGORIES}
           defaultLocale={userLocale}
+          initialImageUrl={initialImageUrl}
         />
       </div>
     </main>
