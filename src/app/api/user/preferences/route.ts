@@ -28,8 +28,9 @@ export async function GET() {
       unit_system: string;
       default_recipe_locale: string | null;
       show_measurement_conversions: boolean;
+      user_region_timezone: string | null;
     }>(
-      `SELECT timezone, locale, unit_system, default_recipe_locale, show_measurement_conversions FROM users WHERE id = $1`,
+      `SELECT timezone, locale, unit_system, default_recipe_locale, show_measurement_conversions, user_region_timezone FROM users WHERE id = $1`,
       [session.user.id]
     );
 
@@ -44,6 +45,7 @@ export async function GET() {
       unitSystem: (row.unit_system as UnitSystem) ?? 'metric',
       defaultRecipeLocale: row.default_recipe_locale ?? null,
       showMeasurementConversions: row.show_measurement_conversions ?? false,
+      userRegionTimezone: row.user_region_timezone ?? null,
     };
 
     return Response.json(preferences);
@@ -65,7 +67,7 @@ export async function PUT(request: Request) {
 
   try {
     const body = await request.json();
-    const { timezone, locale, unitSystem, defaultRecipeLocale, showMeasurementConversions } = body;
+    const { timezone, locale, unitSystem, defaultRecipeLocale, showMeasurementConversions, userRegionTimezone } = body;
 
     // Validate all fields
     const errors: string[] = [];
@@ -88,6 +90,11 @@ export async function PUT(request: Request) {
 
     if (showMeasurementConversions !== undefined && typeof showMeasurementConversions !== 'boolean') {
       errors.push("Show measurement conversions must be a boolean");
+    }
+
+    // Validate userRegionTimezone (empty string = null = auto-detect, otherwise must be valid timezone)
+    if (userRegionTimezone !== undefined && userRegionTimezone !== '' && !isValidTimezone(userRegionTimezone)) {
+      errors.push("Invalid region timezone");
     }
 
     if (errors.length > 0) {
@@ -130,6 +137,13 @@ export async function PUT(request: Request) {
       paramIndex++;
     }
 
+    if (userRegionTimezone !== undefined) {
+      // Convert empty string to null for database storage
+      updates.push(`user_region_timezone = $${paramIndex}`);
+      values.push(userRegionTimezone === '' ? null : userRegionTimezone);
+      paramIndex++;
+    }
+
     if (updates.length === 0) {
       return Response.json({ error: "No valid fields to update" }, { status: 400 });
     }
@@ -149,8 +163,9 @@ export async function PUT(request: Request) {
       unit_system: string;
       default_recipe_locale: string | null;
       show_measurement_conversions: boolean;
+      user_region_timezone: string | null;
     }>(
-      `SELECT timezone, locale, unit_system, default_recipe_locale, show_measurement_conversions FROM users WHERE id = $1`,
+      `SELECT timezone, locale, unit_system, default_recipe_locale, show_measurement_conversions, user_region_timezone FROM users WHERE id = $1`,
       [session.user.id]
     );
 
@@ -161,6 +176,7 @@ export async function PUT(request: Request) {
       unitSystem: (row.unit_system as UnitSystem) ?? 'metric',
       defaultRecipeLocale: row.default_recipe_locale ?? null,
       showMeasurementConversions: row.show_measurement_conversions ?? false,
+      userRegionTimezone: row.user_region_timezone ?? null,
     };
 
     // Trigger session update with new preferences to refresh the JWT
@@ -173,6 +189,7 @@ export async function PUT(request: Request) {
           unitSystem: updatedPreferences.unitSystem,
           defaultRecipeLocale: updatedPreferences.defaultRecipeLocale,
           showMeasurementConversions: updatedPreferences.showMeasurementConversions,
+          userRegionTimezone: updatedPreferences.userRegionTimezone,
         },
       });
     } catch (sessionUpdateError) {

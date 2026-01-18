@@ -288,7 +288,7 @@ describe('/api/user/preferences', () => {
         })
         mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as never)
         mockQuery.mockResolvedValueOnce({
-          rows: [{ timezone: 'Asia/Tokyo', locale: 'ja-JP', unit_system: 'imperial', default_recipe_locale: null, show_measurement_conversions: false }],
+          rows: [{ timezone: 'Asia/Tokyo', locale: 'ja-JP', unit_system: 'imperial', default_recipe_locale: null, show_measurement_conversions: false, user_region_timezone: null }],
           rowCount: 1
         } as never)
         mockUnstableUpdate.mockResolvedValueOnce(undefined)
@@ -308,7 +308,8 @@ describe('/api/user/preferences', () => {
             locale: 'ja-JP',
             unitSystem: 'imperial',
             defaultRecipeLocale: null,
-            showMeasurementConversions: false
+            showMeasurementConversions: false,
+            userRegionTimezone: null
           }
         })
       })
@@ -321,7 +322,7 @@ describe('/api/user/preferences', () => {
         mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as never)
         // DB returns null values
         mockQuery.mockResolvedValueOnce({
-          rows: [{ timezone: null, locale: null, unit_system: null, default_recipe_locale: null, show_measurement_conversions: null }],
+          rows: [{ timezone: null, locale: null, unit_system: null, default_recipe_locale: null, show_measurement_conversions: null, user_region_timezone: null }],
           rowCount: 1
         } as never)
         mockUnstableUpdate.mockResolvedValueOnce(undefined)
@@ -336,7 +337,8 @@ describe('/api/user/preferences', () => {
             locale: 'en-US',
             unitSystem: 'metric',
             defaultRecipeLocale: null,
-            showMeasurementConversions: false
+            showMeasurementConversions: false,
+            userRegionTimezone: null
           }
         })
       })

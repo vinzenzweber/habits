@@ -16,6 +16,7 @@ import {
   generateSlug,
 } from "./recipe-types";
 import { getUniqueSlug } from "./recipes";
+import { getRegionalIngredientContext } from "./regional-ingredients";
 
 // ============================================
 // Tool Response Types
@@ -364,12 +365,21 @@ const LOCALE_NAMES: Record<TranslationLocale, string> = {
 /**
  * Translate a recipe to a different language and optionally adapt measurements.
  * Uses GPT to perform intelligent translation including locale-appropriate ingredient names.
+ *
+ * @param openai - OpenAI client instance
+ * @param userId - User ID
+ * @param recipeId - Recipe ID to translate
+ * @param targetLocale - Target locale for translation
+ * @param targetRegion - Target user region for ingredient adaptation (e.g., "Austria", "Germany")
+ * @param adaptMeasurements - Whether to convert measurements to target locale system
+ * @param saveAsNew - Whether to save the translation as a new version
  */
 export async function translateRecipeTool(
   openai: OpenAI,
   userId: string,
   recipeId: number,
   targetLocale: TranslationLocale,
+  targetRegion: string | null = null,
   adaptMeasurements: boolean = true,
   saveAsNew: boolean = false
 ): Promise<TranslateRecipeResult> {
@@ -436,6 +446,22 @@ Use round, practical numbers (e.g., 1/2 cup instead of 0.42 cups).`;
     measurementInstructions = 'Measurements are already in the correct system. Keep them as-is but translate unit names if needed.';
   }
 
+  // Build regional context if target region is specified
+  const regionContext = targetRegion
+    ? `
+4. REGIONAL INGREDIENT ADAPTATION:
+   - Target user region: ${targetRegion}
+   - ${getRegionalIngredientContext(targetRegion)}
+   - Adapt ALL ingredient names to match ${targetRegion} regional terminology
+   - This is CRITICAL: Use regional variants (e.g., for Austria use "Schlagobers" not "Sahne")`
+    : '';
+
+  // Adjust numbering based on whether region context is included
+  const slugNumber = targetRegion ? '5' : '4';
+  const localeNumber = targetRegion ? '6' : '5';
+  const preserveNumber = targetRegion ? '7' : '6';
+  const noModifyNumber = targetRegion ? '8' : '7';
+
   // Build the GPT prompt
   const prompt = `You are a professional recipe translator. Translate this recipe from ${LOCALE_NAMES[sourceLocale as TranslationLocale] || sourceLocale} to ${LOCALE_NAMES[targetLocale]}.
 
@@ -452,14 +478,15 @@ Use round, practical numbers (e.g., 1/2 cup instead of 0.42 cups).`;
 
 3. Measurement handling:
 ${measurementInstructions}
+${regionContext}
 
-4. Update the slug to be URL-friendly in the target language.
+${slugNumber}. Update the slug to be URL-friendly in the target language.
 
-5. Update the locale field to "${targetLocale}".
+${localeNumber}. Update the locale field to "${targetLocale}".
 
-6. Preserve the exact JSON structure - only change text values and numbers for conversions.
+${preserveNumber}. Preserve the exact JSON structure - only change text values and numbers for conversions.
 
-7. Do NOT modify: nutrition values, servings count, times, or image URLs.
+${noModifyNumber}. Do NOT modify: nutrition values, servings count, times, or image URLs.
 
 **Source Recipe:**
 ${JSON.stringify(sourceRecipeJson, null, 2)}
