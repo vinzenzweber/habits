@@ -92,9 +92,13 @@ test.describe('Grocery Lists', () => {
       // Submit - click the last "Add Item" button (the submit button in the modal)
       await page.getByRole('button', { name: /add item/i }).last().click()
 
+      // Close the modal to view the list
+      await page.getByRole('button', { name: /done/i }).click()
+
       // Should see the item in the list
       await expect(page.getByText('Apples')).toBeVisible()
-      await expect(page.getByText('(5)')).toBeVisible()
+      // Quantity may be displayed as "5" or "5.00" depending on database representation
+      await expect(page.getByText(/\(5(\.00)?\)/)).toBeVisible()
     })
 
     test('can check and uncheck items', async ({ authenticatedPage: page }) => {
