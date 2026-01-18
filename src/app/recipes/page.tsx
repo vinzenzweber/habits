@@ -3,10 +3,12 @@ import { Suspense } from "react";
 
 import { auth } from "@/lib/auth";
 import { getUserRecipeSummaries, getUserTags } from "@/lib/recipes";
+import { getUserCollections, getReceivedCollections } from "@/lib/collection-db";
 import { getSharedWithMe } from "@/lib/recipe-sharing";
 import { LogoutButton } from "@/components/LogoutButton";
 import { RecipeListClient } from "@/components/RecipeListClient";
 import { RecipePageHeader } from "@/components/RecipePageHeader";
+import { CollectionsSectionWrapper } from "@/components/CollectionsSectionWrapper";
 import { PREDEFINED_TAGS } from "@/lib/predefined-tags";
 import { getRecipeSharingTranslations } from "@/lib/translations/recipe-sharing";
 
@@ -18,14 +20,16 @@ export default async function RecipesPage() {
     redirect("/login");
   }
 
-  const userId = parseInt(session.user.id, 10);
+  const userId = Number(session.user.id);
   const userLocale = session.user.locale ?? 'en-US';
   const sharingTranslations = getRecipeSharingTranslations(userLocale);
 
   // Parallel data fetching
-  const [recipes, availableTags, sharedRecipes] = await Promise.all([
+  const [recipes, availableTags, collections, receivedCollections, sharedRecipes] = await Promise.all([
     getUserRecipeSummaries(),
     getUserTags(),
+    getUserCollections(userId),
+    getReceivedCollections(userId),
     getSharedWithMe(userId),
   ]);
 
@@ -42,6 +46,12 @@ export default async function RecipesPage() {
 
         {/* Title section with Add and Camera buttons */}
         <RecipePageHeader />
+
+        {/* Collections section */}
+        <CollectionsSectionWrapper
+          initialCollections={collections}
+          initialReceivedCollections={receivedCollections}
+        />
 
         {/* Search, filter, and recipe list - wrapped in Suspense for useSearchParams */}
         <Suspense fallback={<RecipeListSkeleton />}>

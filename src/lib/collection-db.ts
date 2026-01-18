@@ -685,3 +685,23 @@ export async function getUserByEmail(
 
   return result.rows[0];
 }
+
+/**
+ * Get collection IDs that contain a specific recipe (for the user).
+ * Used to check which collections a recipe is already in.
+ */
+export async function getCollectionIdsForRecipe(
+  userId: number,
+  recipeSlug: string
+): Promise<number[]> {
+  const result = await query<{ collection_id: number }>(
+    `SELECT DISTINCT rci.collection_id
+     FROM recipe_collection_items rci
+     JOIN recipe_collections rc ON rc.id = rci.collection_id
+     JOIN recipes r ON r.id = rci.recipe_id
+     WHERE rc.user_id = $1 AND r.slug = $2 AND r.is_active = true`,
+    [userId, recipeSlug]
+  );
+
+  return result.rows.map((row) => row.collection_id);
+}

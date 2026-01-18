@@ -11,13 +11,20 @@ import { getTagById, getTagColorClass } from "@/lib/predefined-tags";
 interface RecipeCardProps {
   recipe: RecipeSummary;
   href?: string; // Optional override for navigation (defaults to /recipes/[slug])
+  showAddToCollection?: boolean; // Show add-to-collection button
+  onAddToCollection?: () => void; // Callback when add button is clicked
 }
 
 /**
  * Card component for displaying recipe summaries in a list view.
  * Shows image, title, description, tags, time, and servings.
  */
-export function RecipeCard({ recipe, href }: RecipeCardProps) {
+export function RecipeCard({
+  recipe,
+  href,
+  showAddToCollection,
+  onAddToCollection,
+}: RecipeCardProps) {
   const [imageError, setImageError] = useState(false);
 
   const linkHref = href ?? `/recipes/${recipe.slug}`;
@@ -66,6 +73,33 @@ export function RecipeCard({ recipe, href }: RecipeCardProps) {
           <div className="flex h-full items-center justify-center text-4xl">
             🍳
           </div>
+        )}
+
+        {/* Add to collection button */}
+        {showAddToCollection && onAddToCollection && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onAddToCollection();
+            }}
+            className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-slate-900/80 text-slate-300 backdrop-blur transition hover:bg-slate-800 hover:text-emerald-400"
+            aria-label={`Add ${recipe.title} to collection`}
+          >
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+          </button>
         )}
       </div>
 
