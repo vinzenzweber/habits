@@ -236,6 +236,7 @@ Real-time collaborative grocery/shopping lists with sharing support.
 ### Features
 
 - Create and manage grocery lists
+- Generate grocery lists from selected recipes (with ingredient consolidation)
 - Share lists with other users (view or edit permissions)
 - Real-time sync via polling (5-second intervals)
 - Items grouped by category with check-off tracking
@@ -254,11 +255,14 @@ Real-time collaborative grocery/shopping lists with sharing support.
 - `POST /api/grocery-lists/[id]/share` - Share list with user
 - `DELETE /api/grocery-lists/[id]/share` - Remove share
 - `GET /api/grocery-lists/[id]/sync` - Get list updates for real-time sync
+- `POST /api/grocery-lists/generate` - Generate grocery list from recipes
 
 ### Key Files
 
 - `src/lib/grocery-utils.ts` - Utility functions (grouping, formatting)
 - `src/lib/grocery-db.ts` - Database queries for grocery lists
+- `src/lib/ingredient-consolidation.ts` - Consolidate duplicate ingredients across recipes
+- `src/lib/ingredient-categorization.ts` - Assign grocery categories to ingredients
 - `src/components/GroceryListDetailClient.tsx` - Main list detail UI
 - `src/components/ShoppingModeClient.tsx` - Full-screen shopping mode
 - `src/components/ShareGroceryListModal.tsx` - Sharing UI
