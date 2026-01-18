@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { AddToCollectionModal } from "./AddToCollectionModal";
 import { AddToGroceryListModal } from "./AddToGroceryListModal";
+import { TranslateRecipeModal } from "./TranslateRecipeModal";
 import { FavoriteButton } from "./FavoriteButton";
 
 interface RecipeActionButtonsProps {
@@ -14,10 +15,25 @@ interface RecipeActionButtonsProps {
   recipeId: number;
   defaultServings: number;
   ingredientCount: number;
+  currentLocale: string;
+  translateLabel: string;
+  translateTranslations: {
+    title: string;
+    translatingRecipe: string;
+    selectLanguage: string;
+    adaptMeasurements: string;
+    adaptMeasurementsDescription: string;
+    preview: string;
+    saveTranslation: string;
+    translating: string;
+    translationPreview: string;
+    close: string;
+    cancel: string;
+  };
 }
 
 /**
- * Client component for recipe action buttons (Edit, Add to Collection).
+ * Client component for recipe action buttons (Edit, Add to Collection, Translate).
  * Share functionality is handled by ShareRecipeSection component.
  */
 export function RecipeActionButtons({
@@ -28,11 +44,15 @@ export function RecipeActionButtons({
   recipeId,
   defaultServings,
   ingredientCount,
+  currentLocale,
+  translateLabel,
+  translateTranslations,
 }: RecipeActionButtonsProps) {
   const [showAddToCollectionModal, setShowAddToCollectionModal] =
     useState(false);
   const [showAddToGroceryListModal, setShowAddToGroceryListModal] =
     useState(false);
+  const [showTranslateModal, setShowTranslateModal] = useState(false);
 
   return (
     <>
@@ -89,6 +109,26 @@ export function RecipeActionButtons({
           </svg>
           <span className="hidden sm:inline">Add to List</span>
         </button>
+        <button
+          onClick={() => setShowTranslateModal(true)}
+          className="inline-flex items-center justify-center gap-1.5 rounded-full bg-slate-800 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700"
+          title={translateLabel}
+        >
+          <svg
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"
+            />
+          </svg>
+          <span className="hidden sm:inline">{translateLabel}</span>
+        </button>
       </div>
 
       <AddToCollectionModal
@@ -110,6 +150,19 @@ export function RecipeActionButtons({
         ingredientCount={ingredientCount}
         onSuccess={() => {
           // Success feedback could be added here
+        }}
+      />
+
+      <TranslateRecipeModal
+        isOpen={showTranslateModal}
+        onClose={() => setShowTranslateModal(false)}
+        recipeSlug={recipeSlug}
+        recipeName={recipeName}
+        recipeId={recipeId}
+        currentLocale={currentLocale}
+        translations={translateTranslations}
+        onSuccess={() => {
+          // Success - could navigate to translated version
         }}
       />
     </>

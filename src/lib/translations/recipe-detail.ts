@@ -29,6 +29,19 @@ export type RecipeDetailTranslations = {
   ratingHistory: string;
   version: string;
   noRatings: string;
+  // Translation modal translations
+  translate: string;
+  translateTitle: string;
+  translatingRecipe: string;
+  selectLanguage: string;
+  adaptMeasurements: string;
+  adaptMeasurementsDescription: string;
+  preview: string;
+  saveTranslation: string;
+  translating: string;
+  translationPreview: string;
+  close: string;
+  cancel: string;
 };
 
 const translations: Record<string, RecipeDetailTranslations> = {
@@ -57,6 +70,18 @@ const translations: Record<string, RecipeDetailTranslations> = {
     ratingHistory: 'Rating History',
     version: 'Version',
     noRatings: 'No ratings yet',
+    translate: 'Translate',
+    translateTitle: 'Translate Recipe',
+    translatingRecipe: 'Translating',
+    selectLanguage: 'Select target language',
+    adaptMeasurements: 'Convert measurements',
+    adaptMeasurementsDescription: 'Automatically convert between metric and imperial units',
+    preview: 'Preview Translation',
+    saveTranslation: 'Save Translation',
+    translating: 'Translating...',
+    translationPreview: 'Translation Preview',
+    close: 'Close',
+    cancel: 'Cancel',
   },
   'de-DE': {
     backToRecipes: '← Zurück zu Rezepten',
@@ -83,6 +108,18 @@ const translations: Record<string, RecipeDetailTranslations> = {
     ratingHistory: 'Bewertungsverlauf',
     version: 'Version',
     noRatings: 'Noch keine Bewertungen',
+    translate: 'Übersetzen',
+    translateTitle: 'Rezept übersetzen',
+    translatingRecipe: 'Übersetze',
+    selectLanguage: 'Zielsprache auswählen',
+    adaptMeasurements: 'Maßeinheiten umrechnen',
+    adaptMeasurementsDescription: 'Automatisch zwischen metrischen und imperialen Einheiten umrechnen',
+    preview: 'Vorschau',
+    saveTranslation: 'Übersetzung speichern',
+    translating: 'Übersetze...',
+    translationPreview: 'Übersetzungsvorschau',
+    close: 'Schließen',
+    cancel: 'Abbrechen',
   },
   'fr-FR': {
     backToRecipes: '← Retour aux recettes',
@@ -109,6 +146,18 @@ const translations: Record<string, RecipeDetailTranslations> = {
     ratingHistory: 'Historique des notes',
     version: 'Version',
     noRatings: 'Pas encore de notes',
+    translate: 'Traduire',
+    translateTitle: 'Traduire la recette',
+    translatingRecipe: 'Traduction de',
+    selectLanguage: 'Choisir la langue cible',
+    adaptMeasurements: 'Convertir les mesures',
+    adaptMeasurementsDescription: 'Convertir automatiquement entre unités métriques et impériales',
+    preview: 'Aperçu',
+    saveTranslation: 'Enregistrer la traduction',
+    translating: 'Traduction en cours...',
+    translationPreview: 'Aperçu de la traduction',
+    close: 'Fermer',
+    cancel: 'Annuler',
   },
   'es-ES': {
     backToRecipes: '← Volver a recetas',
@@ -135,6 +184,18 @@ const translations: Record<string, RecipeDetailTranslations> = {
     ratingHistory: 'Historial de valoraciones',
     version: 'Versión',
     noRatings: 'Sin valoraciones aún',
+    translate: 'Traducir',
+    translateTitle: 'Traducir receta',
+    translatingRecipe: 'Traduciendo',
+    selectLanguage: 'Seleccionar idioma destino',
+    adaptMeasurements: 'Convertir medidas',
+    adaptMeasurementsDescription: 'Convertir automáticamente entre unidades métricas e imperiales',
+    preview: 'Vista previa',
+    saveTranslation: 'Guardar traducción',
+    translating: 'Traduciendo...',
+    translationPreview: 'Vista previa de la traducción',
+    close: 'Cerrar',
+    cancel: 'Cancelar',
   },
   'it-IT': {
     backToRecipes: '← Torna alle ricette',
@@ -161,6 +222,18 @@ const translations: Record<string, RecipeDetailTranslations> = {
     ratingHistory: 'Cronologia valutazioni',
     version: 'Versione',
     noRatings: 'Nessuna valutazione ancora',
+    translate: 'Traduci',
+    translateTitle: 'Traduci ricetta',
+    translatingRecipe: 'Traduzione di',
+    selectLanguage: 'Seleziona lingua di destinazione',
+    adaptMeasurements: 'Converti misure',
+    adaptMeasurementsDescription: 'Converti automaticamente tra unità metriche e imperiali',
+    preview: 'Anteprima',
+    saveTranslation: 'Salva traduzione',
+    translating: 'Traduzione in corso...',
+    translationPreview: 'Anteprima traduzione',
+    close: 'Chiudi',
+    cancel: 'Annulla',
   },
   'nl-NL': {
     backToRecipes: '← Terug naar recepten',
@@ -187,6 +260,18 @@ const translations: Record<string, RecipeDetailTranslations> = {
     ratingHistory: 'Beoordelingsgeschiedenis',
     version: 'Versie',
     noRatings: 'Nog geen beoordelingen',
+    translate: 'Vertalen',
+    translateTitle: 'Recept vertalen',
+    translatingRecipe: 'Vertaling van',
+    selectLanguage: 'Selecteer doeltaal',
+    adaptMeasurements: 'Maateenheden converteren',
+    adaptMeasurementsDescription: 'Automatisch converteren tussen metrische en imperiale eenheden',
+    preview: 'Voorbeeld',
+    saveTranslation: 'Vertaling opslaan',
+    translating: 'Vertalen...',
+    translationPreview: 'Vertaalvoorbeeld',
+    close: 'Sluiten',
+    cancel: 'Annuleren',
   },
   'pt-BR': {
     backToRecipes: '← Voltar para receitas',
@@ -213,6 +298,18 @@ const translations: Record<string, RecipeDetailTranslations> = {
     ratingHistory: 'Histórico de avaliações',
     version: 'Versão',
     noRatings: 'Sem avaliações ainda',
+    translate: 'Traduzir',
+    translateTitle: 'Traduzir receita',
+    translatingRecipe: 'Traduzindo',
+    selectLanguage: 'Selecionar idioma de destino',
+    adaptMeasurements: 'Converter medidas',
+    adaptMeasurementsDescription: 'Converter automaticamente entre unidades métricas e imperiais',
+    preview: 'Visualizar',
+    saveTranslation: 'Salvar tradução',
+    translating: 'Traduzindo...',
+    translationPreview: 'Prévia da tradução',
+    close: 'Fechar',
+    cancel: 'Cancelar',
   },
   'ja-JP': {
     backToRecipes: '← レシピ一覧に戻る',
@@ -239,6 +336,18 @@ const translations: Record<string, RecipeDetailTranslations> = {
     ratingHistory: '評価履歴',
     version: 'バージョン',
     noRatings: 'まだ評価がありません',
+    translate: '翻訳',
+    translateTitle: 'レシピを翻訳',
+    translatingRecipe: '翻訳中',
+    selectLanguage: '翻訳先言語を選択',
+    adaptMeasurements: '計量単位を変換',
+    adaptMeasurementsDescription: 'メートル法とヤードポンド法の単位を自動変換',
+    preview: 'プレビュー',
+    saveTranslation: '翻訳を保存',
+    translating: '翻訳中...',
+    translationPreview: '翻訳プレビュー',
+    close: '閉じる',
+    cancel: 'キャンセル',
   },
   'zh-CN': {
     backToRecipes: '← 返回食谱列表',
@@ -265,6 +374,18 @@ const translations: Record<string, RecipeDetailTranslations> = {
     ratingHistory: '评分历史',
     version: '版本',
     noRatings: '暂无评分',
+    translate: '翻译',
+    translateTitle: '翻译食谱',
+    translatingRecipe: '正在翻译',
+    selectLanguage: '选择目标语言',
+    adaptMeasurements: '转换计量单位',
+    adaptMeasurementsDescription: '自动在公制和英制单位之间转换',
+    preview: '预览',
+    saveTranslation: '保存翻译',
+    translating: '翻译中...',
+    translationPreview: '翻译预览',
+    close: '关闭',
+    cancel: '取消',
   },
 };
 
