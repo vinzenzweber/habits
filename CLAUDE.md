@@ -54,6 +54,9 @@ Applied migrations are tracked in the `_migrations` table.
   - `/workouts/nano/play` — Nano workout player
   - `/recipes` — Recipe list page with search and empty state
   - `/recipes/[slug]` — Recipe detail page with image gallery and nutrition info
+  - `/grocery-lists` — Grocery lists overview (owned + shared lists)
+  - `/grocery-lists/[id]` — Grocery list detail with items grouped by category
+  - `/grocery-lists/[id]/shop` — Full-screen shopping mode with large touch targets
 
 ### Core Data Model
 
@@ -225,6 +228,40 @@ Uses PostgreSQL with the following tables:
 
 All workout, chat, recipe, and grocery data is scoped per user (user_id foreign key).
 Exercise library is global (shared across all users).
+
+## Grocery Lists
+
+Real-time collaborative grocery/shopping lists with sharing support.
+
+### Features
+
+- Create and manage grocery lists
+- Share lists with other users (view or edit permissions)
+- Real-time sync via polling (5-second intervals)
+- Items grouped by category with check-off tracking
+- Shopping mode with large touch targets and wake lock
+
+### API Endpoints
+
+- `GET /api/grocery-lists` - List all (owned + shared)
+- `POST /api/grocery-lists` - Create new list
+- `GET /api/grocery-lists/[id]` - Get list with items and sharing info
+- `DELETE /api/grocery-lists/[id]` - Delete list (owner only)
+- `POST /api/grocery-lists/[id]/items` - Add item to list
+- `PATCH /api/grocery-lists/items/[itemId]` - Update/toggle item
+- `DELETE /api/grocery-lists/items/[itemId]` - Remove item
+- `DELETE /api/grocery-lists/[id]/checked` - Clear all checked items
+- `POST /api/grocery-lists/[id]/share` - Share list with user
+- `DELETE /api/grocery-lists/[id]/share` - Remove share
+- `GET /api/grocery-lists/[id]/sync` - Get list updates for real-time sync
+
+### Key Files
+
+- `src/lib/grocery-utils.ts` - Utility functions (grouping, formatting)
+- `src/lib/grocery-db.ts` - Database queries for grocery lists
+- `src/components/GroceryListDetailClient.tsx` - Main list detail UI
+- `src/components/ShoppingModeClient.tsx` - Full-screen shopping mode
+- `src/components/ShareGroceryListModal.tsx` - Sharing UI
 
 ## Environment Variables
 
