@@ -30,7 +30,9 @@ export default async function GroceryListDetailPage({ params }: PageProps) {
   }
 
   // Get user names for checked-by display
-  const checkedByNames = new Map<number, string | null>();
+  // Using a plain object (Record) instead of Map for JSON serialization
+  // when passing props from Server to Client Components
+  const checkedByNames: Record<number, string | null> = {};
 
   // Collect all unique user IDs that checked items
   const checkerUserIds = new Set<number>();
@@ -57,7 +59,7 @@ export default async function GroceryListDetailPage({ params }: PageProps) {
     // Map item IDs to checker names
     for (const item of list.items) {
       if (item.checkedByUserId) {
-        checkedByNames.set(item.id, userIdToName.get(item.checkedByUserId) ?? null);
+        checkedByNames[item.id] = userIdToName.get(item.checkedByUserId) ?? null;
       }
     }
   }

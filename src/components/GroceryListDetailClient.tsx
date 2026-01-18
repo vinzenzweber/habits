@@ -18,7 +18,7 @@ import { ShareGroceryListModal } from "./ShareGroceryListModal";
 
 interface GroceryListDetailClientProps {
   initialList: GroceryListWithItems;
-  checkedByNames: Map<number, string | null>;
+  checkedByNames: Record<number, string | null>;
 }
 
 /**
@@ -69,7 +69,7 @@ export function GroceryListDetailClient({
           lastUpdated.current = new Date(data.updatedAt);
 
           // Update user names for newly checked items
-          const newNames = new Map(userNames);
+          const newNames = { ...userNames };
           for (const item of data.list.items as GroceryListItem[]) {
             if (item.checked && item.checkedByUserId) {
               // We might need to look up the user name
@@ -373,7 +373,7 @@ export function GroceryListDetailClient({
                     <GroceryItem
                       key={item.id}
                       item={item}
-                      checkedByUserName={userNames.get(item.id)}
+                      checkedByUserName={userNames[item.id]}
                       permission={list.permission}
                       onToggle={handleToggleItem}
                       onDelete={handleDeleteItem}
