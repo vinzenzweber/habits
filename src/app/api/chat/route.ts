@@ -703,7 +703,7 @@ async function executeTool(
   openai: OpenAI,
   userId: string,
   toolCall: OpenAI.Chat.Completions.ChatCompletionMessageToolCall,
-  userLocale: string = 'en-US'
+  recipeLocale: string = 'en-US'
 ): Promise<string> {
   // Only handle function tool calls
   if (toolCall.type !== 'function') {
@@ -882,13 +882,14 @@ async function executeTool(
 
     case "create_recipe":
       try {
+        // Use recipeLocale from user preferences as default when creating recipes
         const createResult = await createRecipeTool(userId, {
           title: args.title,
           description: args.description,
           locale: args.locale,
           tags: args.tags,
           recipeJson: args.recipeJson
-        }, userLocale);
+        }, recipeLocale);
         result = createResult;
       } catch (error) {
         result = { error: "Failed to create recipe", message: error instanceof Error ? error.message : "Unknown error" };
@@ -1002,6 +1003,8 @@ export async function POST(request: Request) {
     const userTimezone = session.user.timezone ?? 'UTC';
     const userLocale = session.user.locale ?? 'en-US';
     const userUnitSystem = session.user.unitSystem ?? 'metric';
+    // Recipe locale: use specific preference if set, otherwise fall back to general locale
+    const recipeLocale = session.user.defaultRecipeLocale || userLocale;
 
     // Format unit system description for AI
     const unitSystemDescription = userUnitSystem === 'metric'
@@ -1016,7 +1019,9 @@ export async function POST(request: Request) {
 
 **User Preferences:**
 - Unit System: ${userUnitSystem} (use ${unitSystemDescription} for all measurements)
+- Default Recipe Language: ${recipeLocale}
 - When discussing weights, measurements, temperatures, or creating recipes/workout content, always use the user's preferred unit system
+- When creating new recipes, use ${recipeLocale} for the recipe content (titles, descriptions, ingredients, instructions)
 
 **User Profile (from memory):**
 ${memoryContext}${pageContextSection}${instructionSection}`;
@@ -1088,7 +1093,7 @@ ${memoryContext}${pageContextSection}${instructionSection}`;
               const displayName = TOOL_DISPLAY_NAMES[toolName] || toolName;
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "tool_start", tool: displayName })}\n\n`));
 
-              const result = await executeTool(openai, userId, toolCall, userLocale);
+              const result = await executeTool(openai, userId, toolCall, recipeLocale);
               apiMessages.push({
                 role: "tool",
                 tool_call_id: toolCall.id,

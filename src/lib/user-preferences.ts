@@ -10,6 +10,17 @@ export interface UserPreferences {
   unitSystem: UnitSystem;
 }
 
+export interface RecipePreferences {
+  defaultRecipeLocale: string | null;  // null = use general locale
+  measurementSystem: UnitSystem;        // reuses existing unit system
+  showMeasurementConversions: boolean;
+}
+
+export interface UserPreferencesWithRecipe extends UserPreferences {
+  defaultRecipeLocale: string | null;
+  showMeasurementConversions: boolean;
+}
+
 // Common timezones for dropdown selection
 export const COMMON_TIMEZONES = [
   { value: 'UTC', label: 'UTC' },
@@ -56,11 +67,30 @@ export const UNIT_SYSTEMS = [
   { value: 'imperial' as const, label: 'Imperial (lbs, in, °F)' },
 ] as const;
 
+// Recipe locale options for dropdown selection
+// These are the languages supported for AI-generated recipe content
+export const RECIPE_LOCALE_OPTIONS = [
+  { value: '', label: 'Use Language & Region setting' },
+  { value: 'de-DE', label: 'German (Deutsch)' },
+  { value: 'en-US', label: 'English (US)' },
+  { value: 'en-GB', label: 'English (UK)' },
+  { value: 'es-ES', label: 'Spanish (Español)' },
+  { value: 'fr-FR', label: 'French (Français)' },
+  { value: 'it-IT', label: 'Italian (Italiano)' },
+] as const;
+
 // Default preferences for new users
 export const DEFAULT_PREFERENCES: UserPreferences = {
   timezone: 'UTC',
   locale: 'en-US',
   unitSystem: 'metric',
+};
+
+// Default recipe-specific preferences
+export const DEFAULT_RECIPE_PREFERENCES: RecipePreferences = {
+  defaultRecipeLocale: null,  // inherit from general locale
+  measurementSystem: 'metric',
+  showMeasurementConversions: false,
 };
 
 /**
@@ -112,6 +142,19 @@ export function isValidUserPreferences(prefs: unknown): prefs is UserPreferences
     isValidLocale(p.locale as string) &&
     isValidUnitSystem(p.unitSystem as string)
   );
+}
+
+/**
+ * Validates if a recipe locale is valid (null, empty string, or valid BCP 47 locale)
+ * Empty string or null means inherit from general locale
+ */
+export function isValidRecipeLocale(locale: string | null | undefined): boolean {
+  // null or empty string means inherit from general locale
+  if (locale === null || locale === undefined || locale === '') {
+    return true;
+  }
+  // Otherwise validate as a regular locale
+  return isValidLocale(locale);
 }
 
 /**

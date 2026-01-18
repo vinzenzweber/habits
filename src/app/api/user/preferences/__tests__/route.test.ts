@@ -288,7 +288,7 @@ describe('/api/user/preferences', () => {
         })
         mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as never)
         mockQuery.mockResolvedValueOnce({
-          rows: [{ timezone: 'Asia/Tokyo', locale: 'ja-JP', unit_system: 'imperial' }],
+          rows: [{ timezone: 'Asia/Tokyo', locale: 'ja-JP', unit_system: 'imperial', default_recipe_locale: null, show_measurement_conversions: false }],
           rowCount: 1
         } as never)
         mockUnstableUpdate.mockResolvedValueOnce(undefined)
@@ -306,7 +306,9 @@ describe('/api/user/preferences', () => {
           user: {
             timezone: 'Asia/Tokyo',
             locale: 'ja-JP',
-            unitSystem: 'imperial'
+            unitSystem: 'imperial',
+            defaultRecipeLocale: null,
+            showMeasurementConversions: false
           }
         })
       })
@@ -319,7 +321,7 @@ describe('/api/user/preferences', () => {
         mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 } as never)
         // DB returns null values
         mockQuery.mockResolvedValueOnce({
-          rows: [{ timezone: null, locale: null, unit_system: null }],
+          rows: [{ timezone: null, locale: null, unit_system: null, default_recipe_locale: null, show_measurement_conversions: null }],
           rowCount: 1
         } as never)
         mockUnstableUpdate.mockResolvedValueOnce(undefined)
@@ -332,7 +334,9 @@ describe('/api/user/preferences', () => {
           user: {
             timezone: 'UTC',
             locale: 'en-US',
-            unitSystem: 'metric'
+            unitSystem: 'metric',
+            defaultRecipeLocale: null,
+            showMeasurementConversions: false
           }
         })
       })

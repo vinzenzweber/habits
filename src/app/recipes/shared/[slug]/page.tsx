@@ -7,7 +7,7 @@ import { query } from "@/lib/db";
 import { getSharedRecipeById } from "@/lib/recipe-sharing";
 import { getRecipeDetailTranslations } from "@/lib/translations/recipe-detail";
 import { getRecipeSharingTranslations } from "@/lib/translations/recipe-sharing";
-import { convertIngredientUnit } from "@/lib/unit-utils";
+import { formatIngredientWithConversion } from "@/lib/unit-utils";
 import { RecipeImageGallery } from "@/components/RecipeImageGallery";
 import { PageContextSetter } from "@/components/PageContextSetter";
 import { SharedRecipeBadge } from "@/components/SharedRecipeBadge";
@@ -82,6 +82,7 @@ export default async function SharedRecipeDetailPage({
   // Get user's locale and unit system preferences
   const userLocale = session.user.locale ?? 'en-US';
   const userUnitSystem = session.user.unitSystem ?? 'metric';
+  const showMeasurementConversions = session.user.showMeasurementConversions ?? false;
   const t = getRecipeDetailTranslations(userLocale);
   const sharingT = getRecipeSharingTranslations(userLocale);
 
@@ -286,10 +287,11 @@ export default async function SharedRecipeDetailPage({
                 </div>
                 <ul className="px-5 pb-5 sm:px-6">
                   {group.ingredients.map((ingredient, index) => {
-                    const converted = convertIngredientUnit(
+                    const formattedAmount = formatIngredientWithConversion(
                       ingredient.quantity,
                       ingredient.unit,
-                      userUnitSystem
+                      userUnitSystem,
+                      showMeasurementConversions
                     );
                     return (
                       <li
@@ -297,7 +299,7 @@ export default async function SharedRecipeDetailPage({
                         className="flex items-baseline gap-2 py-2"
                       >
                         <span className="font-medium text-white">
-                          {converted.quantity} {converted.unit}
+                          {formattedAmount}
                         </span>
                         <span className="text-slate-300">{ingredient.name}</span>
                       </li>

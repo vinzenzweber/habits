@@ -137,3 +137,34 @@ export function convertIngredientUnit(
 
   return { quantity, unit };
 }
+
+/**
+ * Format ingredient with optional conversion display
+ * When showConversion is true, shows both primary and converted values
+ * e.g., "500 ml (2.1 cups)" or "2 cups (473 ml)"
+ */
+export function formatIngredientWithConversion(
+  quantity: number,
+  unit: string,
+  primarySystem: UnitSystem,
+  showConversion: boolean
+): string {
+  const primary = convertIngredientUnit(quantity, unit, primarySystem);
+  const primaryDisplay = `${primary.quantity} ${primary.unit}`;
+
+  if (!showConversion) {
+    return primaryDisplay;
+  }
+
+  // Get the opposite system's conversion
+  const oppositeSystem = primarySystem === 'metric' ? 'imperial' : 'metric';
+  const secondary = convertIngredientUnit(quantity, unit, oppositeSystem);
+
+  // Only show conversion if the unit actually changed (was converted)
+  // If the unit is the same, it means no conversion was possible (e.g., "pieces", "cloves")
+  if (secondary.unit === primary.unit && secondary.quantity === primary.quantity) {
+    return primaryDisplay;
+  }
+
+  return `${primaryDisplay} (${secondary.quantity} ${secondary.unit})`;
+}

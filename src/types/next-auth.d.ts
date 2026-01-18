@@ -12,6 +12,8 @@ declare module "next-auth" {
       locale: string;
       unitSystem: UnitSystem;
       onboardingCompleted?: boolean;
+      defaultRecipeLocale: string | null;
+      showMeasurementConversions: boolean;
     };
   }
 
@@ -24,6 +26,8 @@ declare module "next-auth" {
     timezone?: string;
     locale?: string;
     unitSystem?: UnitSystem;
+    defaultRecipeLocale?: string | null;
+    showMeasurementConversions?: boolean;
   }
 }
 
@@ -34,5 +38,7 @@ declare module "next-auth/jwt" {
     timezone?: string;
     locale?: string;
     unitSystem?: UnitSystem;
+    defaultRecipeLocale?: string | null;
+    showMeasurementConversions?: boolean;
   }
 }
