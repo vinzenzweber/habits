@@ -343,7 +343,7 @@ export async function toggleGroceryItem(
   const result = await query<GroceryListItemRow>(
     `UPDATE grocery_list_items
      SET checked = $2,
-         checked_by_user_id = CASE WHEN $2 = true THEN $3 ELSE NULL END,
+         checked_by_user_id = CASE WHEN $2 = true THEN $3::integer ELSE NULL END,
          checked_at = CASE WHEN $2 = true THEN NOW() ELSE NULL END,
          updated_at = NOW()
      WHERE id = $1
