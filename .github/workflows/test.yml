@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   unit-tests:
@@ -15,7 +16,9 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-      - run: npm ci
+      # Use npm install instead of npm ci to ensure platform-specific optional dependencies
+      # (like @rollup/rollup-linux-x64-gnu) are properly installed regardless of lockfile state
+      - run: rm -rf node_modules package-lock.json && npm install
 
       # Cache Next.js build
       - name: Cache Next.js build
@@ -61,7 +64,9 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-      - run: npm ci
+      # Use npm install instead of npm ci to ensure platform-specific optional dependencies
+      # (like lightningcss-linux-x64-gnu) are properly installed regardless of lockfile state
+      - run: rm -rf node_modules package-lock.json && npm install
 
       # Cache Playwright browsers
       - name: Get Playwright version
@@ -116,7 +121,7 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-      - run: npm ci
+      - run: rm -rf node_modules package-lock.json && npm install
 
       - name: Download blob reports
         uses: actions/download-artifact@v7
