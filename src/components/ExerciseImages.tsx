@@ -7,6 +7,7 @@ interface ExerciseImagesProps {
   exerciseName: string;
   className?: string;
   size?: 'sm' | 'md' | 'lg';
+  hasImages?: boolean; // If false, don't attempt to load images (prevents 400 errors)
 }
 
 const sizeClasses = {
@@ -15,16 +16,26 @@ const sizeClasses = {
   lg: 'w-28 h-28 sm:w-32 sm:h-32'
 };
 
+// Must match server-side VARCHAR(255) limit in exercise-library.ts
+const MAX_EXERCISE_NAME_LENGTH = 255;
+
 /**
  * Normalize exercise name for URL paths
  * Must match server-side normalizeExerciseName in exercise-library.ts
  */
-function normalizeForUrl(name: string): string {
-  return name
+export function normalizeForUrl(name: string): string {
+  const normalized = name
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, '')
     .replace(/\s+/g, '-')
     .trim();
+
+  // Match server-side VARCHAR(255) limit
+  if (normalized.length > MAX_EXERCISE_NAME_LENGTH) {
+    return normalized.substring(0, MAX_EXERCISE_NAME_LENGTH);
+  }
+
+  return normalized;
 }
 
 /**
@@ -34,7 +45,8 @@ function normalizeForUrl(name: string): string {
 export function ExerciseImages({
   exerciseName,
   className = '',
-  size = 'md'
+  size = 'md',
+  hasImages = true // Default to true for backward compatibility
 }: ExerciseImagesProps) {
   const [activeIndex, setActiveIndex] = useState<1 | 2>(1);
   const [loadError, setLoadError] = useState<Record<number, boolean>>({});
@@ -42,6 +54,11 @@ export function ExerciseImages({
 
   const normalizedName = normalizeForUrl(exerciseName);
   const imageUrl = (index: 1 | 2) => `/api/exercises/${normalizedName}/images/${index}`;
+
+  // If we know images aren't available, render nothing (prevents 400 errors)
+  if (!hasImages) {
+    return null;
+  }
 
   // If both images failed to load, show nothing
   if (loadError[1] && loadError[2]) {
@@ -122,16 +139,23 @@ export function ExerciseImages({
  */
 export function ExerciseImageThumbnail({
   exerciseName,
-  className = ''
+  className = '',
+  hasImages = true // Default to true for backward compatibility
 }: {
   exerciseName: string;
   className?: string;
+  hasImages?: boolean; // If false, don't attempt to load images (prevents 400 errors)
 }) {
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const normalizedName = normalizeForUrl(exerciseName);
   const imageUrl = `/api/exercises/${normalizedName}/images/1`;
+
+  // If we know images aren't available, render nothing (prevents 400 errors)
+  if (!hasImages) {
+    return null;
+  }
 
   if (hasError) {
     return null;

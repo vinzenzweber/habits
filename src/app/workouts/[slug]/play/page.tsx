@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { GuidedRoutinePlayer } from "@/components/GuidedRoutinePlayer";
 import { getWorkoutBySlug } from "@/lib/workoutPlan";
+import { getExercisesWithCompleteImages } from "@/lib/exercise-library";
 
 export const dynamic = "force-dynamic";
 
@@ -36,5 +37,11 @@ export default async function PlayPage({ params }: PlayPageProps) {
     notFound();
   }
 
-  return <GuidedRoutinePlayer workout={workout} />;
+  // Fetch which exercises have images available to prevent 400 errors
+  const exerciseNames = workout.segments
+    .filter(s => s.category !== 'rest' && s.category !== 'prep')
+    .map(s => s.title);
+  const availableImages = await getExercisesWithCompleteImages(exerciseNames);
+
+  return <GuidedRoutinePlayer workout={workout} availableImages={availableImages} />;
 }

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { getWorkoutBySlug, getTodayCompletions, getTodaySlug } from "@/lib/workoutPlan";
+import { getExercisesWithCompleteImages, normalizeExerciseName } from "@/lib/exercise-library";
 import { PageContextSetter } from "@/components/PageContextSetter";
 import { ExerciseImages } from "@/components/ExerciseImages";
 
@@ -77,6 +78,12 @@ export default async function WorkoutDetailPage({ params }: WorkoutPageProps) {
   const isToday = slug === todaySlug;
   const isCompleted = completions[workout.slug] ?? false;
   const groupedSegments = groupSegments(workout.segments);
+
+  // Fetch which exercises have images available to prevent 400 errors
+  const exerciseNames = workout.segments
+    .filter(s => s.category !== 'rest' && s.category !== 'prep')
+    .map(s => s.title);
+  const availableImages = await getExercisesWithCompleteImages(exerciseNames);
 
   return (
     <>
@@ -162,6 +169,7 @@ export default async function WorkoutDetailPage({ params }: WorkoutPageProps) {
                             exerciseName={segment.title}
                             size="md"
                             className="hidden sm:block"
+                            hasImages={availableImages.has(normalizeExerciseName(segment.title))}
                           />
                         )}
                         <div className="flex flex-1 flex-col gap-2">
