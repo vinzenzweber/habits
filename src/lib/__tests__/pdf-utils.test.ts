@@ -98,8 +98,8 @@ describe('pdf-utils', () => {
       expect(MAX_PDF_PAGES).toBe(50);
     });
 
-    it('exports DEFAULT_PDF_RENDER_DPI as 200', () => {
-      expect(DEFAULT_PDF_RENDER_DPI).toBe(200);
+    it('exports DEFAULT_PDF_RENDER_DPI as 100', () => {
+      expect(DEFAULT_PDF_RENDER_DPI).toBe(100);
     });
   });
 

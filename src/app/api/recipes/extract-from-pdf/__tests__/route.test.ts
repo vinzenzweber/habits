@@ -236,10 +236,15 @@ describe('POST /api/recipes/extract-from-pdf', () => {
 
       await POST(request);
 
-      // Should render the page to an image
+      // Should render the page to an optimized JPEG image
       expect(renderPdfPageToImage).toHaveBeenCalledWith(
         expect.any(Buffer),
-        1  // page number
+        1,  // page number
+        expect.objectContaining({
+          dpi: 100,
+          format: 'jpeg',
+          quality: 85,
+        })
       );
 
       // Should call vision API with the base64 image

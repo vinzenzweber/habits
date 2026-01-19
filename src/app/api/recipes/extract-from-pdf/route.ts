@@ -107,8 +107,13 @@ export async function POST(request: Request) {
     // Process each page: render to image and use vision API
     for (let pageNum = 1; pageNum <= pdfInfo.pageCount; pageNum++) {
       try {
-        // Render page to high-res image
-        const imageBuffer = await renderPdfPageToImage(pdfBuffer, pageNum);
+        // Render page to optimized JPEG image
+        // Using JPEG at 100 DPI with 85% quality gives ~500KB-1.2MB images
+        const imageBuffer = await renderPdfPageToImage(pdfBuffer, pageNum, {
+          dpi: 100,
+          format: 'jpeg',
+          quality: 85,
+        });
         const imageBase64 = imageBuffer.toString('base64');
 
         // Extract recipe using vision API

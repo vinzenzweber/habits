@@ -237,7 +237,7 @@ describe('PDF Recipe Extraction (Vision API Approach)', () => {
     const canRunImageTests = imagePdfExists() && pdftoppmAvailable();
 
     it.skipIf(!canRunImageTests)(
-      'should render PDF page to PNG using pdftoppm',
+      'should render PDF page to JPEG using pdftoppm',
       async () => {
         const pdfBuffer = getImagePdfBuffer();
 
@@ -245,19 +245,23 @@ describe('PDF Recipe Extraction (Vision API Approach)', () => {
         const pdfInfo = await getPdfInfo(pdfBuffer);
         expect(pdfInfo.pageCount).toBe(2);
 
-        // Render page 1
-        const imageBuffer = await renderPdfPageToImage(pdfBuffer, 1);
+        // Render page 1 with optimized settings (JPEG, 100 DPI)
+        const imageBuffer = await renderPdfPageToImage(pdfBuffer, 1, {
+          dpi: 100,
+          format: 'jpeg',
+          quality: 85,
+        });
 
-        // Verify it's a PNG (starts with PNG signature)
-        expect(imageBuffer[0]).toBe(0x89);
-        expect(imageBuffer[1]).toBe(0x50); // 'P'
-        expect(imageBuffer[2]).toBe(0x4e); // 'N'
-        expect(imageBuffer[3]).toBe(0x47); // 'G'
+        // Verify it's a JPEG (starts with FFD8FF)
+        expect(imageBuffer[0]).toBe(0xff);
+        expect(imageBuffer[1]).toBe(0xd8);
+        expect(imageBuffer[2]).toBe(0xff);
 
-        // Image should be substantial (>100KB for a recipe page at 200 DPI)
-        expect(imageBuffer.length).toBeGreaterThan(100 * 1024);
+        // JPEG should be much smaller than PNG (~500KB vs 22MB)
+        expect(imageBuffer.length).toBeGreaterThan(50 * 1024);
+        expect(imageBuffer.length).toBeLessThan(2 * 1024 * 1024); // Should be under 2MB
       },
-      120000 // 2 minute timeout for PDF rendering (high-res images are slow)
+      60000 // 1 minute timeout - JPEG rendering is much faster
     );
 
     it.skipIf(!canRunImageTests)(
@@ -266,16 +270,21 @@ describe('PDF Recipe Extraction (Vision API Approach)', () => {
         const pdfBuffer = getImagePdfBuffer();
         const pdfInfo = await getPdfInfo(pdfBuffer);
 
-        // Render both pages
+        // Render both pages with optimized settings
         for (let pageNum = 1; pageNum <= pdfInfo.pageCount; pageNum++) {
-          const imageBuffer = await renderPdfPageToImage(pdfBuffer, pageNum);
+          const imageBuffer = await renderPdfPageToImage(pdfBuffer, pageNum, {
+            dpi: 100,
+            format: 'jpeg',
+            quality: 85,
+          });
 
-          // Verify each is a valid PNG
-          expect(imageBuffer[0]).toBe(0x89);
+          // Verify each is a valid JPEG
+          expect(imageBuffer[0]).toBe(0xff);
+          expect(imageBuffer[1]).toBe(0xd8);
           expect(imageBuffer.length).toBeGreaterThan(50 * 1024);
         }
       },
-      240000 // 4 minute timeout for rendering multiple high-res pages
+      120000 // 2 minute timeout for rendering multiple pages
     );
   });
 });

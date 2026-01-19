@@ -2,7 +2,7 @@
  * PDF utilities for recipe extraction
  *
  * PDF extraction uses a unified Vision API approach:
- * 1. Render each PDF page to a high-resolution PNG image using pdftoppm
+ * 1. Render each PDF page to a high-resolution image using pdftoppm
  * 2. Send the image to GPT-4o Vision API for recipe extraction
  *
  * This approach works consistently for both text-based and scanned/image-based PDFs,
@@ -15,12 +15,22 @@ export const MAX_PDF_SIZE_BYTES = MAX_PDF_SIZE_MB * 1024 * 1024;
 export const MAX_PDF_PAGES = 50;
 
 // Default DPI for rendering PDF pages to images
-// 200 DPI provides good quality for vision API (~1700px for standard pages)
-export const DEFAULT_PDF_RENDER_DPI = 200;
+// 100 DPI provides good quality for vision API (~850px for standard pages)
+// while keeping file sizes small (~500KB-1.2MB JPEG per page)
+export const DEFAULT_PDF_RENDER_DPI = 100;
 
 export interface PdfValidationResult {
   valid: boolean;
   error?: string;
+}
+
+export interface RenderOptions {
+  /** DPI for rendering (default: 150) */
+  dpi?: number;
+  /** Output format: 'jpeg' or 'png' (default: 'jpeg' for smaller files) */
+  format?: 'jpeg' | 'png';
+  /** JPEG quality 1-100 (default: 85, only applies to JPEG) */
+  quality?: number;
 }
 
 /**
@@ -77,21 +87,27 @@ export async function getPdfInfo(pdfBuffer: Buffer): Promise<{ pageCount: number
 }
 
 /**
- * Render a PDF page to a high-resolution PNG image using pdftoppm
+ * Render a PDF page to an image using pdftoppm
  *
  * Uses the poppler-utils pdftoppm tool for reliable rendering of both
  * text-based and image-based (scanned) PDFs.
  *
  * @param pdfBuffer - The PDF file as a Buffer
  * @param pageNumber - Page number to render (1-indexed)
- * @param dpi - DPI for rendering (default 200 for good quality)
- * @returns PNG image as a Buffer
+ * @param options - Rendering options (dpi, format, quality)
+ * @returns Image as a Buffer (JPEG or PNG)
  */
 export async function renderPdfPageToImage(
   pdfBuffer: Buffer,
   pageNumber: number,
-  dpi: number = DEFAULT_PDF_RENDER_DPI
+  options: RenderOptions = {}
 ): Promise<Buffer> {
+  const {
+    dpi = DEFAULT_PDF_RENDER_DPI,
+    format = 'jpeg',
+    quality = 85,
+  } = options;
+
   const { execFile } = await import('child_process');
   const { promisify } = await import('util');
   const { writeFileSync, readFileSync, unlinkSync, mkdtempSync } = await import('fs');
@@ -109,25 +125,38 @@ export async function renderPdfPageToImage(
     // Write PDF to temp file
     writeFileSync(pdfPath, pdfBuffer);
 
-    // Use pdftoppm to convert specific page to PNG
+    // Build pdftoppm arguments
     // -f and -l specify first and last page (same value for single page)
-    // -png outputs PNG format
     // -r specifies DPI
-    await execFileAsync('pdftoppm', [
+    const args = [
       '-f', String(pageNumber),
       '-l', String(pageNumber),
-      '-png',
       '-r', String(dpi),
-      pdfPath,
-      outputPrefix,
-    ]);
+    ];
 
-    // pdftoppm outputs files like page-1.png, page-01.png depending on page count
-    // Check both formats
+    // Add format-specific options
+    if (format === 'jpeg') {
+      args.push('-jpeg');
+      // JPEG quality (only for jpeg format)
+      if (quality !== 100) {
+        args.push('-jpegopt', `quality=${quality}`);
+      }
+    } else {
+      args.push('-png');
+    }
+
+    args.push(pdfPath, outputPrefix);
+
+    // Execute pdftoppm
+    await execFileAsync('pdftoppm', args);
+
+    // pdftoppm outputs files like page-1.jpg, page-01.jpg depending on page count
+    // Check multiple formats
+    const ext = format === 'jpeg' ? 'jpg' : 'png';
     const possibleOutputs = [
-      `${outputPrefix}-${pageNumber}.png`,
-      `${outputPrefix}-${String(pageNumber).padStart(2, '0')}.png`,
-      `${outputPrefix}-${String(pageNumber).padStart(3, '0')}.png`,
+      `${outputPrefix}-${pageNumber}.${ext}`,
+      `${outputPrefix}-${String(pageNumber).padStart(2, '0')}.${ext}`,
+      `${outputPrefix}-${String(pageNumber).padStart(3, '0')}.${ext}`,
     ];
 
     for (const outputPath of possibleOutputs) {
