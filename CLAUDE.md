@@ -120,6 +120,25 @@ Key functions:
 
 TypeScript path alias `@/*` maps to `./src/*` (see tsconfig.json)
 
+### Background Job Processing (SideQuest)
+
+Background jobs are processed via [SideQuest](https://docs.sidequestjs.com) with a PostgreSQL backend.
+
+**Queues:**
+| Queue | Concurrency | Use Case |
+|-------|-------------|----------|
+| `pdf-processing` | 1 | PDF recipe extraction (memory-intensive) |
+| `recipe-extraction` | 3 | Image-based recipe extraction |
+| `default` | 2 | General background tasks |
+
+**Key Files:**
+- `instrumentation.ts` — Starts workers via Next.js instrumentation hook
+- `sidequest.jobs.ts` — Job class registry for manual resolution
+- `src/lib/sidequest-config.ts` — SideQuest initialization and queue configuration
+
+**Startup Behavior:**
+Workers auto-start when the Next.js server boots (Node.js runtime only, not Edge). Failures are logged but don't prevent the app from starting.
+
 ## Deployment
 
 **Production URL:** https://fitstreak.app
