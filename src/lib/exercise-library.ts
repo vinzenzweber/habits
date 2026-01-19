@@ -489,6 +489,32 @@ export async function upsertExerciseImage(
 }
 
 /**
+ * Batch check which exercises have at least one complete image ready
+ * Returns a Set of normalized exercise names that have at least one complete image
+ * This is used to prevent 400 errors from Next.js Image optimizer when images don't exist
+ */
+export async function getExercisesWithCompleteImages(
+  exerciseNames: string[]
+): Promise<Set<string>> {
+  if (exerciseNames.length === 0) {
+    return new Set();
+  }
+
+  const normalizedNames = exerciseNames.map(normalizeExerciseName);
+
+  const result = await query(
+    `SELECT DISTINCT e.normalized_name
+     FROM exercises e
+     INNER JOIN exercise_images ei ON e.id = ei.exercise_id
+     WHERE e.normalized_name = ANY($1)
+       AND ei.generation_status = 'complete'`,
+    [normalizedNames]
+  );
+
+  return new Set(result.rows.map(row => row.normalized_name));
+}
+
+/**
  * Get all exercises (for seeding/admin)
  */
 export async function getAllExercises(): Promise<Exercise[]> {

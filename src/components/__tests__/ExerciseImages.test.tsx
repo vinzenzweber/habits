@@ -7,7 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { ExerciseImages, ExerciseImageThumbnail } from '../ExerciseImages';
+import { ExerciseImages, ExerciseImageThumbnail, normalizeForUrl } from '../ExerciseImages';
 
 // Mock Next.js Image component
 vi.mock('next/image', () => ({
@@ -140,5 +140,104 @@ describe('ExerciseImageThumbnail', () => {
       const img = screen.getByTestId('next-image');
       expect(img).toHaveAttribute('src', '/api/exercises/push-ups/images/1');
     });
+  });
+
+  describe('hasImages prop', () => {
+    it('renders nothing when hasImages is false', () => {
+      const { container } = render(
+        <ExerciseImageThumbnail exerciseName="Push ups" hasImages={false} />
+      );
+
+      expect(container.firstChild).toBeNull();
+    });
+
+    it('renders image when hasImages is true', () => {
+      render(<ExerciseImageThumbnail exerciseName="Push ups" hasImages={true} />);
+
+      const img = screen.getByTestId('next-image');
+      expect(img).toBeInTheDocument();
+    });
+
+    it('renders image by default when hasImages is not provided', () => {
+      render(<ExerciseImageThumbnail exerciseName="Push ups" />);
+
+      const img = screen.getByTestId('next-image');
+      expect(img).toBeInTheDocument();
+    });
+  });
+});
+
+// ============================================
+// normalizeForUrl function tests
+// ============================================
+
+describe('normalizeForUrl', () => {
+  it('converts to lowercase', () => {
+    expect(normalizeForUrl('Push Up')).toBe('push-up');
+    expect(normalizeForUrl('BURPEES')).toBe('burpees');
+  });
+
+  it('replaces spaces with hyphens', () => {
+    expect(normalizeForUrl('jumping jacks')).toBe('jumping-jacks');
+  });
+
+  it('removes special characters', () => {
+    expect(normalizeForUrl('push-up (modified)')).toBe('push-up-modified');
+    expect(normalizeForUrl('90° leg raise')).toBe('90-leg-raise');
+  });
+
+  it('handles multiple consecutive spaces', () => {
+    expect(normalizeForUrl('mountain  climbers')).toBe('mountain-climbers');
+  });
+
+  it('converts leading/trailing spaces to hyphens', () => {
+    // .trim() is called after spaces are replaced with hyphens,
+    // so leading/trailing spaces become leading/trailing hyphens
+    expect(normalizeForUrl('  squats  ')).toBe('-squats-');
+  });
+
+  it('truncates names longer than 255 characters', () => {
+    const longName = 'a'.repeat(300);
+    const result = normalizeForUrl(longName);
+    expect(result.length).toBe(255);
+  });
+
+  it('does not truncate names at or under 255 characters', () => {
+    const exactName = 'a'.repeat(255);
+    const result = normalizeForUrl(exactName);
+    expect(result.length).toBe(255);
+    expect(result).toBe(exactName);
+  });
+});
+
+// ============================================
+// hasImages prop tests for ExerciseImages
+// ============================================
+
+describe('ExerciseImages hasImages prop', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('renders nothing when hasImages is false', () => {
+    const { container } = render(
+      <ExerciseImages exerciseName="Push ups" hasImages={false} />
+    );
+
+    expect(container.firstChild).toBeNull();
+  });
+
+  it('renders image when hasImages is true', () => {
+    render(<ExerciseImages exerciseName="Push ups" hasImages={true} />);
+
+    const img = screen.getByTestId('next-image');
+    expect(img).toBeInTheDocument();
+  });
+
+  it('renders image by default when hasImages is not provided', () => {
+    render(<ExerciseImages exerciseName="Push ups" />);
+
+    const img = screen.getByTestId('next-image');
+    expect(img).toBeInTheDocument();
   });
 });

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useChat } from "@/contexts/ChatContext";
 import { useFullscreen } from "@/lib/fullscreen";
 import { Confetti } from "./Confetti";
-import { ExerciseImages, ExerciseImageThumbnail } from "./ExerciseImages";
+import { ExerciseImages, ExerciseImageThumbnail, normalizeForUrl } from "./ExerciseImages";
 
 import type {
   RoutineSegment,
@@ -45,6 +45,7 @@ const CollapseIcon = () => (
 type GuidedRoutinePlayerProps = {
   workout: PlayableWorkout;
   isNano?: boolean;
+  availableImages?: Set<string>; // Normalized names of exercises with complete images
 };
 
 type CategoryStyles = {
@@ -94,8 +95,16 @@ function sumDuration(segments: RoutineSegment[], endIndex: number) {
 export function GuidedRoutinePlayer({
   workout,
   isNano = false,
+  availableImages,
 }: GuidedRoutinePlayerProps) {
   const { openChat } = useChat();
+
+  // Helper to check if an exercise has images available
+  const hasImages = useCallback((exerciseName: string) => {
+    // If availableImages is not provided, default to true (backward compatible)
+    if (!availableImages) return true;
+    return availableImages.has(normalizeForUrl(exerciseName));
+  }, [availableImages]);
   const segments = useMemo(() => workout.segments ?? [], [workout.segments]);
   const totalSeconds = useMemo(() => workout.totalSeconds ?? 0, [workout.totalSeconds]);
   const routineTitle = workout.title;
@@ -443,6 +452,7 @@ export function GuidedRoutinePlayer({
               <ExerciseImages
                 exerciseName={currentSegment.title}
                 size="lg"
+                hasImages={hasImages(currentSegment.title)}
               />
             )}
             <div className="flex-1 space-y-3">
@@ -537,6 +547,7 @@ export function GuidedRoutinePlayer({
                             {segment.category !== 'prep' && segment.category !== 'rest' && (
                               <ExerciseImageThumbnail
                                 exerciseName={segment.title}
+                                hasImages={hasImages(segment.title)}
                               />
                             )}
                             <div className="flex flex-1 items-center justify-between gap-3">
