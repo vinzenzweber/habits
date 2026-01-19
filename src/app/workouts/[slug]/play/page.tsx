@@ -8,9 +8,9 @@ import { getExercisesWithCompleteImages } from "@/lib/exercise-library";
 export const dynamic = "force-dynamic";
 
 type PlayPageProps = {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
 };
 
 export async function generateMetadata({ params }: PlayPageProps): Promise<Metadata> {
