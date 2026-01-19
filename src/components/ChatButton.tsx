@@ -31,7 +31,7 @@ export function ChatButton() {
         className={`fixed bottom-20 right-6 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full w-14 h-14 shadow-lg flex items-center justify-center z-50 transition ${
           isOpen ? 'md:hidden' : ''
         }`}
-        aria-label="Personal Trainer"
+        aria-label="FitStreak AI"
       >
         <span className="text-2xl">💬</span>
       </button>
