@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@serwist/next": "^9.5.0",
+    "@sidequest/postgres-backend": "^1.13.4",
     "bcryptjs": "^3.0.3",
     "canvas-confetti": "^1.9.4",
     "next": "^16.1.3",
@@ -29,7 +30,8 @@
     "pdfjs-dist": "^5.4.530",
     "pg": "^8.17.1",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "sidequest": "^1.13.4"
   },
   "devDependencies": {
     "@playwright/test": "^1.57.0",
