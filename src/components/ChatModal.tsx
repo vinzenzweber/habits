@@ -727,7 +727,7 @@ export function ChatModal({
         } : undefined}
       >
         <div className="flex items-center justify-between p-4 border-b border-slate-700">
-          <h2 className="text-lg font-semibold">Personal Trainer</h2>
+          <h2 className="text-lg font-semibold">FitStreak AI</h2>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowHistory(true)}
@@ -761,19 +761,20 @@ export function ChatModal({
         <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {messages.length === 0 && !streamingContent && (
             <div className="text-center text-slate-400 py-8">
-              <p className="mb-2">Your personal fitness coach</p>
+              <p className="mb-2">Your AI-powered fitness and nutrition assistant</p>
               <p className="text-sm">I can help with:</p>
               <ul className="text-sm mt-2 space-y-1 text-left max-w-xs mx-auto">
-                <li>• Exercise technique and form</li>
-                <li>• Workout modifications</li>
-                <li>• Training advice for your goals</li>
-                <li>• Equipment recommendations</li>
+                <li>• Exercise technique, form, and modifications</li>
+                <li>• Recipe ideas and nutrition advice</li>
+                <li>• Workout history and progress tracking</li>
+                <li>• Personalized motivation and encouragement</li>
+                <li>• Equipment and training recommendations</li>
               </ul>
               <p className="text-xs mt-4 text-slate-500">
-                Tell me about your equipment, goals, or injuries — I&apos;ll remember for next time!
+                I remember your equipment, goals, and preferences between sessions!
               </p>
               <p className="text-xs mt-2 text-slate-500">
-                🎤 Click the microphone to record, click again to send
+                🎤 Voice enabled — tap the mic to talk to me!
               </p>
             </div>
           )}

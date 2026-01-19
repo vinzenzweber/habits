@@ -4,11 +4,11 @@ test.describe('Chat History', () => {
   test.describe('History Button', () => {
     test('shows history button in chat modal header', async ({ authenticatedPage: page }) => {
       // Open chat modal by clicking the chat button
-      const chatButton = page.locator('[title="Personal Trainer"]').or(page.locator('button').filter({ hasText: '💬' }))
+      const chatButton = page.getByRole('button', { name: 'FitStreak AI' }).or(page.locator('button').filter({ hasText: '💬' }))
       await chatButton.click()
 
       // Wait for modal to open
-      await expect(page.getByText('Personal Trainer')).toBeVisible()
+      await expect(page.getByText('FitStreak AI')).toBeVisible()
 
       // History button should be visible
       await expect(page.getByRole('button', { name: /history/i })).toBeVisible()
@@ -16,9 +16,9 @@ test.describe('Chat History', () => {
 
     test('opens history panel when history button is clicked', async ({ authenticatedPage: page }) => {
       // Open chat modal
-      const chatButton = page.locator('[title="Personal Trainer"]').or(page.locator('button').filter({ hasText: '💬' }))
+      const chatButton = page.getByRole('button', { name: 'FitStreak AI' }).or(page.locator('button').filter({ hasText: '💬' }))
       await chatButton.click()
-      await expect(page.getByText('Personal Trainer')).toBeVisible()
+      await expect(page.getByText('FitStreak AI')).toBeVisible()
 
       // Click history button
       await page.getByRole('button', { name: /history/i }).click()
@@ -31,9 +31,9 @@ test.describe('Chat History', () => {
   test.describe('Empty State', () => {
     test('shows empty state for new users with no chat history', async ({ authenticatedPage: page }) => {
       // Open chat modal
-      const chatButton = page.locator('[title="Personal Trainer"]').or(page.locator('button').filter({ hasText: '💬' }))
+      const chatButton = page.getByRole('button', { name: 'FitStreak AI' }).or(page.locator('button').filter({ hasText: '💬' }))
       await chatButton.click()
-      await expect(page.getByText('Personal Trainer')).toBeVisible()
+      await expect(page.getByText('FitStreak AI')).toBeVisible()
 
       // Click history button
       await page.getByRole('button', { name: /history/i }).click()
@@ -50,9 +50,9 @@ test.describe('Chat History', () => {
   test.describe('Close Functionality', () => {
     test('closes history panel when close button is clicked', async ({ authenticatedPage: page }) => {
       // Open chat modal
-      const chatButton = page.locator('[title="Personal Trainer"]').or(page.locator('button').filter({ hasText: '💬' }))
+      const chatButton = page.getByRole('button', { name: 'FitStreak AI' }).or(page.locator('button').filter({ hasText: '💬' }))
       await chatButton.click()
-      await expect(page.getByText('Personal Trainer')).toBeVisible()
+      await expect(page.getByText('FitStreak AI')).toBeVisible()
 
       // Open history
       await page.getByRole('button', { name: /history/i }).click()
@@ -65,16 +65,16 @@ test.describe('Chat History', () => {
       await expect(page.getByText('Chat History')).not.toBeVisible()
 
       // Chat modal should still be visible
-      await expect(page.getByText('Personal Trainer')).toBeVisible()
+      await expect(page.getByText('FitStreak AI')).toBeVisible()
     })
   })
 
   test.describe('Chat Session Creation and History', () => {
     test('creates a chat session when user sends a message', async ({ authenticatedPage: page }) => {
       // Open chat modal
-      const chatButton = page.locator('[title="Personal Trainer"]').or(page.locator('button').filter({ hasText: '💬' }))
+      const chatButton = page.getByRole('button', { name: 'FitStreak AI' }).or(page.locator('button').filter({ hasText: '💬' }))
       await chatButton.click()
-      await expect(page.getByText('Personal Trainer')).toBeVisible()
+      await expect(page.getByText('FitStreak AI')).toBeVisible()
 
       // Send a message
       const textarea = page.locator('textarea[placeholder*="Type a message"]')
@@ -89,7 +89,7 @@ test.describe('Chat History', () => {
 
       // Reopen chat modal
       await chatButton.click()
-      await expect(page.getByText('Personal Trainer')).toBeVisible()
+      await expect(page.getByText('FitStreak AI')).toBeVisible()
 
       // Open history
       await page.getByRole('button', { name: /history/i }).click()
@@ -108,9 +108,9 @@ test.describe('Chat History', () => {
       const testMessage = `Test message ${Date.now()}`
 
       // Open chat modal
-      const chatButton = page.locator('[title="Personal Trainer"]').or(page.locator('button').filter({ hasText: '💬' }))
+      const chatButton = page.getByRole('button', { name: 'FitStreak AI' }).or(page.locator('button').filter({ hasText: '💬' }))
       await chatButton.click()
-      await expect(page.getByText('Personal Trainer')).toBeVisible()
+      await expect(page.getByText('FitStreak AI')).toBeVisible()
 
       // Send a message
       const textarea = page.locator('textarea[placeholder*="Type a message"]')
