@@ -10,6 +10,4 @@
  */
 
 // Export all job classes here
-// Example: export { PdfProcessingJob } from "./src/jobs/PdfProcessingJob";
-
-export {};
+export { ProcessPdfJob } from "./src/jobs/ProcessPdfJob";
