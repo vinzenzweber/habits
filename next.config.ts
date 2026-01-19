@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 import withSerwistInit from "@serwist/next";
 
+// Serwist adds a webpack configuration for service worker bundling.
+// Next.js 16 uses Turbopack by default for all builds, but Serwist doesn't support Turbopack.
+// The build script uses "next build --webpack" to opt out of Turbopack.
+// See: https://github.com/serwist/serwist/issues/54
 const withSerwist = withSerwistInit({
   swSrc: "src/app/sw.ts",
   swDest: "public/sw.js",

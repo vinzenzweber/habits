@@ -5,6 +5,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { ChatButton } from "@/components/ChatButton";
 import { ChatProvider } from "@/contexts/ChatContext";
 import { MainContentWrapper } from "@/components/MainContentWrapper";
+import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import { auth } from "@/lib/auth";
 
 const geistSans = Geist({
@@ -60,6 +61,7 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-950 text-slate-100`}
       >
         <ChatProvider>
+          <ServiceWorkerRegistration />
           <MainContentWrapper>
             {children}
           </MainContentWrapper>
