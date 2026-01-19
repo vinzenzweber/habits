@@ -1,37 +1,26 @@
 /**
  * PDF utilities for recipe extraction
- * Handles PDF parsing, text extraction, and page-to-image conversion
+ *
+ * PDF extraction uses a unified Vision API approach:
+ * 1. Render each PDF page to a high-resolution PNG image using pdftoppm
+ * 2. Send the image to GPT-4o Vision API for recipe extraction
+ *
+ * This approach works consistently for both text-based and scanned/image-based PDFs,
+ * and uses the same code path as image uploads from the camera.
  */
-
-// pdf-parse uses CommonJS exports, so we import it this way
-import * as pdfParse from 'pdf-parse';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const pdf = (pdfParse as any).default || pdfParse;
 
 // Constants
 export const MAX_PDF_SIZE_MB = 10;
 export const MAX_PDF_SIZE_BYTES = MAX_PDF_SIZE_MB * 1024 * 1024;
 export const MAX_PDF_PAGES = 50;
 
-// Minimum text length to consider a page as text-based (vs image-based)
-export const MIN_TEXT_LENGTH_FOR_TEXT_EXTRACTION = 200;
+// Default DPI for rendering PDF pages to images
+// 200 DPI provides good quality for vision API (~1700px for standard pages)
+export const DEFAULT_PDF_RENDER_DPI = 200;
 
 export interface PdfValidationResult {
   valid: boolean;
   error?: string;
-}
-
-export interface PdfPageInfo {
-  pageNumber: number;
-  textContent: string;
-  hasSignificantText: boolean;
-}
-
-export interface PdfInfo {
-  pageCount: number;
-  totalText: string;
-  pages: PdfPageInfo[];
 }
 
 /**
@@ -64,35 +53,16 @@ export function validatePdfBase64Size(base64: string): PdfValidationResult {
 }
 
 /**
- * Extract text content from PDF buffer
+ * Get basic PDF info (page count) using pdfjs-dist
+ *
+ * This is a lightweight operation that only reads PDF metadata.
  */
-export async function extractPdfText(pdfBuffer: Buffer): Promise<PdfInfo> {
-  const data = await pdf(pdfBuffer);
-
-  if (data.numpages > MAX_PDF_PAGES) {
-    throw new Error(`PDF has too many pages (${data.numpages}). Maximum: ${MAX_PDF_PAGES}`);
-  }
-
-  // pdf-parse returns combined text from all pages
-  // For per-page content, we'll need to use pdfjs-dist
-  return {
-    pageCount: data.numpages,
-    totalText: data.text,
-    pages: [], // Will be populated by extractPdfPagesText
-  };
-}
-
-/**
- * Extract text from each page of a PDF using pdfjs-dist
- */
-export async function extractPdfPagesText(pdfBuffer: Buffer): Promise<PdfInfo> {
+export async function getPdfInfo(pdfBuffer: Buffer): Promise<{ pageCount: number }> {
   // Import worker module first to populate globalThis.pdfjsWorker
-  // This is required for server-side usage where Worker threads aren't available
   await import('pdfjs-dist/legacy/build/pdf.worker.mjs');
 
   const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
 
-  // Load the PDF - convert Buffer to Uint8Array for pdfjs-dist compatibility
   const pdfData = new Uint8Array(pdfBuffer);
   const loadingTask = pdfjsLib.getDocument({ data: pdfData });
   const pdfDoc = await loadingTask.promise;
@@ -101,103 +71,10 @@ export async function extractPdfPagesText(pdfBuffer: Buffer): Promise<PdfInfo> {
     throw new Error(`PDF has too many pages (${pdfDoc.numPages}). Maximum: ${MAX_PDF_PAGES}`);
   }
 
-  const pages: PdfPageInfo[] = [];
-  let totalText = '';
-
-  // Extract text from each page
-  for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
-    const page = await pdfDoc.getPage(pageNum);
-    const textContent = await page.getTextContent();
-
-    const pageText = textContent.items
-      .map((item) => {
-        if ('str' in item) {
-          return item.str;
-        }
-        return '';
-      })
-      .join(' ')
-      .trim();
-
-    pages.push({
-      pageNumber: pageNum,
-      textContent: pageText,
-      hasSignificantText: pageText.length >= MIN_TEXT_LENGTH_FOR_TEXT_EXTRACTION,
-    });
-
-    totalText += pageText + '\n\n';
-  }
-
   return {
     pageCount: pdfDoc.numPages,
-    totalText: totalText.trim(),
-    pages,
   };
 }
-
-/**
- * Extract text from a specific PDF page
- */
-export async function extractPageText(
-  pdfBuffer: Buffer,
-  pageNumber: number
-): Promise<string> {
-  // Import worker module first to populate globalThis.pdfjsWorker
-  // This is required for server-side usage where Worker threads aren't available
-  await import('pdfjs-dist/legacy/build/pdf.worker.mjs');
-
-  const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
-
-  // Convert Buffer to Uint8Array for pdfjs-dist compatibility
-  const pdfData = new Uint8Array(pdfBuffer);
-  const loadingTask = pdfjsLib.getDocument({ data: pdfData });
-  const pdfDoc = await loadingTask.promise;
-
-  if (pageNumber < 1 || pageNumber > pdfDoc.numPages) {
-    throw new Error(`Invalid page number: ${pageNumber}. PDF has ${pdfDoc.numPages} pages.`);
-  }
-
-  const page = await pdfDoc.getPage(pageNumber);
-  const textContent = await page.getTextContent();
-
-  return textContent.items
-    .map((item) => {
-      if ('str' in item) {
-        return item.str;
-      }
-      return '';
-    })
-    .join(' ')
-    .trim();
-}
-
-/**
- * Check if a PDF is password-protected
- */
-export async function isPdfPasswordProtected(pdfBuffer: Buffer): Promise<boolean> {
-  try {
-    const data = await pdf(pdfBuffer);
-    // If we can read the PDF, it's not password-protected
-    return data.numpages === 0 && data.text === '';
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('password')) {
-      return true;
-    }
-    throw error;
-  }
-}
-
-/**
- * Get page count from a PDF buffer
- */
-export async function getPdfPageCount(pdfBuffer: Buffer): Promise<number> {
-  const data = await pdf(pdfBuffer);
-  return data.numpages;
-}
-
-// Default DPI for rendering PDF pages to images
-// 200 DPI provides good quality for vision API (~1700px for standard pages)
-export const DEFAULT_PDF_RENDER_DPI = 200;
 
 /**
  * Render a PDF page to a high-resolution PNG image using pdftoppm
@@ -277,27 +154,4 @@ export async function renderPdfPageToImage(
       // Ignore cleanup errors
     }
   }
-}
-
-/**
- * Get basic PDF info (page count) without full text extraction
- * Useful when we're going to use vision API anyway
- */
-export async function getPdfInfo(pdfBuffer: Buffer): Promise<{ pageCount: number }> {
-  // Import worker module first to populate globalThis.pdfjsWorker
-  await import('pdfjs-dist/legacy/build/pdf.worker.mjs');
-
-  const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
-
-  const pdfData = new Uint8Array(pdfBuffer);
-  const loadingTask = pdfjsLib.getDocument({ data: pdfData });
-  const pdfDoc = await loadingTask.promise;
-
-  if (pdfDoc.numPages > MAX_PDF_PAGES) {
-    throw new Error(`PDF has too many pages (${pdfDoc.numPages}). Maximum: ${MAX_PDF_PAGES}`);
-  }
-
-  return {
-    pageCount: pdfDoc.numPages,
-  };
 }

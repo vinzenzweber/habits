@@ -1,6 +1,11 @@
 /**
  * Test fixtures for PDF recipe extraction tests
- * Provides expected values and helper functions for testing PDF import
+ *
+ * PDF extraction uses a unified Vision API approach:
+ * 1. Render each PDF page to a high-resolution PNG image using pdftoppm
+ * 2. Send the image to GPT-4o Vision API for recipe extraction
+ *
+ * Test PDF: test-recipes-images.pdf (2 pages with recipe images)
  */
 
 import fs from 'fs';
@@ -8,26 +13,28 @@ import path from 'path';
 
 /**
  * Load the test PDF file as base64
+ * This PDF contains image-based recipe content suitable for Vision API extraction
  */
-export function getTestPdfBase64(): string {
-  const pdfPath = path.join(__dirname, 'test-recipes.pdf');
+export function getImagePdfBase64(): string {
+  const pdfPath = path.join(__dirname, 'test-recipes-images.pdf');
   const buffer = fs.readFileSync(pdfPath);
   return buffer.toString('base64');
 }
 
 /**
  * Load the test PDF file as Buffer
+ * This PDF contains image-based recipe content suitable for Vision API extraction
  */
-export function getTestPdfBuffer(): Buffer {
-  const pdfPath = path.join(__dirname, 'test-recipes.pdf');
+export function getImagePdfBuffer(): Buffer {
+  const pdfPath = path.join(__dirname, 'test-recipes-images.pdf');
   return fs.readFileSync(pdfPath);
 }
 
 /**
  * Check if the test PDF file exists
  */
-export function testPdfExists(): boolean {
-  const pdfPath = path.join(__dirname, 'test-recipes.pdf');
+export function imagePdfExists(): boolean {
+  const pdfPath = path.join(__dirname, 'test-recipes-images.pdf');
   return fs.existsSync(pdfPath);
 }
 
@@ -77,13 +84,7 @@ export const expectedRecipe2 = {
     carbohydrates: 17,
   },
   // Key ingredients to verify extraction (lowercase for matching)
-  expectedIngredients: [
-    'speisequark',
-    'joghurt',
-    'pfirsich',
-    'mandel',
-    'vanille',
-  ],
+  expectedIngredients: ['speisequark', 'joghurt', 'pfirsich', 'mandel', 'vanille'],
 } as const;
 
 /**
@@ -101,9 +102,7 @@ export function findIngredient(
   searchName: string
 ): { name: string } | undefined {
   for (const group of ingredientGroups) {
-    const found = group.ingredients.find((i) =>
-      containsIgnoreCase(i.name, searchName)
-    );
+    const found = group.ingredients.find((i) => containsIgnoreCase(i.name, searchName));
     if (found) return found;
   }
   return undefined;
@@ -115,9 +114,7 @@ export function findIngredient(
 export function getAllIngredientNames(
   ingredientGroups: Array<{ ingredients: Array<{ name: string }> }>
 ): string[] {
-  return ingredientGroups.flatMap((g) =>
-    g.ingredients.map((i) => i.name.toLowerCase())
-  );
+  return ingredientGroups.flatMap((g) => g.ingredients.map((i) => i.name.toLowerCase()));
 }
 
 /**
@@ -158,9 +155,19 @@ export function createMockRecipe1Response() {
       },
     ],
     steps: [
-      { number: 1, instruction: 'Ananas schälen und in Stücke schneiden, Apfel würfeln' },
-      { number: 2, instruction: 'Magerquark mit Kokosmilch, Kokosflocken und Süßstoff verrühren' },
-      { number: 3, instruction: 'Obst anrichten, Quark darüber geben, mit Minze garnieren' },
+      {
+        number: 1,
+        instruction: 'Ananas schälen und in Stücke schneiden, Apfel würfeln',
+      },
+      {
+        number: 2,
+        instruction:
+          'Magerquark mit Kokosmilch, Kokosflocken und Süßstoff verrühren',
+      },
+      {
+        number: 3,
+        instruction: 'Obst anrichten, Quark darüber geben, mit Minze garnieren',
+      },
     ],
   };
 }
@@ -196,9 +203,19 @@ export function createMockRecipe2Response() {
       },
     ],
     steps: [
-      { number: 1, instruction: 'Speisequark mit Joghurt, Süßstoff und Vanille verrühren' },
-      { number: 2, instruction: 'Pfirsiche waschen, halbieren und in Spalten schneiden' },
-      { number: 3, instruction: 'Mandelstifte in Pfanne rösten, Quark mit Pfirsichen und Mandeln anrichten' },
+      {
+        number: 1,
+        instruction: 'Speisequark mit Joghurt, Süßstoff und Vanille verrühren',
+      },
+      {
+        number: 2,
+        instruction: 'Pfirsiche waschen, halbieren und in Spalten schneiden',
+      },
+      {
+        number: 3,
+        instruction:
+          'Mandelstifte in Pfanne rösten, Quark mit Pfirsichen und Mandeln anrichten',
+      },
     ],
   };
 }

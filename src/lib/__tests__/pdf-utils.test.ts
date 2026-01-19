@@ -1,5 +1,11 @@
 /**
  * Tests for PDF utilities
+ *
+ * PDF extraction uses a unified Vision API approach where each page is
+ * rendered to an image and processed by the vision model. This test file
+ * covers validation and basic PDF operations.
+ *
+ * Image rendering tests that require pdftoppm are in pdf-extraction-integration.test.ts
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -9,14 +15,9 @@ import {
   MAX_PDF_SIZE_MB,
   MAX_PDF_SIZE_BYTES,
   MAX_PDF_PAGES,
-  MIN_TEXT_LENGTH_FOR_TEXT_EXTRACTION,
+  DEFAULT_PDF_RENDER_DPI,
 } from '../pdf-utils';
 import { createMockFile } from './fixtures/recipe-fixtures';
-
-// Mock pdf-parse
-vi.mock('pdf-parse', () => ({
-  default: vi.fn(),
-}));
 
 // Mock pdfjs-dist worker (must be imported first in actual code)
 vi.mock('pdfjs-dist/legacy/build/pdf.worker.mjs', () => ({
@@ -97,217 +98,49 @@ describe('pdf-utils', () => {
       expect(MAX_PDF_PAGES).toBe(50);
     });
 
-    it('exports MIN_TEXT_LENGTH_FOR_TEXT_EXTRACTION as 200', () => {
-      expect(MIN_TEXT_LENGTH_FOR_TEXT_EXTRACTION).toBe(200);
+    it('exports DEFAULT_PDF_RENDER_DPI as 200', () => {
+      expect(DEFAULT_PDF_RENDER_DPI).toBe(200);
     });
   });
-});
 
-describe('extractPdfText', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('extracts text from a valid PDF buffer', async () => {
-    const { default: pdfParse } = await import('pdf-parse');
-    (pdfParse as ReturnType<typeof vi.fn>).mockResolvedValue({
-      numpages: 2,
-      text: 'Page 1 content\n\nPage 2 content',
+  describe('getPdfInfo', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
     });
 
-    const { extractPdfText } = await import('../pdf-utils');
-    const buffer = Buffer.from('fake pdf content');
-    const result = await extractPdfText(buffer);
+    it('returns page count from PDF', async () => {
+      const mockPdfDoc = {
+        numPages: 5,
+      };
 
-    expect(result.pageCount).toBe(2);
-    expect(result.totalText).toBe('Page 1 content\n\nPage 2 content');
-  });
+      const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+      (pdfjsLib.getDocument as ReturnType<typeof vi.fn>).mockReturnValue({
+        promise: Promise.resolve(mockPdfDoc),
+      });
 
-  it('throws error when PDF has too many pages', async () => {
-    const { default: pdfParse } = await import('pdf-parse');
-    (pdfParse as ReturnType<typeof vi.fn>).mockResolvedValue({
-      numpages: 51,
-      text: 'Too many pages',
+      const { getPdfInfo } = await import('../pdf-utils');
+      const buffer = Buffer.from('fake pdf content');
+      const result = await getPdfInfo(buffer);
+
+      expect(result.pageCount).toBe(5);
     });
 
-    const { extractPdfText } = await import('../pdf-utils');
-    const buffer = Buffer.from('fake pdf content');
+    it('throws error when PDF has too many pages', async () => {
+      const mockPdfDoc = {
+        numPages: 51,
+      };
 
-    await expect(extractPdfText(buffer)).rejects.toThrow('PDF has too many pages (51). Maximum: 50');
-  });
-});
+      const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+      (pdfjsLib.getDocument as ReturnType<typeof vi.fn>).mockReturnValue({
+        promise: Promise.resolve(mockPdfDoc),
+      });
 
-describe('extractPdfPagesText', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+      const { getPdfInfo } = await import('../pdf-utils');
+      const buffer = Buffer.from('fake pdf content');
 
-  it('extracts text from each page of a PDF', async () => {
-    const mockTextContent = {
-      items: [
-        { str: 'Hello' },
-        { str: ' ' },
-        { str: 'World' },
-      ],
-    };
-
-    const mockPage = {
-      getTextContent: vi.fn().mockResolvedValue(mockTextContent),
-    };
-
-    const mockPdfDoc = {
-      numPages: 2,
-      getPage: vi.fn().mockResolvedValue(mockPage),
-    };
-
-    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
-    (pdfjsLib.getDocument as ReturnType<typeof vi.fn>).mockReturnValue({
-      promise: Promise.resolve(mockPdfDoc),
+      await expect(getPdfInfo(buffer)).rejects.toThrow(
+        'PDF has too many pages (51). Maximum: 50'
+      );
     });
-
-    const { extractPdfPagesText } = await import('../pdf-utils');
-    const buffer = Buffer.from('fake pdf content');
-    const result = await extractPdfPagesText(buffer);
-
-    expect(result.pageCount).toBe(2);
-    expect(result.pages).toHaveLength(2);
-    expect(result.pages[0].pageNumber).toBe(1);
-    expect(result.pages[0].textContent).toBe('Hello   World');
-    expect(result.pages[0].hasSignificantText).toBe(false); // Less than 200 chars
-  });
-
-  it('marks pages with significant text appropriately', async () => {
-    const longText = 'A'.repeat(250);
-    const mockTextContent = {
-      items: [{ str: longText }],
-    };
-
-    const mockPage = {
-      getTextContent: vi.fn().mockResolvedValue(mockTextContent),
-    };
-
-    const mockPdfDoc = {
-      numPages: 1,
-      getPage: vi.fn().mockResolvedValue(mockPage),
-    };
-
-    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
-    (pdfjsLib.getDocument as ReturnType<typeof vi.fn>).mockReturnValue({
-      promise: Promise.resolve(mockPdfDoc),
-    });
-
-    const { extractPdfPagesText } = await import('../pdf-utils');
-    const buffer = Buffer.from('fake pdf content');
-    const result = await extractPdfPagesText(buffer);
-
-    expect(result.pages[0].hasSignificantText).toBe(true);
-  });
-
-  it('throws error when PDF has too many pages', async () => {
-    const mockPdfDoc = {
-      numPages: 51,
-      getPage: vi.fn(),
-    };
-
-    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
-    (pdfjsLib.getDocument as ReturnType<typeof vi.fn>).mockReturnValue({
-      promise: Promise.resolve(mockPdfDoc),
-    });
-
-    const { extractPdfPagesText } = await import('../pdf-utils');
-    const buffer = Buffer.from('fake pdf content');
-
-    await expect(extractPdfPagesText(buffer)).rejects.toThrow('PDF has too many pages (51). Maximum: 50');
-  });
-});
-
-describe('extractPageText', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('extracts text from a specific page', async () => {
-    const mockTextContent = {
-      items: [
-        { str: 'Page' },
-        { str: ' ' },
-        { str: '2' },
-      ],
-    };
-
-    const mockPage = {
-      getTextContent: vi.fn().mockResolvedValue(mockTextContent),
-    };
-
-    const mockPdfDoc = {
-      numPages: 3,
-      getPage: vi.fn().mockResolvedValue(mockPage),
-    };
-
-    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
-    (pdfjsLib.getDocument as ReturnType<typeof vi.fn>).mockReturnValue({
-      promise: Promise.resolve(mockPdfDoc),
-    });
-
-    const { extractPageText } = await import('../pdf-utils');
-    const buffer = Buffer.from('fake pdf content');
-    const result = await extractPageText(buffer, 2);
-
-    expect(result).toBe('Page   2');
-    expect(mockPdfDoc.getPage).toHaveBeenCalledWith(2);
-  });
-
-  it('throws error for invalid page number (too low)', async () => {
-    const mockPdfDoc = {
-      numPages: 3,
-      getPage: vi.fn(),
-    };
-
-    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
-    (pdfjsLib.getDocument as ReturnType<typeof vi.fn>).mockReturnValue({
-      promise: Promise.resolve(mockPdfDoc),
-    });
-
-    const { extractPageText } = await import('../pdf-utils');
-    const buffer = Buffer.from('fake pdf content');
-
-    await expect(extractPageText(buffer, 0)).rejects.toThrow('Invalid page number: 0. PDF has 3 pages.');
-  });
-
-  it('throws error for invalid page number (too high)', async () => {
-    const mockPdfDoc = {
-      numPages: 3,
-      getPage: vi.fn(),
-    };
-
-    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
-    (pdfjsLib.getDocument as ReturnType<typeof vi.fn>).mockReturnValue({
-      promise: Promise.resolve(mockPdfDoc),
-    });
-
-    const { extractPageText } = await import('../pdf-utils');
-    const buffer = Buffer.from('fake pdf content');
-
-    await expect(extractPageText(buffer, 5)).rejects.toThrow('Invalid page number: 5. PDF has 3 pages.');
-  });
-});
-
-describe('getPdfPageCount', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('returns the page count of a PDF', async () => {
-    const { default: pdfParse } = await import('pdf-parse');
-    (pdfParse as ReturnType<typeof vi.fn>).mockResolvedValue({
-      numpages: 5,
-      text: 'Some text',
-    });
-
-    const { getPdfPageCount } = await import('../pdf-utils');
-    const buffer = Buffer.from('fake pdf content');
-    const count = await getPdfPageCount(buffer);
-
-    expect(count).toBe(5);
   });
 });

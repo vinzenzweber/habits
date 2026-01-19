@@ -1,14 +1,18 @@
 /**
- * Integration tests for PDF recipe extraction using test-recipes.pdf
+ * Integration tests for PDF recipe extraction using the Vision API approach
  *
- * These tests verify the PDF extraction pipeline works correctly with real PDF data.
- * Tests that involve OpenAI API are separated and mock the recipe-extraction module.
+ * PDF extraction renders each page to a PNG image using pdftoppm,
+ * then sends the image to GPT-4o Vision API for recipe extraction.
+ * This is the same approach used for camera photo imports.
+ *
+ * Tests that require pdftoppm are skipped if the tool is not installed.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { execSync } from 'child_process';
 import {
-  getTestPdfBuffer,
-  testPdfExists,
+  getImagePdfBuffer,
+  imagePdfExists,
   expectedRecipe1,
   expectedRecipe2,
   getAllIngredientNames,
@@ -16,119 +20,26 @@ import {
   createMockRecipe2Response,
 } from './fixtures/pdf-fixtures';
 
-import {
-  extractPdfPagesText,
-  MIN_TEXT_LENGTH_FOR_TEXT_EXTRACTION,
-} from '../pdf-utils';
+import { renderPdfPageToImage, getPdfInfo } from '../pdf-utils';
 import { parseExtractionResponse } from '../recipe-extraction';
 
-describe('PDF Extraction Integration Tests', () => {
-  // Skip all tests if the test PDF doesn't exist
-  const pdfExists = testPdfExists();
+// Check if pdftoppm is available for image rendering tests
+function pdftoppmAvailable(): boolean {
+  try {
+    execSync('pdftoppm -v', { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
+describe('PDF Recipe Extraction (Vision API Approach)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
-
-  describe('extractPdfPagesText with real PDF', () => {
-    it.skipIf(!pdfExists)('should extract 2 pages from test-recipes.pdf', async () => {
-      const pdfBuffer = getTestPdfBuffer();
-      const result = await extractPdfPagesText(pdfBuffer);
-
-      expect(result.pageCount).toBe(2);
-      expect(result.pages).toHaveLength(2);
-    });
-
-    it.skipIf(!pdfExists)('should mark both pages as having significant text', async () => {
-      const pdfBuffer = getTestPdfBuffer();
-      const result = await extractPdfPagesText(pdfBuffer);
-
-      expect(result.pages[0].hasSignificantText).toBe(true);
-      expect(result.pages[1].hasSignificantText).toBe(true);
-      expect(result.pages[0].textContent.length).toBeGreaterThanOrEqual(
-        MIN_TEXT_LENGTH_FOR_TEXT_EXTRACTION
-      );
-      expect(result.pages[1].textContent.length).toBeGreaterThanOrEqual(
-        MIN_TEXT_LENGTH_FOR_TEXT_EXTRACTION
-      );
-    });
-
-    it.skipIf(!pdfExists)('should extract text containing recipe 1 title on page 1', async () => {
-      const pdfBuffer = getTestPdfBuffer();
-      const result = await extractPdfPagesText(pdfBuffer);
-
-      expect(result.pages[0].pageNumber).toBe(1);
-      expect(result.pages[0].textContent.toLowerCase()).toContain('obstsalat');
-      expect(result.pages[0].textContent.toLowerCase()).toContain('kokos');
-    });
-
-    it.skipIf(!pdfExists)('should extract text containing recipe 2 title on page 2', async () => {
-      const pdfBuffer = getTestPdfBuffer();
-      const result = await extractPdfPagesText(pdfBuffer);
-
-      expect(result.pages[1].pageNumber).toBe(2);
-      expect(result.pages[1].textContent.toLowerCase()).toContain('pfirsich');
-      expect(result.pages[1].textContent.toLowerCase()).toContain('quark');
-    });
-
-    it.skipIf(!pdfExists)('should extract ingredient keywords from page 1', async () => {
-      const pdfBuffer = getTestPdfBuffer();
-      const result = await extractPdfPagesText(pdfBuffer);
-
-      const page1Text = result.pages[0].textContent.toLowerCase();
-      expect(page1Text).toContain('ananas');
-      expect(page1Text).toContain('apfel');
-      expect(page1Text).toContain('heidelbeeren');
-    });
-
-    it.skipIf(!pdfExists)('should extract ingredient keywords from page 2', async () => {
-      const pdfBuffer = getTestPdfBuffer();
-      const result = await extractPdfPagesText(pdfBuffer);
-
-      const page2Text = result.pages[1].textContent.toLowerCase();
-      expect(page2Text).toContain('pfirsich');
-      expect(page2Text).toContain('mandel');
-      expect(page2Text).toContain('joghurt');
-    });
-
-    it.skipIf(!pdfExists)('should extract nutrition information from page 1 text', async () => {
-      const pdfBuffer = getTestPdfBuffer();
-      const result = await extractPdfPagesText(pdfBuffer);
-
-      const page1Text = result.pages[0].textContent;
-      // Should contain calories value (335)
-      expect(page1Text).toContain('335');
-    });
-
-    it.skipIf(!pdfExists)('should extract nutrition information from page 2 text', async () => {
-      const pdfBuffer = getTestPdfBuffer();
-      const result = await extractPdfPagesText(pdfBuffer);
-
-      const page2Text = result.pages[1].textContent;
-      // Should contain calories value (295)
-      expect(page2Text).toContain('295');
-    });
-
-    it.skipIf(!pdfExists)('should have proper page numbering', async () => {
-      const pdfBuffer = getTestPdfBuffer();
-      const result = await extractPdfPagesText(pdfBuffer);
-
-      expect(result.pages[0].pageNumber).toBe(1);
-      expect(result.pages[1].pageNumber).toBe(2);
-    });
-
-    it.skipIf(!pdfExists)('should have combined total text from all pages', async () => {
-      const pdfBuffer = getTestPdfBuffer();
-      const result = await extractPdfPagesText(pdfBuffer);
-
-      // Total text should contain content from both recipes
-      expect(result.totalText.toLowerCase()).toContain('obstsalat');
-      expect(result.totalText.toLowerCase()).toContain('pfirsich');
-    });
   });
 
   describe('parseExtractionResponse with recipe data', () => {
@@ -145,7 +56,9 @@ describe('PDF Extraction Integration Tests', () => {
         expect(result.data.nutrition.calories).toBe(expectedRecipe1.nutrition.calories);
         expect(result.data.nutrition.protein).toBe(expectedRecipe1.nutrition.protein);
         expect(result.data.nutrition.fat).toBe(expectedRecipe1.nutrition.fat);
-        expect(result.data.nutrition.carbohydrates).toBe(expectedRecipe1.nutrition.carbohydrates);
+        expect(result.data.nutrition.carbohydrates).toBe(
+          expectedRecipe1.nutrition.carbohydrates
+        );
         expect(result.data.steps).toHaveLength(expectedRecipe1.stepCount);
       }
     });
@@ -163,7 +76,9 @@ describe('PDF Extraction Integration Tests', () => {
         expect(result.data.nutrition.calories).toBe(expectedRecipe2.nutrition.calories);
         expect(result.data.nutrition.protein).toBe(expectedRecipe2.nutrition.protein);
         expect(result.data.nutrition.fat).toBe(expectedRecipe2.nutrition.fat);
-        expect(result.data.nutrition.carbohydrates).toBe(expectedRecipe2.nutrition.carbohydrates);
+        expect(result.data.nutrition.carbohydrates).toBe(
+          expectedRecipe2.nutrition.carbohydrates
+        );
         expect(result.data.steps).toHaveLength(expectedRecipe2.stepCount);
       }
     });
@@ -253,72 +168,17 @@ describe('PDF Extraction Integration Tests', () => {
     });
   });
 
-  describe('Full extraction pipeline verification', () => {
-    it.skipIf(!pdfExists)('should extract text from both pages and verify structure', async () => {
-      const pdfBuffer = getTestPdfBuffer();
-      const pdfInfo = await extractPdfPagesText(pdfBuffer);
-
-      expect(pdfInfo.pages).toHaveLength(2);
-
-      // Verify page 1 contains recipe 1 content
-      const page1Text = pdfInfo.pages[0].textContent.toLowerCase();
-      expect(page1Text).toContain('obstsalat');
-      expect(page1Text).toContain('kokos');
-      expect(page1Text).toContain('portionen');
-      expect(page1Text).toContain('zubereitung');
-
-      // Verify page 2 contains recipe 2 content
-      const page2Text = pdfInfo.pages[1].textContent.toLowerCase();
-      expect(page2Text).toContain('pfirsich');
-      expect(page2Text).toContain('quark');
-      expect(page2Text).toContain('portionen');
-      expect(page2Text).toContain('zubereitung');
-    });
-
-    it.skipIf(!pdfExists)('should extract prep time values from PDF text', async () => {
-      const pdfBuffer = getTestPdfBuffer();
-      const pdfInfo = await extractPdfPagesText(pdfBuffer);
-
-      // Recipe 1: 15 minutes
-      expect(pdfInfo.pages[0].textContent).toContain('15');
-
-      // Recipe 2: 10 minutes
-      expect(pdfInfo.pages[1].textContent).toContain('10');
-    });
-
-    it.skipIf(!pdfExists)('should extract serving counts from PDF text', async () => {
-      const pdfBuffer = getTestPdfBuffer();
-      const pdfInfo = await extractPdfPagesText(pdfBuffer);
-
-      // Both recipes have 2 servings
-      expect(pdfInfo.pages[0].textContent).toContain('2');
-      expect(pdfInfo.pages[1].textContent).toContain('2');
-    });
-  });
-
-  describe('Edge cases', () => {
-    it('should handle empty PDF buffer gracefully', async () => {
-      const emptyBuffer = Buffer.from([]);
-
-      await expect(extractPdfPagesText(emptyBuffer)).rejects.toThrow();
-    });
-
-    it('should handle invalid PDF buffer gracefully', async () => {
-      const invalidBuffer = Buffer.from('not a valid pdf');
-
-      await expect(extractPdfPagesText(invalidBuffer)).rejects.toThrow();
-    });
-
+  describe('Error handling', () => {
     it('should handle parseExtractionResponse with error from model', () => {
       const errorResponse = {
-        error: 'Could not extract recipe from text',
+        error: 'Could not extract recipe from image',
       };
 
       const result = parseExtractionResponse(errorResponse);
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error).toBe('Could not extract recipe from text');
+        expect(result.error).toBe('Could not extract recipe from image');
       }
     });
 
@@ -370,5 +230,52 @@ describe('PDF Extraction Integration Tests', () => {
         expect(result.error).toContain('Invalid');
       }
     });
+  });
+
+  describe('PDF to image rendering (requires pdftoppm)', () => {
+    // Skip tests if either the image PDF doesn't exist or pdftoppm isn't installed
+    const canRunImageTests = imagePdfExists() && pdftoppmAvailable();
+
+    it.skipIf(!canRunImageTests)(
+      'should render PDF page to PNG using pdftoppm',
+      async () => {
+        const pdfBuffer = getImagePdfBuffer();
+
+        // Get page count
+        const pdfInfo = await getPdfInfo(pdfBuffer);
+        expect(pdfInfo.pageCount).toBe(2);
+
+        // Render page 1
+        const imageBuffer = await renderPdfPageToImage(pdfBuffer, 1);
+
+        // Verify it's a PNG (starts with PNG signature)
+        expect(imageBuffer[0]).toBe(0x89);
+        expect(imageBuffer[1]).toBe(0x50); // 'P'
+        expect(imageBuffer[2]).toBe(0x4e); // 'N'
+        expect(imageBuffer[3]).toBe(0x47); // 'G'
+
+        // Image should be substantial (>100KB for a recipe page at 200 DPI)
+        expect(imageBuffer.length).toBeGreaterThan(100 * 1024);
+      },
+      120000 // 2 minute timeout for PDF rendering (high-res images are slow)
+    );
+
+    it.skipIf(!canRunImageTests)(
+      'should render all pages of PDF',
+      async () => {
+        const pdfBuffer = getImagePdfBuffer();
+        const pdfInfo = await getPdfInfo(pdfBuffer);
+
+        // Render both pages
+        for (let pageNum = 1; pageNum <= pdfInfo.pageCount; pageNum++) {
+          const imageBuffer = await renderPdfPageToImage(pdfBuffer, pageNum);
+
+          // Verify each is a valid PNG
+          expect(imageBuffer[0]).toBe(0x89);
+          expect(imageBuffer.length).toBeGreaterThan(50 * 1024);
+        }
+      },
+      240000 // 4 minute timeout for rendering multiple high-res pages
+    );
   });
 });
