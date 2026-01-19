@@ -1,48 +1,27 @@
 /**
  * POST /api/recipes/extract-from-pdf
- * Extract recipes from a PDF file using vision API
- *
- * Always renders PDF pages to images and uses GPT-4 Vision for extraction.
- * This approach handles both text-based and image-based (scanned) PDFs consistently.
+ * Enqueue PDF for background recipe extraction
  *
  * Request body:
  *   - pdfBase64: Base64-encoded PDF data
  *
  * Response:
- *   - Success: { recipes: Array<{slug, title, pageNumber}>, totalPages, extractedCount, skippedPages }
+ *   - Success: HTTP 202 { jobId: number }
  *   - Error: { error: string }
  */
 
 import { auth } from '@/lib/auth';
-import {
-  extractRecipeFromImage,
-  toRecipeJson,
-} from '@/lib/recipe-extraction';
-import { createRecipe, getUniqueSlug } from '@/lib/recipes';
-import { generateSlug } from '@/lib/recipe-types';
+import { query } from '@/lib/db';
 import { getRegionFromTimezone } from '@/lib/user-preferences';
-import {
-  getPdfInfo,
-  renderPdfPageToImage,
-  MAX_PDF_PAGES,
-} from '@/lib/pdf-utils';
+import { getPdfInfo, MAX_PDF_PAGES } from '@/lib/pdf-utils';
 
 export const runtime = 'nodejs';
 
 // Maximum base64 PDF size (approximately 15MB after base64 encoding of 10MB file)
 const MAX_BASE64_SIZE = 15 * 1024 * 1024;
 
-interface ExtractedRecipeResult {
-  slug: string;
-  title: string;
-  pageNumber: number;
-}
-
-interface ExtractionResponse {
-  recipes: ExtractedRecipeResult[];
-  totalPages: number;
-  extractedCount: number;
-  skippedPages: number[];
+interface EnqueuedJobResponse {
+  jobId: number;
 }
 
 export async function POST(request: Request) {
@@ -101,66 +80,49 @@ export async function POST(request: Request) {
       );
     }
 
-    const recipes: ExtractedRecipeResult[] = [];
-    const skippedPages: number[] = [];
+    // Create pdf_extraction_jobs record with placeholder sidequest_job_id
+    const jobResult = await query(
+      `INSERT INTO pdf_extraction_jobs
+       (user_id, sidequest_job_id, total_pages, status)
+       VALUES ($1, 'pending', $2, 'pending')
+       RETURNING id`,
+      [userIdNum, pdfInfo.pageCount]
+    );
+    const pdfJobId = jobResult.rows[0].id;
 
-    // Process each page: render to image and use vision API
-    for (let pageNum = 1; pageNum <= pdfInfo.pageCount; pageNum++) {
-      try {
-        // Render page to high-res image
-        const imageBuffer = await renderPdfPageToImage(pdfBuffer, pageNum);
-        const imageBase64 = imageBuffer.toString('base64');
+    // Dynamic import to avoid build-time issues (SideQuest requires DATABASE_URL)
+    const { Sidequest } = await import('sidequest');
+    const { ProcessPdfJob } = await import('@/jobs/ProcessPdfJob');
 
-        // Extract recipe using vision API
-        const extractionResult = await extractRecipeFromImage(imageBase64, {
-          targetLocale: recipeLocale,
-          targetRegion: userRegion,
-        });
+    // Enqueue ProcessPdfJob with SideQuest
+    const sidequestJob = await Sidequest.build(ProcessPdfJob)
+      .queue('pdf-processing')
+      .timeout(600000) // 10 minutes
+      .maxAttempts(1) // Don't retry entire PDF
+      .enqueue({
+        pdfJobId,
+        userId: userIdNum,
+        pdfBase64,
+        targetLocale: recipeLocale,
+        targetRegion: userRegion,
+      });
 
-        if (!extractionResult.success) {
-          skippedPages.push(pageNum);
-          continue;
-        }
+    // Update job record with actual sidequest_job_id
+    await query(
+      `UPDATE pdf_extraction_jobs
+       SET sidequest_job_id = $1
+       WHERE id = $2`,
+      [String(sidequestJob.id), pdfJobId]
+    );
 
-        // Save extracted recipe
-        const extractedData = extractionResult.data;
-        const baseSlug = generateSlug(extractedData.title);
-        const slug = await getUniqueSlug(userIdNum, baseSlug);
-
-        const recipeJson = toRecipeJson(extractedData, slug);
-
-        await createRecipe({
-          title: extractedData.title,
-          description: extractedData.description,
-          locale: extractedData.locale,
-          tags: extractedData.tags,
-          recipeJson,
-        });
-
-        recipes.push({
-          slug,
-          title: extractedData.title,
-          pageNumber: pageNum,
-        });
-      } catch (pageError) {
-        console.error(`Error processing page ${pageNum}:`, pageError);
-        skippedPages.push(pageNum);
-      }
-    }
-
-    const response: ExtractionResponse = {
-      recipes,
-      totalPages: pdfInfo.pageCount,
-      extractedCount: recipes.length,
-      skippedPages,
-    };
-
-    return Response.json(response, { status: 201 });
+    // Return HTTP 202 Accepted with job ID
+    const response: EnqueuedJobResponse = { jobId: pdfJobId };
+    return Response.json(response, { status: 202 });
   } catch (error) {
-    console.error('Error extracting recipes from PDF:', error);
+    console.error('Error enqueueing PDF extraction job:', error);
 
     return Response.json(
-      { error: 'Failed to process PDF. Please try again.' },
+      { error: 'Failed to enqueue PDF processing. Please try again.' },
       { status: 500 }
     );
   }
