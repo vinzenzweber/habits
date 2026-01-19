@@ -1,6 +1,6 @@
 /**
  * Tests for recipe extraction from PDF API route
- * The route always uses vision API (renders PDF pages to images)
+ * The route enqueues background jobs for async PDF processing
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -11,21 +11,9 @@ vi.mock('@/lib/auth', () => ({
   auth: vi.fn(),
 }));
 
-// Mock recipe-extraction
-vi.mock('@/lib/recipe-extraction', () => ({
-  extractRecipeFromImage: vi.fn(),
-  toRecipeJson: vi.fn(),
-}));
-
-// Mock recipes
-vi.mock('@/lib/recipes', () => ({
-  createRecipe: vi.fn(),
-  getUniqueSlug: vi.fn(),
-}));
-
-// Mock recipe-types
-vi.mock('@/lib/recipe-types', () => ({
-  generateSlug: vi.fn(),
+// Mock database
+vi.mock('@/lib/db', () => ({
+  query: vi.fn(),
 }));
 
 // Mock user-preferences
@@ -36,56 +24,31 @@ vi.mock('@/lib/user-preferences', () => ({
 // Mock pdf-utils
 vi.mock('@/lib/pdf-utils', () => ({
   getPdfInfo: vi.fn(),
-  renderPdfPageToImage: vi.fn(),
   MAX_PDF_PAGES: 50,
 }));
 
-import { auth } from '@/lib/auth';
-import { extractRecipeFromImage, toRecipeJson } from '@/lib/recipe-extraction';
-import { createRecipe, getUniqueSlug } from '@/lib/recipes';
-import { generateSlug } from '@/lib/recipe-types';
-import { getPdfInfo, renderPdfPageToImage } from '@/lib/pdf-utils';
+// Mock SideQuest with dynamic import support
+const mockEnqueue = vi.fn();
+const mockMaxAttempts = vi.fn().mockReturnThis();
+const mockTimeout = vi.fn().mockReturnValue({ maxAttempts: mockMaxAttempts, enqueue: mockEnqueue });
+const mockQueue = vi.fn().mockReturnValue({ timeout: mockTimeout, maxAttempts: mockMaxAttempts, enqueue: mockEnqueue });
+const mockBuild = vi.fn().mockReturnValue({ queue: mockQueue, timeout: mockTimeout, maxAttempts: mockMaxAttempts, enqueue: mockEnqueue });
 
-// Sample extracted data
-const mockExtractedData = {
-  title: 'Test Recipe',
-  description: 'A delicious test recipe',
-  servings: 4,
-  prepTimeMinutes: 10,
-  cookTimeMinutes: 20,
-  locale: 'en-US',
-  tags: ['dinner', 'quick'],
-  nutrition: {
-    calories: 400,
-    protein: 25,
-    carbohydrates: 35,
-    fat: 15,
+vi.mock('sidequest', () => ({
+  Sidequest: {
+    build: mockBuild,
   },
-  ingredientGroups: [
-    {
-      name: 'Main',
-      ingredients: [{ name: 'chicken', quantity: 500, unit: 'g' }],
-    },
-  ],
-  steps: [{ number: 1, instruction: 'Cook' }],
-};
+}));
 
-// Sample recipe JSON
-const mockRecipeJson = {
-  slug: 'test-recipe',
-  title: 'Test Recipe',
-  description: 'A delicious test recipe',
-  servings: 4,
-  prepTimeMinutes: 10,
-  cookTimeMinutes: 20,
-  locale: 'en-US',
-  tags: ['dinner', 'quick'],
-  nutrition: mockExtractedData.nutrition,
-  ingredientGroups: mockExtractedData.ingredientGroups,
-  steps: mockExtractedData.steps,
-  images: [],
-  sourceType: 'ai_generated',
-};
+// Mock ProcessPdfJob (just the import, not the class itself)
+class MockProcessPdfJob {}
+vi.mock('@/jobs/ProcessPdfJob', () => ({
+  ProcessPdfJob: MockProcessPdfJob,
+}));
+
+import { auth } from '@/lib/auth';
+import { query } from '@/lib/db';
+import { getPdfInfo } from '@/lib/pdf-utils';
 
 // Helper to create a mock request
 function createMockRequest(body: Record<string, unknown> | null): Request {
@@ -97,38 +60,24 @@ function createMockRequest(body: Record<string, unknown> | null): Request {
 describe('POST /api/recipes/extract-from-pdf', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Default to authenticated
+
+    // Default authenticated user
     vi.mocked(auth).mockResolvedValue({
       user: { id: '123', locale: 'en-US' },
     } as never);
+
     // Default PDF info with one page
     vi.mocked(getPdfInfo).mockResolvedValue({
       pageCount: 1,
     });
-    // Default: render returns a PNG buffer
-    vi.mocked(renderPdfPageToImage).mockResolvedValue(Buffer.from('fake-png-data'));
-    // Default success extraction from vision API
-    vi.mocked(extractRecipeFromImage).mockResolvedValue({
-      success: true,
-      data: mockExtractedData,
-    });
-    vi.mocked(generateSlug).mockReturnValue('test-recipe');
-    vi.mocked(getUniqueSlug).mockResolvedValue('test-recipe');
-    vi.mocked(toRecipeJson).mockReturnValue(mockRecipeJson);
-    vi.mocked(createRecipe).mockResolvedValue({
-      id: 1,
-      userId: 123,
-      slug: 'test-recipe',
-      version: 1,
-      title: 'Test Recipe',
-      description: 'A delicious test recipe',
-      locale: 'en-US',
-      tags: ['dinner', 'quick'],
-      recipeJson: mockRecipeJson,
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+
+    // Default database responses
+    vi.mocked(query)
+      .mockResolvedValueOnce({ rows: [{ id: 42 }] }) // INSERT job
+      .mockResolvedValueOnce({ rows: [] }); // UPDATE sidequest_job_id
+
+    // Default SideQuest enqueue response
+    mockEnqueue.mockResolvedValue({ id: 'sq_test_123' });
   });
 
   describe('authentication', () => {
@@ -217,122 +166,29 @@ describe('POST /api/recipes/extract-from-pdf', () => {
     });
   });
 
-  describe('successful extraction', () => {
-    it('returns 201 with single recipe on success', async () => {
+  describe('successful job enqueueing', () => {
+    it('returns 202 Accepted with job ID', async () => {
       const request = createMockRequest({ pdfBase64: 'somebase64data' });
 
       const response = await POST(request);
       const data = await response.json();
 
-      expect(response.status).toBe(201);
-      expect(data.recipes).toHaveLength(1);
-      expect(data.recipes[0].slug).toBe('test-recipe');
-      expect(data.extractedCount).toBe(1);
-      expect(data.totalPages).toBe(1);
+      expect(response.status).toBe(202);
+      expect(data.jobId).toBe(42);
     });
 
-    it('renders PDF page and calls vision API', async () => {
+    it('creates pdf_extraction_jobs record in database', async () => {
       const request = createMockRequest({ pdfBase64: 'somebase64data' });
 
       await POST(request);
 
-      // Should render the page to an image
-      expect(renderPdfPageToImage).toHaveBeenCalledWith(
-        expect.any(Buffer),
-        1  // page number
-      );
-
-      // Should call vision API with the base64 image
-      expect(extractRecipeFromImage).toHaveBeenCalledWith(
-        expect.any(String),  // base64 image data
-        expect.objectContaining({
-          targetLocale: 'en-US',
-        })
+      expect(query).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO pdf_extraction_jobs'),
+        expect.arrayContaining([123, 1]) // userId, pageCount
       );
     });
 
-    it('extracts recipes from multiple pages', async () => {
-      vi.mocked(getPdfInfo).mockResolvedValue({
-        pageCount: 2,
-      });
-
-      // Return different recipes for each page
-      vi.mocked(extractRecipeFromImage)
-        .mockResolvedValueOnce({
-          success: true,
-          data: { ...mockExtractedData, title: 'Recipe 1' },
-        })
-        .mockResolvedValueOnce({
-          success: true,
-          data: { ...mockExtractedData, title: 'Recipe 2' },
-        });
-
-      vi.mocked(generateSlug)
-        .mockReturnValueOnce('recipe-1')
-        .mockReturnValueOnce('recipe-2');
-
-      vi.mocked(getUniqueSlug)
-        .mockResolvedValueOnce('recipe-1')
-        .mockResolvedValueOnce('recipe-2');
-
-      const request = createMockRequest({ pdfBase64: 'somebase64data' });
-
-      const response = await POST(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(201);
-      expect(data.recipes).toHaveLength(2);
-      expect(data.extractedCount).toBe(2);
-      expect(renderPdfPageToImage).toHaveBeenCalledTimes(2);
-    });
-
-    it('skips pages where extraction fails', async () => {
-      vi.mocked(getPdfInfo).mockResolvedValue({
-        pageCount: 2,
-      });
-
-      vi.mocked(extractRecipeFromImage)
-        .mockResolvedValueOnce({
-          success: true,
-          data: mockExtractedData,
-        })
-        .mockResolvedValueOnce({
-          success: false,
-          error: 'No recipe found in image',
-        });
-
-      const request = createMockRequest({ pdfBase64: 'somebase64data' });
-
-      const response = await POST(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(201);
-      expect(data.recipes).toHaveLength(1);
-      expect(data.skippedPages).toContain(2);
-    });
-
-    it('handles pages where rendering fails', async () => {
-      vi.mocked(getPdfInfo).mockResolvedValue({
-        pageCount: 2,
-      });
-
-      vi.mocked(renderPdfPageToImage)
-        .mockResolvedValueOnce(Buffer.from('fake-png-data'))
-        .mockRejectedValueOnce(new Error('Rendering failed'));
-
-      const request = createMockRequest({ pdfBase64: 'somebase64data' });
-
-      const response = await POST(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(201);
-      expect(data.recipes).toHaveLength(1);
-      expect(data.skippedPages).toContain(2);
-    });
-  });
-
-  describe('extraction passes user preferences', () => {
-    it('passes locale and region to extraction', async () => {
+    it('enqueues ProcessPdfJob with correct parameters', async () => {
       vi.mocked(auth).mockResolvedValue({
         user: {
           id: '123',
@@ -346,54 +202,80 @@ describe('POST /api/recipes/extract-from-pdf', () => {
 
       await POST(request);
 
-      expect(extractRecipeFromImage).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({
-          targetLocale: 'de-DE',
-        })
+      expect(mockBuild).toHaveBeenCalledWith(MockProcessPdfJob);
+      expect(mockQueue).toHaveBeenCalledWith('pdf-processing');
+      expect(mockTimeout).toHaveBeenCalledWith(600000);
+      expect(mockMaxAttempts).toHaveBeenCalledWith(1);
+      expect(mockEnqueue).toHaveBeenCalledWith({
+        pdfJobId: 42,
+        userId: 123,
+        pdfBase64: 'somebase64data',
+        targetLocale: 'de-DE',
+        targetRegion: expect.any(String),
+      });
+    });
+
+    it('updates job record with sidequest_job_id', async () => {
+      const request = createMockRequest({ pdfBase64: 'somebase64data' });
+
+      await POST(request);
+
+      expect(query).toHaveBeenCalledWith(
+        expect.stringContaining('UPDATE pdf_extraction_jobs'),
+        ['sq_test_123', 42]
       );
     });
-  });
 
-  describe('image-based PDFs (scanned pages)', () => {
-    it('successfully extracts recipes from image-based PDFs using vision', async () => {
-      // Image-based PDFs are now handled the same as text PDFs
-      // The route renders all pages to images and uses vision API
-      vi.mocked(getPdfInfo).mockResolvedValue({
-        pageCount: 2,
-      });
+    it('returns immediately without processing pages', async () => {
+      vi.mocked(getPdfInfo).mockResolvedValue({ pageCount: 50 });
+      const request = createMockRequest({ pdfBase64: 'somebase64data' });
 
-      vi.mocked(extractRecipeFromImage)
-        .mockResolvedValueOnce({
-          success: true,
-          data: { ...mockExtractedData, title: 'Scanned Recipe 1' },
-        })
-        .mockResolvedValueOnce({
-          success: true,
-          data: { ...mockExtractedData, title: 'Scanned Recipe 2' },
-        });
+      const startTime = Date.now();
+      await POST(request);
+      const duration = Date.now() - startTime;
 
-      vi.mocked(generateSlug)
-        .mockReturnValueOnce('scanned-recipe-1')
-        .mockReturnValueOnce('scanned-recipe-2');
+      // Should return almost immediately (no page processing)
+      expect(duration).toBeLessThan(100);
+    });
 
-      vi.mocked(getUniqueSlug)
-        .mockResolvedValueOnce('scanned-recipe-1')
-        .mockResolvedValueOnce('scanned-recipe-2');
-
+    it('handles multi-page PDFs by enqueuing single job', async () => {
+      vi.mocked(getPdfInfo).mockResolvedValue({ pageCount: 10 });
       const request = createMockRequest({ pdfBase64: 'somebase64data' });
 
       const response = await POST(request);
       const data = await response.json();
 
-      expect(response.status).toBe(201);
-      expect(data.recipes).toHaveLength(2);
-      expect(data.extractedCount).toBe(2);
-      expect(data.skippedPages).toEqual([]);
+      expect(response.status).toBe(202);
+      expect(data.jobId).toBe(42);
+      // Should only call enqueue once (not per-page)
+      expect(mockEnqueue).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('error handling', () => {
+    it('returns 500 when database insert fails', async () => {
+      vi.mocked(query).mockReset();
+      vi.mocked(query).mockRejectedValueOnce(new Error('Database error'));
+      const request = createMockRequest({ pdfBase64: 'somebase64data' });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(500);
+      expect(data.error).toBe('Failed to enqueue PDF processing. Please try again.');
+    });
+
+    it('returns 500 when SideQuest enqueue fails', async () => {
+      mockEnqueue.mockRejectedValueOnce(new Error('Queue error'));
+      const request = createMockRequest({ pdfBase64: 'somebase64data' });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(500);
+      expect(data.error).toBe('Failed to enqueue PDF processing. Please try again.');
+    });
+
     it('returns 500 on unexpected PDF parsing error', async () => {
       vi.mocked(getPdfInfo).mockRejectedValueOnce(
         new Error('Unexpected error')
@@ -404,20 +286,7 @@ describe('POST /api/recipes/extract-from-pdf', () => {
       const data = await response.json();
 
       expect(response.status).toBe(500);
-      expect(data.error).toBe('Failed to process PDF. Please try again.');
-    });
-
-    it('skips page when database error occurs on save', async () => {
-      vi.mocked(createRecipe).mockRejectedValue(new Error('Database error'));
-      const request = createMockRequest({ pdfBase64: 'somebase64data' });
-
-      const response = await POST(request);
-      const data = await response.json();
-
-      // Should return 201 with the failed page in skippedPages
-      expect(response.status).toBe(201);
-      expect(data.skippedPages).toContain(1);
-      expect(data.extractedCount).toBe(0);
+      expect(data.error).toBe('Failed to enqueue PDF processing. Please try again.');
     });
   });
 });
