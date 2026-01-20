@@ -589,6 +589,80 @@ describe('RecipeImportModal', () => {
       // Error from job failure should appear
       await screen.findByText(/pdf processing failed/i, {}, { timeout: 5000 });
     });
+
+    it('calls DELETE endpoint and closes modal when Cancel button is clicked during extraction', async () => {
+      vi.mocked(validateImportFile).mockReturnValue({ valid: true, fileType: 'pdf' });
+
+      // Mock that keeps returning 'processing' so cancel button stays visible
+      mockFetch.mockImplementation((url: string, options?: { method?: string }) => {
+        if (url === '/api/recipes/extract-from-pdf' && options?.method === 'POST') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ jobId: 999 }),
+          });
+        }
+        if (url === '/api/recipes/extract-from-pdf/999' && options?.method === 'DELETE') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ success: true }),
+          });
+        }
+        if (url === '/api/recipes/extract-from-pdf/999') {
+          // Return processing with totalPages > 0 to show progress UI with cancel button
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              status: 'processing',
+              progress: { currentPage: 1, totalPages: 5, recipesExtracted: 0 },
+              recipes: [],
+              skippedPages: [],
+            }),
+          });
+        }
+        return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
+      });
+
+      const onClose = vi.fn();
+      const user = userEvent.setup();
+      render(<RecipeImportModal {...defaultProps} onClose={onClose} />);
+
+      const file = new File(['test'], 'recipes.pdf', { type: 'application/pdf' });
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+
+      await user.upload(input, file);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /import recipe/i })).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByRole('button', { name: /import recipe/i }));
+
+      // Wait for polling to show progress (need to wait for 2 things: POST call, then first poll)
+      // First wait for the POST to complete and polling to start
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledWith(
+          '/api/recipes/extract-from-pdf',
+          expect.objectContaining({ method: 'POST' })
+        );
+      });
+
+      // Wait for cancel button to appear (appears after first poll returns progress)
+      const cancelButton = await screen.findByTestId('cancel-extraction-button', {}, { timeout: 8000 });
+      expect(cancelButton).toBeInTheDocument();
+
+      await user.click(cancelButton);
+
+      // Verify DELETE was called with correct job ID
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledWith(
+          '/api/recipes/extract-from-pdf/999',
+          expect.objectContaining({ method: 'DELETE' })
+        );
+      });
+
+      // Verify modal was closed
+      expect(onClose).toHaveBeenCalled();
+    }, 20000);
   });
 
   describe('modal actions', () => {

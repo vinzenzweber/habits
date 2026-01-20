@@ -212,9 +212,8 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
           setIsExtracting(false);
           setIsUploading(false);
         } else if (data.status === 'cancelled') {
-          setError('Extraction was cancelled');
-          setIsExtracting(false);
-          setIsUploading(false);
+          // User-initiated cancellation - close modal silently
+          onClose();
         }
       } catch (err) {
         console.error('Polling error:', err);
@@ -368,7 +367,8 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
         setPollingJobId(data.jobId);
         setJobStatus('pending');
         setPartialResults([]);
-        // Polling effect will handle the rest - don't set isUploading/isExtracting to false here
+        // Polling effect will handle the rest - keep isUploading/isExtracting true
+        // Exit early to avoid the finally block resetting loading states
         return;
       } else {
         // Handle image extraction (existing logic)
@@ -394,10 +394,14 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
     } catch (err) {
       console.error('Extraction error:', err);
       setError(err instanceof Error ? err.message : 'Failed to extract recipe');
-    } finally {
+      // Reset loading states on error
       setIsUploading(false);
       setIsExtracting(false);
+      return;
     }
+    // Reset loading states on successful image extraction (PDF uses polling)
+    setIsUploading(false);
+    setIsExtracting(false);
   }, [selectedFile, fileType, onImageCaptured, fileToBase64]);
 
   const formatFileSize = (bytes: number): string => {
@@ -547,7 +551,7 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
                                 <div
                                   className="bg-emerald-500 h-2 rounded-full transition-all duration-300"
                                   style={{
-                                    width: `${(extractionProgress.currentPage / extractionProgress.totalPages) * 100}%`
+                                    width: `${extractionProgress.totalPages > 0 ? (extractionProgress.currentPage / extractionProgress.totalPages) * 100 : 0}%`
                                   }}
                                 />
                               </div>
@@ -575,6 +579,7 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
                           {/* Cancel button - calls DELETE endpoint */}
                           <button
                             type="button"
+                            data-testid="cancel-extraction-button"
                             onClick={async () => {
                               // Cancel the job via DELETE endpoint
                               try {
