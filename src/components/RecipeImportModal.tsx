@@ -269,6 +269,15 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
   }, []);
 
   const parseResponseJson = useCallback(async <T,>(response: Response) => {
+    if (typeof response.text !== 'function' && typeof response.json === 'function') {
+      try {
+        const data = (await response.json()) as T;
+        return { data, text: '' };
+      } catch {
+        return { data: null as T | null, text: '' };
+      }
+    }
+
     const text = await response.text();
     if (!text) {
       return { data: null as T | null, text: '' };
