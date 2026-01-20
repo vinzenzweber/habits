@@ -18,10 +18,6 @@ vi.mock('@/lib/recipe-extraction', () => ({
   toRecipeJson: vi.fn(() => ({ slug: 'mock-slug' })),
 }));
 
-vi.mock('@/lib/recipes', () => ({
-  getUniqueSlug: vi.fn(),
-}));
-
 vi.mock('@/lib/db', () => ({
   transaction: vi.fn(),
 }));
@@ -37,7 +33,6 @@ vi.mock('@/lib/recipe-image-storage', () => ({
 
 import { Sidequest } from '@/lib/sidequest-runtime';
 import { extractRecipeFromImage, toRecipeJson } from '@/lib/recipe-extraction';
-import { getUniqueSlug } from '@/lib/recipes';
 import { transaction } from '@/lib/db';
 import { saveRecipeImage } from '@/lib/recipe-image-storage';
 import {
@@ -127,10 +122,10 @@ describe('ExtractRecipeFromImageJob', () => {
         },
       });
 
-      vi.mocked(getUniqueSlug).mockResolvedValueOnce('test-recipe');
       vi.mocked(transaction).mockImplementationOnce(async (callback) => {
         return callback({
           query: vi.fn()
+            .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })
             .mockResolvedValueOnce({ rows: [{ version: 1 }], rowCount: 1 })
             .mockResolvedValueOnce({ rows: [], rowCount: 1 })
             .mockResolvedValueOnce({ rows: [{ slug: 'test-recipe', title: 'Test Recipe' }], rowCount: 1 }),
@@ -140,7 +135,6 @@ describe('ExtractRecipeFromImageJob', () => {
       const job = new ExtractRecipeFromImageJob();
       const result = await job.run(defaultParams);
 
-      expect(getUniqueSlug).toHaveBeenCalledWith(42, 'Test Recipe');
       expect(saveRecipeImage).toHaveBeenCalled();
       expect(toRecipeJson).toHaveBeenCalled();
       expect(result.recipeSlug).toBe('test-recipe');

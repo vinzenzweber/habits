@@ -18,7 +18,7 @@ vi.mock('@/lib/user-preferences', () => ({
 }));
 
 vi.mock('@/lib/sidequest-config', () => ({
-  initializeSidequest: vi.fn(),
+  configureSidequest: vi.fn(),
 }));
 
 // Mock pdf-utils

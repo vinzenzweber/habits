@@ -20,7 +20,7 @@ vi.mock('@/lib/db', () => ({
 }));
 
 vi.mock('@/lib/sidequest-config', () => ({
-  initializeSidequest: vi.fn(),
+  configureSidequest: vi.fn(),
 }));
 
 // Mock Sidequest

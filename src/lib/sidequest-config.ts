@@ -3,6 +3,7 @@ import { Sidequest } from "@/lib/sidequest-runtime";
 import type { Knex } from "knex";
 
 let initialized = false;
+let configured = false;
 
 /**
  * Build database configuration with SSL settings for Railway deployments.
@@ -31,11 +32,7 @@ function buildDatabaseConfig(connectionString: string): Knex.Config | string {
  * Initialize SideQuest job processing engine.
  * This should be called once when the server starts via instrumentation.ts
  */
-export async function initializeSidequest(): Promise<void> {
-  if (initialized) {
-    return;
-  }
-
+function buildSidequestConfig() {
   const connectionString =
     process.env.DATABASE_URL ?? process.env.DATABASE_PUBLIC_URL;
 
@@ -53,7 +50,7 @@ export async function initializeSidequest(): Promise<void> {
       : ".";
   const jobsFilePath = path.resolve(cwd, "sidequest.jobs.cjs");
 
-  await Sidequest.start({
+  return {
     backend: {
       driver: "@sidequest/postgres-backend",
       config: buildDatabaseConfig(connectionString),
@@ -76,8 +73,6 @@ export async function initializeSidequest(): Promise<void> {
       },
     ],
     maxConcurrentJobs: 10,
-    // Manual job resolution allows us to control which job classes are loaded
-    // Jobs will be registered in subsequent issues (e.g., PdfProcessingJob, RecipeExtractionJob)
     manualJobResolution: true,
     jobsFilePath,
     logger: isProduction
@@ -89,9 +84,28 @@ export async function initializeSidequest(): Promise<void> {
     dashboard: {
       enabled: false,
     },
-  });
+  };
+}
+
+export async function configureSidequest(): Promise<void> {
+  if (configured) {
+    return;
+  }
+
+  await Sidequest.configure(buildSidequestConfig());
+
+  configured = true;
+}
+
+export async function initializeSidequest(): Promise<void> {
+  if (initialized) {
+    return;
+  }
+
+  await Sidequest.start(buildSidequestConfig());
 
   initialized = true;
+  configured = true;
   console.log("[SideQuest] Workers started");
 }
 
@@ -102,6 +116,7 @@ export async function shutdownSidequest(): Promise<void> {
   if (initialized) {
     await Sidequest.stop();
     initialized = false;
+    configured = false;
     console.log("[SideQuest] Workers stopped");
   }
 }

@@ -6,11 +6,10 @@
  */
 import { Job, Sidequest } from "@/lib/sidequest-runtime";
 import { extractRecipeFromImage, toRecipeJson } from "@/lib/recipe-extraction";
-import { getUniqueSlug } from "@/lib/recipes";
 import { transaction } from "@/lib/db";
 import { generateImageId } from "@/lib/image-utils";
 import { getRecipeImageUrl, saveRecipeImage } from "@/lib/recipe-image-storage";
-import type { RecipeRow } from "@/lib/recipe-types";
+import { generateSlug, type RecipeRow } from "@/lib/recipe-types";
 
 export interface ExtractRecipeFromImageJobParams {
   parentJobId: number;
@@ -31,6 +30,29 @@ export interface ExtractRecipeFromImageJobResult {
 
 function isNoRecipeError(message: string): boolean {
   return message.toLowerCase().includes("no recipe");
+}
+
+async function getUniqueSlugForUser(
+  client: { query: (text: string, params?: Array<string | number>) => Promise<{ rows: Array<{ count: string }> }> },
+  userId: number,
+  title: string
+): Promise<string> {
+  const baseSlug = generateSlug(title);
+  let slug = baseSlug;
+  let counter = 2;
+
+  // Basic loop to avoid collisions with existing active/inactive versions.
+  while (true) {
+    const result = await client.query(
+      `SELECT COUNT(*) as count FROM recipes WHERE user_id = $1 AND slug = $2`,
+      [userId, slug]
+    );
+    if (parseInt(result.rows[0]?.count ?? "0", 10) === 0) {
+      return slug;
+    }
+    slug = `${baseSlug}-${counter}`;
+    counter += 1;
+  }
 }
 
 /**
@@ -75,17 +97,17 @@ export class ExtractRecipeFromImageJob extends Job {
     }
 
     const extractedData = extractionResult.data;
-    const slug = await getUniqueSlug(userId, extractedData.title);
-
     const userIdString = String(userId);
     const imageId = generateImageId();
     const imageBuffer = Buffer.from(imageBase64, "base64");
     await saveRecipeImage(userIdString, imageId, imageBuffer);
 
     const imageUrl = getRecipeImageUrl(userIdString, imageId);
-    const recipeJson = toRecipeJson(extractedData, slug, imageUrl);
 
     const recipeRow = await transaction(async (client) => {
+      const slug = await getUniqueSlugForUser(client, userId, extractedData.title);
+      const recipeJson = toRecipeJson(extractedData, slug, imageUrl);
+
       const existingResult = await client.query<{ version: number }>(
         `SELECT MAX(version) as version FROM recipes WHERE user_id = $1 AND slug = $2`,
         [userId, slug]

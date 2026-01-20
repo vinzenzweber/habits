@@ -8,6 +8,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 // Mock the sidequest module before importing
 vi.mock("@/lib/sidequest-runtime", () => ({
   Sidequest: {
+    configure: vi.fn().mockResolvedValue(undefined),
     start: vi.fn().mockResolvedValue(undefined),
     stop: vi.fn().mockResolvedValue(undefined),
   },
