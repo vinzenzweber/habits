@@ -7,6 +7,7 @@
  * This placeholder allows ProcessPdfJob to compile and be tested.
  */
 import { Job } from "sidequest";
+import { query } from "@/lib/db";
 
 export interface ExtractRecipeFromImageJobParams {
   pdfJobId: number;
@@ -36,8 +37,32 @@ export interface ExtractRecipeFromImageJobResult {
  */
 export class ExtractRecipeFromImageJob extends Job {
   async run(
-    _params: ExtractRecipeFromImageJobParams
+    params: ExtractRecipeFromImageJobParams
   ): Promise<ExtractRecipeFromImageJobResult> {
+    const { pdfJobId, pageNumber } = params;
+
+    // Check if parent job was cancelled before processing
+    const parentJob = await query(
+      `SELECT status FROM pdf_extraction_jobs WHERE id = $1`,
+      [pdfJobId]
+    );
+
+    if (parentJob.rows.length === 0 || parentJob.rows[0].status === 'cancelled') {
+      // Mark this page job as skipped (use 'skipped' per DB constraint)
+      await query(
+        `UPDATE pdf_page_extraction_jobs
+         SET status = 'skipped', completed_at = NOW()
+         WHERE pdf_job_id = $1 AND page_number = $2`,
+        [pdfJobId, pageNumber]
+      );
+
+      return {
+        pdfJobId,
+        pageNumber,
+        skipped: true,
+      };
+    }
+
     // Placeholder implementation - will be replaced in issue #228
     throw new Error(
       "ExtractRecipeFromImageJob not yet implemented. See issue #228."

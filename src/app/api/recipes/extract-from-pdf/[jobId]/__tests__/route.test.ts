@@ -1,10 +1,13 @@
 /**
  * Tests for GET /api/recipes/extract-from-pdf/[jobId]
  * Polling endpoint for PDF extraction job status
+ *
+ * Tests for DELETE /api/recipes/extract-from-pdf/[jobId]
+ * Cancel endpoint for PDF extraction jobs
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { GET } from '../route';
+import { GET, DELETE } from '../route';
 
 // Mock auth
 vi.mock('@/lib/auth', () => ({
@@ -474,6 +477,210 @@ describe('GET /api/recipes/extract-from-pdf/[jobId]', () => {
         expect.stringContaining("status = 'skipped'"),
         expect.any(Array)
       );
+    });
+  });
+});
+
+describe('DELETE /api/recipes/extract-from-pdf/[jobId]', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(auth).mockResolvedValue({
+      user: { id: '123' },
+    } as never);
+  });
+
+  describe('authentication', () => {
+    it('returns 401 when not authenticated', async () => {
+      vi.mocked(auth).mockResolvedValueOnce(null);
+
+      const response = await DELETE(new Request('http://localhost', { method: 'DELETE' }), createMockParams('42'));
+      const data = await response.json();
+
+      expect(response.status).toBe(401);
+      expect(data.error).toBe('Unauthorized');
+    });
+
+    it('returns 401 when session has no user ID', async () => {
+      vi.mocked(auth).mockResolvedValueOnce({ user: {} } as never);
+
+      const response = await DELETE(new Request('http://localhost', { method: 'DELETE' }), createMockParams('42'));
+      const data = await response.json();
+
+      expect(response.status).toBe(401);
+      expect(data.error).toBe('Unauthorized');
+    });
+  });
+
+  describe('input validation', () => {
+    it('returns 400 for non-numeric job ID', async () => {
+      const response = await DELETE(new Request('http://localhost', { method: 'DELETE' }), createMockParams('invalid'));
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toBe('Invalid job ID');
+    });
+  });
+
+  describe('authorization', () => {
+    it('returns 404 when job not found', async () => {
+      vi.mocked(query).mockResolvedValueOnce({ rows: [] });
+
+      const response = await DELETE(new Request('http://localhost', { method: 'DELETE' }), createMockParams('999'));
+      const data = await response.json();
+
+      expect(response.status).toBe(404);
+      expect(data.error).toBe('Job not found');
+    });
+
+    it('returns 404 when job belongs to different user (prevents enumeration)', async () => {
+      vi.mocked(query).mockResolvedValueOnce({ rows: [] });
+
+      const response = await DELETE(new Request('http://localhost', { method: 'DELETE' }), createMockParams('42'));
+      const data = await response.json();
+
+      expect(response.status).toBe(404);
+      expect(data.error).toBe('Job not found');
+
+      expect(query).toHaveBeenCalledWith(
+        expect.stringContaining('user_id = $2'),
+        [42, 123]
+      );
+    });
+  });
+
+  describe('cancellation - already finished jobs', () => {
+    it('returns 400 when job is already completed', async () => {
+      vi.mocked(query).mockResolvedValueOnce({
+        rows: [{ id: 42, status: 'completed', sidequest_job_id: 'sq-123' }],
+      });
+
+      const response = await DELETE(new Request('http://localhost', { method: 'DELETE' }), createMockParams('42'));
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toBe('Cannot cancel job: job is already completed');
+    });
+
+    it('returns 400 when job is already failed', async () => {
+      vi.mocked(query).mockResolvedValueOnce({
+        rows: [{ id: 42, status: 'failed', sidequest_job_id: 'sq-123' }],
+      });
+
+      const response = await DELETE(new Request('http://localhost', { method: 'DELETE' }), createMockParams('42'));
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toBe('Cannot cancel job: job is already failed');
+    });
+
+    it('returns 400 when job is already cancelled', async () => {
+      vi.mocked(query).mockResolvedValueOnce({
+        rows: [{ id: 42, status: 'cancelled', sidequest_job_id: 'sq-123' }],
+      });
+
+      const response = await DELETE(new Request('http://localhost', { method: 'DELETE' }), createMockParams('42'));
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toBe('Cannot cancel job: job is already cancelled');
+    });
+  });
+
+  describe('cancellation - pending job', () => {
+    it('cancels pending job successfully', async () => {
+      vi.mocked(query)
+        .mockResolvedValueOnce({
+          rows: [{ id: 42, status: 'pending', sidequest_job_id: 'sq-123' }],
+        })
+        .mockResolvedValueOnce({ rows: [] }) // UPDATE pdf_extraction_jobs
+        .mockResolvedValueOnce({ rows: [] }); // UPDATE pdf_page_extraction_jobs
+
+      const response = await DELETE(new Request('http://localhost', { method: 'DELETE' }), createMockParams('42'));
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+
+      // Verify parent job update
+      expect(query).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining("SET status = 'cancelled'"),
+        [42]
+      );
+
+      // Verify child jobs update (uses 'skipped' per DB constraint on pdf_page_extraction_jobs)
+      expect(query).toHaveBeenNthCalledWith(
+        3,
+        expect.stringContaining("SET status = 'skipped'"),
+        [42]
+      );
+    });
+  });
+
+  describe('cancellation - processing job', () => {
+    it('cancels processing job successfully', async () => {
+      vi.mocked(query)
+        .mockResolvedValueOnce({
+          rows: [{ id: 42, status: 'processing', sidequest_job_id: 'sq-123' }],
+        })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] });
+
+      const response = await DELETE(new Request('http://localhost', { method: 'DELETE' }), createMockParams('42'));
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+    });
+  });
+
+  describe('cancellation - pages_queued job', () => {
+    it('cancels pages_queued job and pending child jobs', async () => {
+      vi.mocked(query)
+        .mockResolvedValueOnce({
+          rows: [{ id: 42, status: 'pages_queued', sidequest_job_id: 'sq-123' }],
+        })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] });
+
+      const response = await DELETE(new Request('http://localhost', { method: 'DELETE' }), createMockParams('42'));
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+
+      // Verify child jobs with pending status are cancelled
+      expect(query).toHaveBeenNthCalledWith(
+        3,
+        expect.stringContaining("status = 'pending'"),
+        [42]
+      );
+    });
+  });
+
+  describe('error handling', () => {
+    it('returns 500 on database error during query', async () => {
+      vi.mocked(query).mockRejectedValueOnce(new Error('Database connection failed'));
+
+      const response = await DELETE(new Request('http://localhost', { method: 'DELETE' }), createMockParams('42'));
+      const data = await response.json();
+
+      expect(response.status).toBe(500);
+      expect(data.error).toBe('Failed to cancel job');
+    });
+
+    it('returns 500 on database error during update', async () => {
+      vi.mocked(query)
+        .mockResolvedValueOnce({
+          rows: [{ id: 42, status: 'pending', sidequest_job_id: 'sq-123' }],
+        })
+        .mockRejectedValueOnce(new Error('Update failed'));
+
+      const response = await DELETE(new Request('http://localhost', { method: 'DELETE' }), createMockParams('42'));
+      const data = await response.json();
+
+      expect(response.status).toBe(500);
+      expect(data.error).toBe('Failed to cancel job');
     });
   });
 });
