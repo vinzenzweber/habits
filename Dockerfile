@@ -18,6 +18,9 @@ RUN npm run build
 FROM base AS runner
 ENV NODE_ENV=production
 
+# Install poppler-utils for PDF rendering (pdftoppm command)
+RUN apk add --no-cache poppler-utils
+
 # Copy standalone build
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
