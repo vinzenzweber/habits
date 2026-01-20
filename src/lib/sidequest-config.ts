@@ -1,33 +1,44 @@
-import { Sidequest } from "sidequest";
+import path from "node:path";
+import { Sidequest } from "@/lib/sidequest-runtime";
 import type { Knex } from "knex";
 
 let initialized = false;
+let configured = false;
+
+function shouldDisableSidequest(): boolean {
+  return (
+    process.env.CI === "true" || process.env.DISABLE_SIDEQUEST_WORKERS === "true"
+  );
+}
 
 /**
  * Build database configuration with SSL settings for Railway deployments.
  */
-function buildDatabaseConfig(connectionString: string): Knex.Config {
+function buildDatabaseConfig(connectionString: string): Knex.Config | string {
   const isRailway =
     connectionString.includes("railway.app") ||
     connectionString.includes("railway.internal");
 
-  return {
-    connection: {
-      connectionString,
-      ssl: isRailway ? { rejectUnauthorized: false } : undefined,
-    },
-  };
+  if (!isRailway) {
+    return connectionString;
+  }
+
+  try {
+    const url = new URL(connectionString);
+    if (!url.searchParams.has("sslmode")) {
+      url.searchParams.set("sslmode", "require");
+    }
+    return url.toString();
+  } catch {
+    return connectionString;
+  }
 }
 
 /**
  * Initialize SideQuest job processing engine.
  * This should be called once when the server starts via instrumentation.ts
  */
-export async function initializeSidequest(): Promise<void> {
-  if (initialized) {
-    return;
-  }
-
+function buildSidequestConfig() {
   const connectionString =
     process.env.DATABASE_URL ?? process.env.DATABASE_PUBLIC_URL;
 
@@ -39,7 +50,13 @@ export async function initializeSidequest(): Promise<void> {
 
   const isProduction = process.env.NODE_ENV === "production";
 
-  await Sidequest.start({
+  const cwd =
+    typeof process !== "undefined" && typeof process.cwd === "function"
+      ? process.cwd()
+      : ".";
+  const jobsFilePath = path.resolve(cwd, "sidequest.jobs.cjs");
+
+  return {
     backend: {
       driver: "@sidequest/postgres-backend",
       config: buildDatabaseConfig(connectionString),
@@ -52,7 +69,7 @@ export async function initializeSidequest(): Promise<void> {
       },
       {
         name: "recipe-extraction",
-        concurrency: 3,
+        concurrency: 10,
         priority: 50,
       },
       {
@@ -62,10 +79,8 @@ export async function initializeSidequest(): Promise<void> {
       },
     ],
     maxConcurrentJobs: 10,
-    // Manual job resolution allows us to control which job classes are loaded
-    // Jobs will be registered in subsequent issues (e.g., PdfProcessingJob, RecipeExtractionJob)
     manualJobResolution: true,
-    jobsFilePath: "./sidequest.jobs.ts",
+    jobsFilePath,
     logger: isProduction
       ? {
           level: "info",
@@ -75,9 +90,39 @@ export async function initializeSidequest(): Promise<void> {
     dashboard: {
       enabled: false,
     },
-  });
+  };
+}
+
+export async function configureSidequest(): Promise<void> {
+  if (configured) {
+    return;
+  }
+
+  if (shouldDisableSidequest()) {
+    configured = true;
+    return;
+  }
+
+  await Sidequest.configure(buildSidequestConfig());
+
+  configured = true;
+}
+
+export async function initializeSidequest(): Promise<void> {
+  if (initialized) {
+    return;
+  }
+
+  if (shouldDisableSidequest()) {
+    configured = true;
+    console.log("[SideQuest] Workers disabled");
+    return;
+  }
+
+  await Sidequest.start(buildSidequestConfig());
 
   initialized = true;
+  configured = true;
   console.log("[SideQuest] Workers started");
 }
 
@@ -88,6 +133,7 @@ export async function shutdownSidequest(): Promise<void> {
   if (initialized) {
     await Sidequest.stop();
     initialized = false;
+    configured = false;
     console.log("[SideQuest] Workers stopped");
   }
 }

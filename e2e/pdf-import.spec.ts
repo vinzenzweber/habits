@@ -6,10 +6,10 @@ import { test, expect } from './fixtures/auth.fixture';
 import * as fs from 'fs';
 import * as path from 'path';
 
-// Path to test PDF
+// Path to image-based test PDF
 const testPdfPath = path.join(
   __dirname,
-  '../src/lib/__tests__/fixtures/test-recipes.pdf'
+  '../src/lib/__tests__/fixtures/test-recipes-images.pdf'
 );
 const pdfExists = fs.existsSync(testPdfPath);
 
@@ -92,7 +92,9 @@ test.describe('PDF Recipe Import', () => {
 
       // The drop zone should accept PDF files
       // Check that the modal is ready to accept file input
-      const fileInput = authenticatedPage.locator('input[type="file"]');
+      const fileInput = authenticatedPage.locator(
+        'input[type="file"][accept*="application/pdf"]'
+      );
       await expect(fileInput).toBeAttached();
     });
 
@@ -114,6 +116,109 @@ test.describe('PDF Recipe Import', () => {
         const acceptsPdf = acceptAttr.includes('application/pdf') || acceptAttr.includes('.pdf');
         expect(acceptsPdf).toBe(true);
       }
+    });
+
+    test('uploads image-based PDF and shows extraction results (mocked)', async ({
+      authenticatedPage,
+    }) => {
+      await authenticatedPage.setViewportSize({ width: 1024, height: 768 });
+
+      const jobId = 321;
+      let pollCount = 0;
+
+      await authenticatedPage.route('**/api/recipes/extract-from-pdf', async (route) => {
+        if (route.request().method() !== 'POST') {
+          await route.continue();
+          return;
+        }
+
+        await route.fulfill({
+          status: 202,
+          contentType: 'application/json',
+          body: JSON.stringify({ jobId }),
+        });
+      });
+
+      await authenticatedPage.route(
+        `**/api/recipes/extract-from-pdf/${jobId}`,
+        async (route) => {
+          pollCount += 1;
+          const now = new Date().toISOString();
+
+          if (pollCount === 1) {
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                jobId,
+                status: 'processing',
+                progress: { currentPage: 1, totalPages: 2 },
+                recipes: [
+                  { slug: 'mock-recipe-1', title: 'Mock Recipe One', pageNumber: 1 },
+                ],
+                skippedPages: [],
+                error: null,
+                createdAt: now,
+                completedAt: null,
+              }),
+            });
+            return;
+          }
+
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              jobId,
+              status: 'completed',
+              progress: { currentPage: 2, totalPages: 2 },
+              recipes: [
+                { slug: 'mock-recipe-1', title: 'Mock Recipe One', pageNumber: 1 },
+                { slug: 'mock-recipe-2', title: 'Mock Recipe Two', pageNumber: 2 },
+              ],
+              skippedPages: [],
+              error: null,
+              createdAt: now,
+              completedAt: now,
+            }),
+          });
+        }
+      );
+
+      await authenticatedPage.goto('/recipes');
+
+      const importButton = authenticatedPage.getByRole('button', {
+        name: /import recipe from photo or pdf/i,
+      });
+      await importButton.click();
+
+      const fileInput = authenticatedPage.locator(
+        'input[type="file"][accept*="application/pdf"]'
+      );
+      const pdfBuffer = fs.readFileSync(testPdfPath);
+      await fileInput.setInputFiles({
+        name: 'test-recipes-images.pdf',
+        mimeType: 'application/pdf',
+        buffer: pdfBuffer,
+      });
+
+      await expect(
+        authenticatedPage.getByText('test-recipes-images.pdf').first()
+      ).toBeVisible();
+
+      await authenticatedPage
+        .getByRole('button', { name: 'Import Recipe', exact: true })
+        .click();
+
+      await expect
+        .poll(() => pollCount, { timeout: 60000 })
+        .toBeGreaterThanOrEqual(2);
+
+      await expect(
+        authenticatedPage.getByText(/2 recipes imported/i)
+      ).toBeVisible({ timeout: 20000 });
+      await expect(authenticatedPage.getByText('Mock Recipe One')).toBeVisible();
+      await expect(authenticatedPage.getByText('Mock Recipe Two')).toBeVisible();
     });
   });
 

@@ -108,6 +108,9 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
     pageNumber: number;
   }>>([]);
 
+  // Cancel state
+  const [isCancelling, setIsCancelling] = useState(false);
+
   // Import results for multi-recipe PDFs
   const [importResults, setImportResults] = useState<{
     recipes: Array<{ slug: string; title: string; pageNumber: number }>;
@@ -160,69 +163,28 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
       setPollingJobId(null);
       setJobStatus(null);
       setPartialResults([]);
+      setIsCancelling(false);
     }
   }, [isOpen, previewUrl]);
 
-  // Polling effect for async PDF extraction
-  useEffect(() => {
-    // Only poll when we have a job ID and job is still in progress
-    if (!pollingJobId) return;
-    if (jobStatus === 'completed' || jobStatus === 'failed' || jobStatus === 'cancelled') return;
-
-    const pollInterval = setInterval(async () => {
-      try {
-        const response = await fetch(`/api/recipes/extract-from-pdf/${pollingJobId}`);
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          setError(errorData.error || 'Failed to check extraction status');
-          setJobStatus('failed');
-          setIsExtracting(false);
-          setIsUploading(false);
-          return;
-        }
-
-        const data = await response.json();
-
-        setJobStatus(data.status);
-        setExtractionProgress({
-          currentPage: data.progress.currentPage,
-          totalPages: data.progress.totalPages,
-        });
-        setPartialResults(data.recipes || []);
-
-        if (data.status === 'completed') {
-          setIsExtracting(false);
-          setIsUploading(false);
-          if (data.recipes.length === 0) {
-            setError('No recipes were found in this PDF. Please try a different file.');
-          } else if (data.recipes.length === 1) {
-            // Single recipe - navigate directly
-            onImageCaptured({ type: 'extracted', slug: data.recipes[0].slug });
-            onClose();
-          } else {
-            // Multiple recipes - show selection UI
-            setImportResults({
-              recipes: data.recipes,
-              skippedPages: data.skippedPages || [],
-            });
-          }
-        } else if (data.status === 'failed') {
-          setError(data.error || 'Recipe extraction failed');
-          setIsExtracting(false);
-          setIsUploading(false);
-        } else if (data.status === 'cancelled') {
-          // User-initiated cancellation - close modal silently
-          onClose();
-        }
-      } catch (err) {
-        console.error('Polling error:', err);
-        // Don't fail on transient network errors - keep polling
-      }
-    }, 2000); // Poll every 2 seconds
-
-    return () => clearInterval(pollInterval);
-  }, [pollingJobId, jobStatus, onImageCaptured, onClose]);
+  const handleReset = useCallback(() => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl(null);
+    setSelectedFile(null);
+    setFileType(null);
+    setError(null);
+    setImportResults(null);
+    setIsUploading(false);
+    setIsExtracting(false);
+    setExtractionProgress({ currentPage: 0, totalPages: 0 });
+    // Clear polling state
+    setPollingJobId(null);
+    setJobStatus(null);
+    setPartialResults([]);
+    setIsCancelling(false);
+  }, [previewUrl]);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -306,21 +268,130 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
     setDragOver(false);
   }, []);
 
-  const handleReset = useCallback(() => {
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
+  const parseResponseJson = useCallback(async <T,>(response: Response) => {
+    if (typeof response.text !== 'function' && typeof response.json === 'function') {
+      try {
+        const data = (await response.json()) as T;
+        return { data, text: '' };
+      } catch {
+        return { data: null as T | null, text: '' };
+      }
     }
-    setPreviewUrl(null);
-    setSelectedFile(null);
-    setFileType(null);
+
+    const text = await response.text();
+    if (!text) {
+      return { data: null as T | null, text: '' };
+    }
+    try {
+      return { data: JSON.parse(text) as T, text };
+    } catch {
+      return { data: null as T | null, text };
+    }
+  }, []);
+
+  const handleCancelExtraction = useCallback(async () => {
+    if (!pollingJobId) return;
+
+    setIsCancelling(true);
     setError(null);
-    setImportResults(null);
-    setExtractionProgress({ currentPage: 0, totalPages: 0 });
-    // Clear polling state
-    setPollingJobId(null);
-    setJobStatus(null);
-    setPartialResults([]);
-  }, [previewUrl]);
+
+    try {
+      const response = await fetch(`/api/recipes/extract-from-pdf/${pollingJobId}`, {
+        method: 'DELETE',
+      });
+
+      const { data } = await parseResponseJson<{ error?: string }>(response);
+
+      if (!response.ok) {
+        setError(data?.error || 'Failed to cancel extraction');
+        setIsCancelling(false);
+        return;
+      }
+
+      setIsExtracting(false);
+      setIsUploading(false);
+      setJobStatus('cancelled');
+      setIsCancelling(false);
+      handleReset();
+    } catch {
+      setError('Failed to cancel extraction');
+      setIsCancelling(false);
+    }
+  }, [pollingJobId, handleReset, parseResponseJson]);
+
+  // Polling effect for async PDF extraction
+  useEffect(() => {
+    // Only poll when we have a job ID and job is still in progress
+    if (!pollingJobId) return;
+    if (jobStatus === 'completed' || jobStatus === 'failed' || jobStatus === 'cancelled') return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/recipes/extract-from-pdf/${pollingJobId}`);
+
+        const { data } = await parseResponseJson<{
+          status: string;
+          progress: { currentPage: number; totalPages: number };
+          recipes: Array<{ slug: string; title: string; pageNumber: number }>;
+          skippedPages?: number[];
+          error?: string;
+        }>(response);
+
+        if (!response.ok) {
+          setError(data?.error || 'Failed to check extraction status');
+          setJobStatus('failed');
+          setIsExtracting(false);
+          setIsUploading(false);
+          return;
+        }
+
+        if (!data) {
+          setError('Unexpected response from server');
+          setJobStatus('failed');
+          setIsExtracting(false);
+          setIsUploading(false);
+          return;
+        }
+
+        setJobStatus(data.status);
+        setExtractionProgress({
+          currentPage: data.progress.currentPage,
+          totalPages: data.progress.totalPages,
+        });
+        setPartialResults(data.recipes || []);
+
+        if (data.status === 'completed') {
+          setIsExtracting(false);
+          setIsUploading(false);
+          if (data.recipes.length === 0) {
+            setError('No recipes were found in this PDF. Please try a different file.');
+          } else if (data.recipes.length === 1) {
+            // Single recipe - navigate directly
+            onImageCaptured({ type: 'extracted', slug: data.recipes[0].slug });
+            onClose();
+          } else {
+            // Multiple recipes - show selection UI
+            setImportResults({
+              recipes: data.recipes,
+              skippedPages: data.skippedPages || [],
+            });
+          }
+        } else if (data.status === 'failed') {
+          setError(data.error || 'Recipe extraction failed');
+          setIsExtracting(false);
+          setIsUploading(false);
+        } else if (data.status === 'cancelled') {
+          // User-initiated cancellation - reset modal without errors
+          handleReset();
+        }
+      } catch (err) {
+        console.error('Polling error:', err);
+        // Don't fail on transient network errors - keep polling
+      }
+    }, 2000); // Poll every 2 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [pollingJobId, jobStatus, onImageCaptured, handleReset, parseResponseJson]);
 
   /**
    * Convert a File to a base64 string (without the data URL prefix)
@@ -357,10 +428,16 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
           body: JSON.stringify({ pdfBase64: base64 }),
         });
 
-        const data = await response.json();
+        const { data } = await parseResponseJson<{ jobId?: number; error?: string }>(
+          response
+        );
 
         if (!response.ok) {
-          throw new Error(data.error || 'Failed to extract recipe from PDF');
+          throw new Error(data?.error || 'Failed to extract recipe from PDF');
+        }
+
+        if (!data || typeof data.jobId !== 'number') {
+          throw new Error('Unexpected response from server');
         }
 
         // API returns 202 with jobId for async processing
@@ -382,10 +459,16 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
           body: JSON.stringify({ imageBase64: base64 }),
         });
 
-        const data = await response.json();
+        const { data } = await parseResponseJson<{ slug?: string; error?: string }>(
+          response
+        );
 
         if (!response.ok) {
-          throw new Error(data.error || 'Failed to extract recipe');
+          throw new Error(data?.error || 'Failed to extract recipe');
+        }
+
+        if (!data?.slug) {
+          throw new Error('Unexpected response from server');
         }
 
         // Notify parent with the extracted recipe slug
@@ -402,7 +485,7 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
     // Reset loading states on successful image extraction (PDF uses polling)
     setIsUploading(false);
     setIsExtracting(false);
-  }, [selectedFile, fileType, onImageCaptured, fileToBase64]);
+  }, [selectedFile, fileType, onImageCaptured, fileToBase64, parseResponseJson]);
 
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;
@@ -576,25 +659,20 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
                             </>
                           )}
 
-                          {/* Cancel button - calls DELETE endpoint */}
-                          <button
-                            type="button"
-                            data-testid="cancel-extraction-button"
-                            onClick={async () => {
-                              // Cancel the job via DELETE endpoint
-                              try {
-                                await fetch(`/api/recipes/extract-from-pdf/${pollingJobId}`, {
-                                  method: 'DELETE',
-                                });
-                              } catch {
-                                // Ignore errors - we're closing anyway
-                              }
-                              onClose();
-                            }}
-                            className="mt-4 px-4 py-2 text-sm text-slate-400 hover:text-slate-200 transition-colors"
-                          >
-                            Cancel
-                          </button>
+                          {(jobStatus === 'processing' || jobStatus === 'pages_queued') && (
+                            <button
+                              type="button"
+                              data-testid="cancel-extraction-button"
+                              disabled={isCancelling}
+                              onClick={handleCancelExtraction}
+                              className="mt-4 px-4 py-2 text-sm text-slate-400 hover:text-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
+                            >
+                              {isCancelling && (
+                                <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+                              )}
+                              {isCancelling ? 'Cancelling...' : 'Cancel'}
+                            </button>
+                          )}
                         </>
                       ) : (
                         <>

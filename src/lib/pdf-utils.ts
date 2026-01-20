@@ -3,11 +3,23 @@
  * Handles PDF parsing, text extraction, and page-to-image conversion
  */
 
-// pdf-parse uses CommonJS exports, so we import it this way
-import * as pdfParse from 'pdf-parse';
+type PdfParseFn = (buffer: Buffer) => Promise<{ numpages: number; text: string }>;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const pdf = (pdfParse as any).default || pdfParse;
+let pdfParseModule: unknown = null;
+
+const getPdfParser = async (): Promise<PdfParseFn> => {
+  if (!pdfParseModule) {
+    pdfParseModule = await import('pdf-parse');
+  }
+  const pdfModule = pdfParseModule as { default?: PdfParseFn } | PdfParseFn;
+  if (typeof pdfModule === 'function') {
+    return pdfModule;
+  }
+  if (pdfModule && typeof pdfModule.default === 'function') {
+    return pdfModule.default;
+  }
+  throw new Error('pdf-parse module did not provide a parser function');
+};
 
 // Constants
 export const MAX_PDF_SIZE_MB = 10;
@@ -67,6 +79,7 @@ export function validatePdfBase64Size(base64: string): PdfValidationResult {
  * Extract text content from PDF buffer
  */
 export async function extractPdfText(pdfBuffer: Buffer): Promise<PdfInfo> {
+  const pdf = await getPdfParser();
   const data = await pdf(pdfBuffer);
 
   if (data.numpages > MAX_PDF_PAGES) {
@@ -176,6 +189,7 @@ export async function extractPageText(
  */
 export async function isPdfPasswordProtected(pdfBuffer: Buffer): Promise<boolean> {
   try {
+    const pdf = await getPdfParser();
     const data = await pdf(pdfBuffer);
     // If we can read the PDF, it's not password-protected
     return data.numpages === 0 && data.text === '';
@@ -191,6 +205,7 @@ export async function isPdfPasswordProtected(pdfBuffer: Buffer): Promise<boolean
  * Get page count from a PDF buffer
  */
 export async function getPdfPageCount(pdfBuffer: Buffer): Promise<number> {
+  const pdf = await getPdfParser();
   const data = await pdf(pdfBuffer);
   return data.numpages;
 }

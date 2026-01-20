@@ -16,6 +16,15 @@ export function getTestPdfBase64(): string {
 }
 
 /**
+ * Load the image-based test PDF file as base64
+ */
+export function getTestPdfImagesBase64(): string {
+  const pdfPath = path.join(__dirname, 'test-recipes-images.pdf');
+  const buffer = fs.readFileSync(pdfPath);
+  return buffer.toString('base64');
+}
+
+/**
  * Load the test PDF file as Buffer
  */
 export function getTestPdfBuffer(): Buffer {
@@ -24,10 +33,26 @@ export function getTestPdfBuffer(): Buffer {
 }
 
 /**
+ * Load the image-based test PDF file as Buffer
+ */
+export function getTestPdfImagesBuffer(): Buffer {
+  const pdfPath = path.join(__dirname, 'test-recipes-images.pdf');
+  return fs.readFileSync(pdfPath);
+}
+
+/**
  * Check if the test PDF file exists
  */
 export function testPdfExists(): boolean {
   const pdfPath = path.join(__dirname, 'test-recipes.pdf');
+  return fs.existsSync(pdfPath);
+}
+
+/**
+ * Check if the image-based test PDF file exists
+ */
+export function testPdfImagesExists(): boolean {
+  const pdfPath = path.join(__dirname, 'test-recipes-images.pdf');
   return fs.existsSync(pdfPath);
 }
 

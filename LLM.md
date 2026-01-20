@@ -128,7 +128,7 @@ Background jobs are processed via [SideQuest](https://docs.sidequestjs.com) with
 | Queue | Concurrency | Use Case |
 |-------|-------------|----------|
 | `pdf-processing` | 1 | PDF recipe extraction (memory-intensive) |
-| `recipe-extraction` | 3 | Image-based recipe extraction |
+| `recipe-extraction` | 10 | Image-based recipe extraction |
 | `default` | 2 | General background tasks |
 
 **Key Files:**
@@ -439,6 +439,11 @@ e2e/
 ├── auth.spec.ts               # Authentication E2E tests
 └── workout-flow.spec.ts       # Workout player E2E tests
 ```
+
+### PDF Extraction Test Fixtures
+
+- `src/lib/__tests__/fixtures/test-recipes.pdf` — Text-based PDF fixture for extraction tests.
+- `src/lib/__tests__/fixtures/test-recipes-images.pdf` — Image-based PDF fixture used for extraction/polling tests and mocked E2E flows.
 
 ### Writing Tests
 

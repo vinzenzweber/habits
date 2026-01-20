@@ -1,16 +1,18 @@
 /**
- * ExtractRecipeFromImageJob - Placeholder for child job
+ * ExtractRecipeFromImageJob - Child job for PDF recipe extraction
  *
- * This job extracts a recipe from a page image using the OpenAI Vision API.
- * Full implementation is tracked in issue #228.
- *
- * This placeholder allows ProcessPdfJob to compile and be tested.
+ * Extracts a recipe from a rendered PDF page image using the Vision API,
+ * then saves it to the database for the owning user.
  */
-import { Job } from "sidequest";
-import { query } from "@/lib/db";
+import { Job, Sidequest } from "@/lib/sidequest-runtime";
+import { extractRecipeFromImage, toRecipeJson } from "@/lib/recipe-extraction";
+import { transaction } from "@/lib/db";
+import { generateImageId } from "@/lib/image-utils";
+import { getRecipeImageUrl, saveRecipeImage } from "@/lib/recipe-image-storage";
+import { generateSlug, type RecipeRow } from "@/lib/recipe-types";
 
 export interface ExtractRecipeFromImageJobParams {
-  pdfJobId: number;
+  parentJobId: number;
   pageNumber: number;
   imageBase64: string;
   targetLocale: string;
@@ -19,11 +21,38 @@ export interface ExtractRecipeFromImageJobParams {
 }
 
 export interface ExtractRecipeFromImageJobResult {
-  pdfJobId: number;
+  parentJobId: number;
   pageNumber: number;
   recipeSlug?: string;
   recipeTitle?: string;
   skipped?: boolean;
+}
+
+function isNoRecipeError(message: string): boolean {
+  return message.toLowerCase().includes("no recipe");
+}
+
+async function getUniqueSlugForUser(
+  client: { query: (text: string, params?: Array<string | number>) => Promise<{ rows: Array<{ count: string }> }> },
+  userId: number,
+  title: string
+): Promise<string> {
+  const baseSlug = generateSlug(title);
+  let slug = baseSlug;
+  let counter = 2;
+
+  // Basic loop to avoid collisions with existing active/inactive versions.
+  while (true) {
+    const result = await client.query(
+      `SELECT COUNT(*) as count FROM recipes WHERE user_id = $1 AND slug = $2`,
+      [userId, slug]
+    );
+    if (parseInt(result.rows[0]?.count ?? "0", 10) === 0) {
+      return slug;
+    }
+    slug = `${baseSlug}-${counter}`;
+    counter += 1;
+  }
 }
 
 /**
@@ -32,40 +61,89 @@ export interface ExtractRecipeFromImageJobResult {
  * Queue: recipe-extraction (concurrency: 3)
  * Timeout: 120000ms (2 minutes)
  * Max attempts: 2
- *
- * TODO: Implement in issue #228
  */
 export class ExtractRecipeFromImageJob extends Job {
   async run(
     params: ExtractRecipeFromImageJobParams
   ): Promise<ExtractRecipeFromImageJobResult> {
-    const { pdfJobId, pageNumber } = params;
+    const { parentJobId, pageNumber, imageBase64, targetLocale, targetRegion, userId } =
+      params;
 
     // Check if parent job was cancelled before processing
-    const parentJob = await query(
-      `SELECT status FROM pdf_extraction_jobs WHERE id = $1`,
-      [pdfJobId]
-    );
-
-    if (parentJob.rows.length === 0 || parentJob.rows[0].status === 'cancelled') {
-      // Mark this page job as skipped (use 'skipped' per DB constraint)
-      await query(
-        `UPDATE pdf_page_extraction_jobs
-         SET status = 'skipped', completed_at = NOW()
-         WHERE pdf_job_id = $1 AND page_number = $2`,
-        [pdfJobId, pageNumber]
-      );
-
+    const parentJob = await Sidequest.job.get(parentJobId);
+    if (!parentJob || parentJob.state === "canceled") {
       return {
-        pdfJobId,
+        parentJobId,
         pageNumber,
         skipped: true,
       };
     }
 
-    // Placeholder implementation - will be replaced in issue #228
-    throw new Error(
-      "ExtractRecipeFromImageJob not yet implemented. See issue #228."
-    );
+    const extractionResult = await extractRecipeFromImage(imageBase64, {
+      targetLocale,
+      targetRegion,
+    });
+
+    if (!extractionResult.success) {
+      if (isNoRecipeError(extractionResult.error)) {
+        return {
+          parentJobId,
+          pageNumber,
+          skipped: true,
+        };
+      }
+
+      throw new Error(extractionResult.error);
+    }
+
+    const extractedData = extractionResult.data;
+    const userIdString = String(userId);
+    const imageId = generateImageId();
+    const imageBuffer = Buffer.from(imageBase64, "base64");
+    await saveRecipeImage(userIdString, imageId, imageBuffer);
+
+    const imageUrl = getRecipeImageUrl(userIdString, imageId);
+
+    const recipeRow = await transaction(async (client) => {
+      const slug = await getUniqueSlugForUser(client, userId, extractedData.title);
+      const recipeJson = toRecipeJson(extractedData, slug, imageUrl);
+
+      const existingResult = await client.query<{ version: number }>(
+        `SELECT MAX(version) as version FROM recipes WHERE user_id = $1 AND slug = $2`,
+        [userId, slug]
+      );
+      const version = (existingResult.rows[0]?.version || 0) + 1;
+
+      await client.query(
+        `UPDATE recipes SET is_active = false WHERE user_id = $1 AND slug = $2`,
+        [userId, slug]
+      );
+
+      const result = await client.query<RecipeRow>(
+        `INSERT INTO recipes (
+          user_id, slug, version, title, description, locale, tags, recipe_json
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING slug, title`,
+        [
+          userId,
+          slug,
+          version,
+          extractedData.title,
+          extractedData.description || null,
+          extractedData.locale,
+          JSON.stringify(extractedData.tags || []),
+          JSON.stringify(recipeJson),
+        ]
+      );
+
+      return result.rows[0];
+    });
+
+    return {
+      parentJobId,
+      pageNumber,
+      recipeSlug: recipeRow.slug,
+      recipeTitle: recipeRow.title,
+    };
   }
 }

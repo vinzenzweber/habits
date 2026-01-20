@@ -69,10 +69,12 @@ test.describe('Workout Flow', () => {
       // Click the main "Start" link
       const startButton = page.getByRole('link', { name: 'Start', exact: true })
 
-      await startButton.click()
+      await startButton.scrollIntoViewIfNeeded()
 
-      // Should navigate to player page
-      await expect(page).toHaveURL(/\/workouts\/monday\/play/)
+      await Promise.all([
+        page.waitForURL(/\/workouts\/monday\/play/, { timeout: 15000 }),
+        startButton.click(),
+      ])
     })
   })
 

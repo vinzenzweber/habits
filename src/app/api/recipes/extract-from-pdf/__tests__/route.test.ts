@@ -4,21 +4,20 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { POST } from '../route';
 
 // Mock auth
 vi.mock('@/lib/auth', () => ({
   auth: vi.fn(),
 }));
 
-// Mock database
-vi.mock('@/lib/db', () => ({
-  query: vi.fn(),
-}));
 
 // Mock user-preferences
 vi.mock('@/lib/user-preferences', () => ({
   getRegionFromTimezone: vi.fn().mockReturnValue('Europe/Vienna'),
+}));
+
+vi.mock('@/lib/sidequest-config', () => ({
+  configureSidequest: vi.fn(),
 }));
 
 // Mock pdf-utils
@@ -27,28 +26,47 @@ vi.mock('@/lib/pdf-utils', () => ({
   MAX_PDF_PAGES: 50,
 }));
 
-// Mock SideQuest with dynamic import support
-const mockEnqueue = vi.fn();
-const mockMaxAttempts = vi.fn().mockReturnThis();
-const mockTimeout = vi.fn().mockReturnValue({ maxAttempts: mockMaxAttempts, enqueue: mockEnqueue });
-const mockQueue = vi.fn().mockReturnValue({ timeout: mockTimeout, maxAttempts: mockMaxAttempts, enqueue: mockEnqueue });
-const mockBuild = vi.fn().mockReturnValue({ queue: mockQueue, timeout: mockTimeout, maxAttempts: mockMaxAttempts, enqueue: mockEnqueue });
+const sidequestMocks = vi.hoisted(() => {
+  const mockEnqueue = vi.fn();
+  const mockMaxAttempts = vi.fn().mockReturnThis();
+  const mockTimeout = vi
+    .fn()
+    .mockReturnValue({ maxAttempts: mockMaxAttempts, enqueue: mockEnqueue });
+  const mockQueue = vi.fn().mockReturnValue({
+    timeout: mockTimeout,
+    maxAttempts: mockMaxAttempts,
+    enqueue: mockEnqueue,
+  });
+  const mockBuild = vi.fn().mockReturnValue({
+    queue: mockQueue,
+    timeout: mockTimeout,
+    maxAttempts: mockMaxAttempts,
+    enqueue: mockEnqueue,
+  });
 
-vi.mock('sidequest', () => ({
+  return {
+    mockBuild,
+    mockEnqueue,
+    mockMaxAttempts,
+    mockQueue,
+    mockTimeout,
+  };
+});
+
+vi.mock('@/lib/sidequest-runtime', () => ({
   Sidequest: {
-    build: mockBuild,
+    build: sidequestMocks.mockBuild,
   },
 }));
 
-// Mock ProcessPdfJob (just the import, not the class itself)
-class MockProcessPdfJob {}
 vi.mock('@/jobs/ProcessPdfJob', () => ({
-  ProcessPdfJob: MockProcessPdfJob,
+  ProcessPdfJob: class MockProcessPdfJob {},
 }));
 
 import { auth } from '@/lib/auth';
-import { query } from '@/lib/db';
 import { getPdfInfo } from '@/lib/pdf-utils';
+import { ProcessPdfJob } from '@/jobs/ProcessPdfJob';
+import { POST } from '../route';
 
 // Helper to create a mock request
 function createMockRequest(body: Record<string, unknown> | null): Request {
@@ -71,13 +89,8 @@ describe('POST /api/recipes/extract-from-pdf', () => {
       pageCount: 1,
     });
 
-    // Default database responses
-    vi.mocked(query)
-      .mockResolvedValueOnce({ rows: [{ id: 42 }] }) // INSERT job
-      .mockResolvedValueOnce({ rows: [] }); // UPDATE sidequest_job_id
-
     // Default SideQuest enqueue response
-    mockEnqueue.mockResolvedValue({ id: 'sq_test_123' });
+    sidequestMocks.mockEnqueue.mockResolvedValue({ id: 42 });
   });
 
   describe('authentication', () => {
@@ -177,17 +190,6 @@ describe('POST /api/recipes/extract-from-pdf', () => {
       expect(data.jobId).toBe(42);
     });
 
-    it('creates pdf_extraction_jobs record in database', async () => {
-      const request = createMockRequest({ pdfBase64: 'somebase64data' });
-
-      await POST(request);
-
-      expect(query).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO pdf_extraction_jobs'),
-        expect.arrayContaining([123, 1]) // userId, pageCount
-      );
-    });
-
     it('enqueues ProcessPdfJob with correct parameters', async () => {
       vi.mocked(auth).mockResolvedValue({
         user: {
@@ -202,28 +204,17 @@ describe('POST /api/recipes/extract-from-pdf', () => {
 
       await POST(request);
 
-      expect(mockBuild).toHaveBeenCalledWith(MockProcessPdfJob);
-      expect(mockQueue).toHaveBeenCalledWith('pdf-processing');
-      expect(mockTimeout).toHaveBeenCalledWith(600000);
-      expect(mockMaxAttempts).toHaveBeenCalledWith(1);
-      expect(mockEnqueue).toHaveBeenCalledWith({
-        pdfJobId: 42,
+      expect(sidequestMocks.mockBuild).toHaveBeenCalledWith(ProcessPdfJob);
+      expect(sidequestMocks.mockQueue).toHaveBeenCalledWith('pdf-processing');
+      expect(sidequestMocks.mockTimeout).toHaveBeenCalledWith(600000);
+      expect(sidequestMocks.mockMaxAttempts).toHaveBeenCalledWith(1);
+      expect(sidequestMocks.mockEnqueue).toHaveBeenCalledWith({
         userId: 123,
         pdfBase64: 'somebase64data',
         targetLocale: 'de-DE',
         targetRegion: expect.any(String),
+        totalPages: 1,
       });
-    });
-
-    it('updates job record with sidequest_job_id', async () => {
-      const request = createMockRequest({ pdfBase64: 'somebase64data' });
-
-      await POST(request);
-
-      expect(query).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE pdf_extraction_jobs'),
-        ['sq_test_123', 42]
-      );
     });
 
     it('returns immediately without processing pages', async () => {
@@ -248,25 +239,13 @@ describe('POST /api/recipes/extract-from-pdf', () => {
       expect(response.status).toBe(202);
       expect(data.jobId).toBe(42);
       // Should only call enqueue once (not per-page)
-      expect(mockEnqueue).toHaveBeenCalledTimes(1);
+      expect(sidequestMocks.mockEnqueue).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('error handling', () => {
-    it('returns 500 when database insert fails', async () => {
-      vi.mocked(query).mockReset();
-      vi.mocked(query).mockRejectedValueOnce(new Error('Database error'));
-      const request = createMockRequest({ pdfBase64: 'somebase64data' });
-
-      const response = await POST(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(500);
-      expect(data.error).toBe('Failed to enqueue PDF processing. Please try again.');
-    });
-
     it('returns 500 when SideQuest enqueue fails', async () => {
-      mockEnqueue.mockRejectedValueOnce(new Error('Queue error'));
+      sidequestMocks.mockEnqueue.mockRejectedValueOnce(new Error('Queue error'));
       const request = createMockRequest({ pdfBase64: 'somebase64data' });
 
       const response = await POST(request);

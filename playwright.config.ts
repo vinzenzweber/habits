@@ -11,6 +11,7 @@ export default defineConfig({
     baseURL: process.env.BASE_URL || 'http://localhost:3000',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    serviceWorkers: 'block',
   },
   webServer: {
     command: process.env.CI ? 'npm run build && npm run start' : 'npm run dev',
