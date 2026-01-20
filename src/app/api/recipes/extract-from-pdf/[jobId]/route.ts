@@ -196,10 +196,10 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       [jobIdNum]
     );
 
-    // 5. Also cancel any pending child page jobs
+    // 5. Also skip any pending child page jobs (use 'skipped' per DB constraint)
     await query(
       `UPDATE pdf_page_extraction_jobs
-       SET status = 'cancelled', completed_at = NOW()
+       SET status = 'skipped', completed_at = NOW()
        WHERE pdf_job_id = $1 AND status = 'pending'`,
       [jobIdNum]
     );

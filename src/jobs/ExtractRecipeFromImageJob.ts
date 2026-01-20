@@ -48,10 +48,10 @@ export class ExtractRecipeFromImageJob extends Job {
     );
 
     if (parentJob.rows.length === 0 || parentJob.rows[0].status === 'cancelled') {
-      // Mark this page job as cancelled
+      // Mark this page job as skipped (use 'skipped' per DB constraint)
       await query(
         `UPDATE pdf_page_extraction_jobs
-         SET status = 'cancelled', completed_at = NOW()
+         SET status = 'skipped', completed_at = NOW()
          WHERE pdf_job_id = $1 AND page_number = $2`,
         [pdfJobId, pageNumber]
       );

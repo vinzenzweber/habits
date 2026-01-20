@@ -608,10 +608,10 @@ describe('DELETE /api/recipes/extract-from-pdf/[jobId]', () => {
         [42]
       );
 
-      // Verify child jobs update
+      // Verify child jobs update (uses 'skipped' per DB constraint on pdf_page_extraction_jobs)
       expect(query).toHaveBeenNthCalledWith(
         3,
-        expect.stringContaining("pdf_page_extraction_jobs"),
+        expect.stringContaining("SET status = 'skipped'"),
         [42]
       );
     });

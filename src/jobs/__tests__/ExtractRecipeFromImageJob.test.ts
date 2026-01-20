@@ -39,7 +39,7 @@ describe('ExtractRecipeFromImageJob', () => {
   });
 
   describe('cancellation check', () => {
-    it('marks page as cancelled when parent job is cancelled', async () => {
+    it('marks page as skipped when parent job is cancelled', async () => {
       vi.mocked(query)
         .mockResolvedValueOnce({ rows: [{ status: 'cancelled' }] })
         .mockResolvedValueOnce({ rows: [] });
@@ -51,15 +51,15 @@ describe('ExtractRecipeFromImageJob', () => {
       expect(result.pdfJobId).toBe(1);
       expect(result.pageNumber).toBe(1);
 
-      // Verify page job update query
+      // Verify page job update query (uses 'skipped' per DB constraint on pdf_page_extraction_jobs)
       expect(query).toHaveBeenNthCalledWith(
         2,
-        expect.stringContaining("status = 'cancelled'"),
+        expect.stringContaining("status = 'skipped'"),
         [1, 1]
       );
     });
 
-    it('marks page as cancelled when parent job not found', async () => {
+    it('marks page as skipped when parent job not found', async () => {
       vi.mocked(query)
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] });
