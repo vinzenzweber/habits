@@ -13,8 +13,6 @@
 import { auth } from '@/lib/auth';
 import { getRegionFromTimezone } from '@/lib/user-preferences';
 import { getPdfInfo, MAX_PDF_PAGES } from '@/lib/pdf-utils';
-import { configureSidequest } from '@/lib/sidequest-config';
-import { Sidequest } from '@/lib/sidequest-runtime';
 
 export const runtime = 'nodejs';
 
@@ -81,6 +79,8 @@ export async function POST(request: Request) {
       );
     }
 
+    const { configureSidequest } = await import('@/lib/sidequest-config');
+    const { Sidequest } = await import('@/lib/sidequest-runtime');
     await configureSidequest();
 
     const { ProcessPdfJob } = await import('@/jobs/ProcessPdfJob');

@@ -16,8 +16,6 @@
 
 import { auth } from '@/lib/auth';
 import { query } from '@/lib/db';
-import { Sidequest } from '@/lib/sidequest-runtime';
-import { configureSidequest } from '@/lib/sidequest-config';
 
 export const runtime = 'nodejs';
 
@@ -78,6 +76,8 @@ export async function GET(request: Request, { params }: RouteParams) {
       return Response.json({ error: 'Invalid job ID' }, { status: 400 });
     }
 
+    const { configureSidequest } = await import('@/lib/sidequest-config');
+    const { Sidequest } = await import('@/lib/sidequest-runtime');
     await configureSidequest();
 
     const parentJob = await Sidequest.job.get(jobIdNum);
@@ -188,6 +188,8 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       return Response.json({ error: 'Invalid job ID' }, { status: 400 });
     }
 
+    const { configureSidequest } = await import('@/lib/sidequest-config');
+    const { Sidequest } = await import('@/lib/sidequest-runtime');
     await configureSidequest();
 
     const parentJob = await Sidequest.job.get(jobIdNum);
