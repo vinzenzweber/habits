@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const parentSend = process.send;
 if (parentSend) {
   process.send = undefined;
