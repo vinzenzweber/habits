@@ -195,7 +195,12 @@ test.describe('PDF Recipe Import', () => {
       const fileInput = authenticatedPage.locator(
         'input[type="file"][accept*="application/pdf"]'
       );
-      await fileInput.setInputFiles(testPdfPath);
+      const pdfBuffer = fs.readFileSync(testPdfPath);
+      await fileInput.setInputFiles({
+        name: 'test-recipes-images.pdf',
+        mimeType: 'application/pdf',
+        buffer: pdfBuffer,
+      });
 
       await expect(
         authenticatedPage.getByText('test-recipes-images.pdf').first()
