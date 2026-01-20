@@ -131,7 +131,8 @@ test.describe('Chat History', () => {
       await expect(page.getByText('Chat History')).toBeVisible()
 
       // Click on the previous session (first in the list as it's the most recent)
-      const sessionButton = page.locator('button').filter({ hasText: testMessage.substring(0, 30) }).first()
+      const sessionButton = page.locator('div.divide-y > button').first()
+      await expect(sessionButton).toBeVisible({ timeout: 10000 })
       await sessionButton.click()
 
       // History panel should close

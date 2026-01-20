@@ -4,7 +4,6 @@
  * Renders each page of a PDF to an image and spawns child jobs
  * (ExtractRecipeFromImageJob) for recipe extraction per page.
  */
-import { createRequire } from "node:module";
 import { Job, Sidequest } from "@/lib/sidequest-runtime";
 import { getPdfInfo, renderPdfPageToImage } from "@/lib/pdf-utils";
 
@@ -35,12 +34,15 @@ export interface ProcessPdfJobResult {
 export class ProcessPdfJob extends Job {
   async run(params: ProcessPdfJobParams): Promise<ProcessPdfJobResult> {
     const { userId, pdfBase64, targetLocale, targetRegion } = params;
-    const require = createRequire(import.meta.url);
 
     try {
       // Parse PDF and get page count
       const pdfBuffer = Buffer.from(pdfBase64, "base64");
       const pdfInfo = await getPdfInfo(pdfBuffer);
+
+      const { ExtractRecipeFromImageJob } = await import(
+        "./ExtractRecipeFromImageJob"
+      );
 
       // Process each page: render to image and spawn child job
       for (let pageNum = 1; pageNum <= pdfInfo.pageCount; pageNum++) {
@@ -49,10 +51,6 @@ export class ProcessPdfJob extends Job {
         const imageBase64 = imageBuffer.toString("base64");
 
         // Enqueue ExtractRecipeFromImageJob
-        const { ExtractRecipeFromImageJob } = require(
-          "./ExtractRecipeFromImageJob"
-        );
-
         await Sidequest.build(ExtractRecipeFromImageJob)
           .queue("recipe-extraction")
           .timeout(120000) // 2 minutes per page

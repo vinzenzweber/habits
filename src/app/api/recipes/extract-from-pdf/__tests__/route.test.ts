@@ -4,7 +4,6 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { POST } from '../route';
 
 // Mock auth
 vi.mock('@/lib/auth', () => ({
@@ -27,27 +26,47 @@ vi.mock('@/lib/pdf-utils', () => ({
   MAX_PDF_PAGES: 50,
 }));
 
-// Mock SideQuest with dynamic import support
-const mockEnqueue = vi.fn();
-const mockMaxAttempts = vi.fn().mockReturnThis();
-const mockTimeout = vi.fn().mockReturnValue({ maxAttempts: mockMaxAttempts, enqueue: mockEnqueue });
-const mockQueue = vi.fn().mockReturnValue({ timeout: mockTimeout, maxAttempts: mockMaxAttempts, enqueue: mockEnqueue });
-const mockBuild = vi.fn().mockReturnValue({ queue: mockQueue, timeout: mockTimeout, maxAttempts: mockMaxAttempts, enqueue: mockEnqueue });
+const sidequestMocks = vi.hoisted(() => {
+  const mockEnqueue = vi.fn();
+  const mockMaxAttempts = vi.fn().mockReturnThis();
+  const mockTimeout = vi
+    .fn()
+    .mockReturnValue({ maxAttempts: mockMaxAttempts, enqueue: mockEnqueue });
+  const mockQueue = vi.fn().mockReturnValue({
+    timeout: mockTimeout,
+    maxAttempts: mockMaxAttempts,
+    enqueue: mockEnqueue,
+  });
+  const mockBuild = vi.fn().mockReturnValue({
+    queue: mockQueue,
+    timeout: mockTimeout,
+    maxAttempts: mockMaxAttempts,
+    enqueue: mockEnqueue,
+  });
+
+  return {
+    mockBuild,
+    mockEnqueue,
+    mockMaxAttempts,
+    mockQueue,
+    mockTimeout,
+  };
+});
 
 vi.mock('@/lib/sidequest-runtime', () => ({
   Sidequest: {
-    build: mockBuild,
+    build: sidequestMocks.mockBuild,
   },
 }));
 
-// Mock ProcessPdfJob (just the import, not the class itself)
-class MockProcessPdfJob {}
 vi.mock('@/jobs/ProcessPdfJob', () => ({
-  ProcessPdfJob: MockProcessPdfJob,
+  ProcessPdfJob: class MockProcessPdfJob {},
 }));
 
 import { auth } from '@/lib/auth';
 import { getPdfInfo } from '@/lib/pdf-utils';
+import { ProcessPdfJob } from '@/jobs/ProcessPdfJob';
+import { POST } from '../route';
 
 // Helper to create a mock request
 function createMockRequest(body: Record<string, unknown> | null): Request {
@@ -71,7 +90,7 @@ describe('POST /api/recipes/extract-from-pdf', () => {
     });
 
     // Default SideQuest enqueue response
-    mockEnqueue.mockResolvedValue({ id: 42 });
+    sidequestMocks.mockEnqueue.mockResolvedValue({ id: 42 });
   });
 
   describe('authentication', () => {
@@ -185,11 +204,11 @@ describe('POST /api/recipes/extract-from-pdf', () => {
 
       await POST(request);
 
-      expect(mockBuild).toHaveBeenCalledWith(MockProcessPdfJob);
-      expect(mockQueue).toHaveBeenCalledWith('pdf-processing');
-      expect(mockTimeout).toHaveBeenCalledWith(600000);
-      expect(mockMaxAttempts).toHaveBeenCalledWith(1);
-      expect(mockEnqueue).toHaveBeenCalledWith({
+      expect(sidequestMocks.mockBuild).toHaveBeenCalledWith(ProcessPdfJob);
+      expect(sidequestMocks.mockQueue).toHaveBeenCalledWith('pdf-processing');
+      expect(sidequestMocks.mockTimeout).toHaveBeenCalledWith(600000);
+      expect(sidequestMocks.mockMaxAttempts).toHaveBeenCalledWith(1);
+      expect(sidequestMocks.mockEnqueue).toHaveBeenCalledWith({
         userId: 123,
         pdfBase64: 'somebase64data',
         targetLocale: 'de-DE',
@@ -220,13 +239,13 @@ describe('POST /api/recipes/extract-from-pdf', () => {
       expect(response.status).toBe(202);
       expect(data.jobId).toBe(42);
       // Should only call enqueue once (not per-page)
-      expect(mockEnqueue).toHaveBeenCalledTimes(1);
+      expect(sidequestMocks.mockEnqueue).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('error handling', () => {
     it('returns 500 when SideQuest enqueue fails', async () => {
-      mockEnqueue.mockRejectedValueOnce(new Error('Queue error'));
+      sidequestMocks.mockEnqueue.mockRejectedValueOnce(new Error('Queue error'));
       const request = createMockRequest({ pdfBase64: 'somebase64data' });
 
       const response = await POST(request);

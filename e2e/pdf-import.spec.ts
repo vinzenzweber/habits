@@ -92,7 +92,9 @@ test.describe('PDF Recipe Import', () => {
 
       // The drop zone should accept PDF files
       // Check that the modal is ready to accept file input
-      const fileInput = authenticatedPage.locator('input[type="file"]');
+      const fileInput = authenticatedPage.locator(
+        'input[type="file"][accept*="application/pdf"]'
+      );
       await expect(fileInput).toBeAttached();
     });
 
@@ -190,13 +192,20 @@ test.describe('PDF Recipe Import', () => {
       });
       await importButton.click();
 
-      const fileInput = authenticatedPage.locator('input[type="file"]');
+      const fileInput = authenticatedPage.locator(
+        'input[type="file"][accept*="application/pdf"]'
+      );
       await fileInput.setInputFiles(testPdfPath);
 
-      await authenticatedPage.getByRole('button', { name: /import recipe/i }).click();
+      await authenticatedPage
+        .getByRole('button', { name: 'Import Recipe', exact: true })
+        .click();
 
       await expect(
-        authenticatedPage.getByRole('heading', { name: 'Import Complete' })
+        authenticatedPage.getByRole('heading', {
+          name: 'Import Complete',
+          level: 3,
+        })
       ).toBeVisible();
 
       await expect(authenticatedPage.getByText(/2 recipes imported/i)).toBeVisible();
