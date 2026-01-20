@@ -195,7 +195,9 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       return Response.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    const parentArgs = Array.isArray(parentJob.args) ? parentJob.args[0] : null;
+    const parentArgs = Array.isArray(parentJob.args)
+      ? (parentJob.args[0] as { userId?: number })
+      : null;
     if (!parentArgs || parentArgs.userId !== userIdNum) {
       return Response.json({ error: 'Job not found' }, { status: 404 });
     }
