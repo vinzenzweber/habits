@@ -5,6 +5,13 @@
  * Response:
  *   - Success: HTTP 200 { jobId, status, progress, recipes, skippedPages, error, createdAt, completedAt }
  *   - Error: { error: string }
+ *
+ * DELETE /api/recipes/extract-from-pdf/[jobId]
+ * Cancel a PDF extraction job (best-effort cancellation)
+ *
+ * Response:
+ *   - Success: HTTP 200 { success: true }
+ *   - Error: { error: string }
  */
 
 import { auth } from '@/lib/auth';
@@ -137,6 +144,71 @@ export async function GET(request: Request, { params }: RouteParams) {
     console.error('Error fetching job status:', error);
     return Response.json(
       { error: 'Failed to fetch job status' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request, { params }: RouteParams) {
+  // 1. Authenticate user
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    const { jobId } = await params;
+    const jobIdNum = parseInt(jobId, 10);
+    const userIdNum = parseInt(session.user.id, 10);
+
+    // Validate jobId is a number
+    if (isNaN(jobIdNum)) {
+      return Response.json({ error: 'Invalid job ID' }, { status: 400 });
+    }
+
+    // 2. Query job with ownership check
+    const jobResult = await query(
+      `SELECT id, status, sidequest_job_id
+       FROM pdf_extraction_jobs
+       WHERE id = $1 AND user_id = $2`,
+      [jobIdNum, userIdNum]
+    );
+
+    if (jobResult.rows.length === 0) {
+      return Response.json({ error: 'Job not found' }, { status: 404 });
+    }
+
+    const job = jobResult.rows[0] as { id: number; status: string; sidequest_job_id: string | null };
+
+    // 3. Check if job is already finished
+    if (job.status === 'completed' || job.status === 'failed' || job.status === 'cancelled') {
+      return Response.json(
+        { error: `Cannot cancel job: job is already ${job.status}` },
+        { status: 400 }
+      );
+    }
+
+    // 4. Update job status to 'cancelled'
+    await query(
+      `UPDATE pdf_extraction_jobs
+       SET status = 'cancelled', completed_at = NOW()
+       WHERE id = $1`,
+      [jobIdNum]
+    );
+
+    // 5. Also cancel any pending child page jobs
+    await query(
+      `UPDATE pdf_page_extraction_jobs
+       SET status = 'cancelled', completed_at = NOW()
+       WHERE pdf_job_id = $1 AND status = 'pending'`,
+      [jobIdNum]
+    );
+
+    return Response.json({ success: true });
+  } catch (error) {
+    console.error('Error cancelling job:', error);
+    return Response.json(
+      { error: 'Failed to cancel job' },
       { status: 500 }
     );
   }
