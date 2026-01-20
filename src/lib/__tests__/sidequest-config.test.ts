@@ -23,6 +23,8 @@ describe("sidequest-config", () => {
     vi.clearAllMocks();
     // Reset env
     process.env = { ...originalEnv };
+    process.env.CI = "false";
+    process.env.DISABLE_SIDEQUEST_WORKERS = "false";
   });
 
   afterEach(() => {
@@ -232,6 +234,18 @@ describe("sidequest-config", () => {
       await initializeSidequest();
 
       expect(Sidequest.start).toHaveBeenCalledTimes(1);
+    });
+
+    it("skips starting workers in CI", async () => {
+      process.env.CI = "true";
+      process.env.DATABASE_URL = "postgres://localhost/test";
+      const { Sidequest } = await import("@/lib/sidequest-runtime");
+      const { initializeSidequest } = await import("../sidequest-config");
+
+      await initializeSidequest();
+
+      expect(Sidequest.start).not.toHaveBeenCalled();
+      expect(Sidequest.configure).not.toHaveBeenCalled();
     });
   });
 

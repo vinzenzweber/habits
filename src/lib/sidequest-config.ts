@@ -5,6 +5,12 @@ import type { Knex } from "knex";
 let initialized = false;
 let configured = false;
 
+function shouldDisableSidequest(): boolean {
+  return (
+    process.env.CI === "true" || process.env.DISABLE_SIDEQUEST_WORKERS === "true"
+  );
+}
+
 /**
  * Build database configuration with SSL settings for Railway deployments.
  */
@@ -92,6 +98,11 @@ export async function configureSidequest(): Promise<void> {
     return;
   }
 
+  if (shouldDisableSidequest()) {
+    configured = true;
+    return;
+  }
+
   await Sidequest.configure(buildSidequestConfig());
 
   configured = true;
@@ -102,8 +113,8 @@ export async function initializeSidequest(): Promise<void> {
     return;
   }
 
-  if (process.env.CI === "true" || process.env.DISABLE_SIDEQUEST_WORKERS === "true") {
-    await configureSidequest();
+  if (shouldDisableSidequest()) {
+    configured = true;
     console.log("[SideQuest] Workers disabled");
     return;
   }
