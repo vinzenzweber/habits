@@ -197,6 +197,10 @@ test.describe('PDF Recipe Import', () => {
       );
       await fileInput.setInputFiles(testPdfPath);
 
+      await expect(
+        authenticatedPage.getByText('test-recipes-images.pdf').first()
+      ).toBeVisible();
+
       await authenticatedPage
         .getByRole('button', { name: 'Import Recipe', exact: true })
         .click();
