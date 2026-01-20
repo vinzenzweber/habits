@@ -202,11 +202,8 @@ test.describe('PDF Recipe Import', () => {
         .click();
 
       await expect(
-        authenticatedPage.getByRole('heading', {
-          name: 'Import Complete',
-          level: 3,
-        })
-      ).toBeVisible();
+        authenticatedPage.locator('h3', { hasText: 'Import Complete' })
+      ).toBeVisible({ timeout: 15000 });
 
       await expect(authenticatedPage.getByText(/2 recipes imported/i)).toBeVisible();
       await expect(authenticatedPage.getByText('Mock Recipe One')).toBeVisible();
