@@ -205,6 +205,10 @@ test.describe('PDF Recipe Import', () => {
         .getByRole('button', { name: 'Import Recipe', exact: true })
         .click();
 
+      await expect
+        .poll(() => pollCount, { timeout: 60000 })
+        .toBeGreaterThanOrEqual(2);
+
       await expect(
         authenticatedPage.getByText(/2 recipes imported/i)
       ).toBeVisible({ timeout: 20000 });
