@@ -11,9 +11,10 @@
  */
 
 import { auth } from '@/lib/auth';
-import { query } from '@/lib/db';
 import { getRegionFromTimezone } from '@/lib/user-preferences';
 import { getPdfInfo, MAX_PDF_PAGES } from '@/lib/pdf-utils';
+import { initializeSidequest } from '@/lib/sidequest-config';
+import { Sidequest } from '@/lib/sidequest-runtime';
 
 export const runtime = 'nodejs';
 
@@ -80,18 +81,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create pdf_extraction_jobs record with placeholder sidequest_job_id
-    const jobResult = await query(
-      `INSERT INTO pdf_extraction_jobs
-       (user_id, sidequest_job_id, total_pages, status)
-       VALUES ($1, 'pending', $2, 'pending')
-       RETURNING id`,
-      [userIdNum, pdfInfo.pageCount]
-    );
-    const pdfJobId = jobResult.rows[0].id;
+    await initializeSidequest();
 
-    // Dynamic import to avoid build-time issues (SideQuest requires DATABASE_URL)
-    const { Sidequest } = await import('sidequest');
     const { ProcessPdfJob } = await import('@/jobs/ProcessPdfJob');
 
     // Enqueue ProcessPdfJob with SideQuest
@@ -100,23 +91,15 @@ export async function POST(request: Request) {
       .timeout(600000) // 10 minutes
       .maxAttempts(1) // Don't retry entire PDF
       .enqueue({
-        pdfJobId,
         userId: userIdNum,
         pdfBase64,
         targetLocale: recipeLocale,
         targetRegion: userRegion,
+        totalPages: pdfInfo.pageCount,
       });
 
-    // Update job record with actual sidequest_job_id
-    await query(
-      `UPDATE pdf_extraction_jobs
-       SET sidequest_job_id = $1
-       WHERE id = $2`,
-      [String(sidequestJob.id), pdfJobId]
-    );
-
     // Return HTTP 202 Accepted with job ID
-    const response: EnqueuedJobResponse = { jobId: pdfJobId };
+    const response: EnqueuedJobResponse = { jobId: Number(sidequestJob.id) };
     return Response.json(response, { status: 202 });
   } catch (error) {
     console.error('Error enqueueing PDF extraction job:', error);

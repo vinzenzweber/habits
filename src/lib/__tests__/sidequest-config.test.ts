@@ -2,10 +2,11 @@
  * Tests for SideQuest configuration module
  */
 
+import path from "node:path";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Mock the sidequest module before importing
-vi.mock("sidequest", () => ({
+vi.mock("@/lib/sidequest-runtime", () => ({
   Sidequest: {
     start: vi.fn().mockResolvedValue(undefined),
     stop: vi.fn().mockResolvedValue(undefined),
@@ -42,7 +43,7 @@ describe("sidequest-config", () => {
 
     it("initializes with DATABASE_URL", async () => {
       process.env.DATABASE_URL = "postgres://localhost/test";
-      const { Sidequest } = await import("sidequest");
+      const { Sidequest } = await import("@/lib/sidequest-runtime");
       const { initializeSidequest } = await import("../sidequest-config");
 
       await initializeSidequest();
@@ -52,11 +53,7 @@ describe("sidequest-config", () => {
         expect.objectContaining({
           backend: {
             driver: "@sidequest/postgres-backend",
-            config: expect.objectContaining({
-              connection: expect.objectContaining({
-                connectionString: "postgres://localhost/test",
-              }),
-            }),
+            config: "postgres://localhost/test",
           },
         })
       );
@@ -65,7 +62,7 @@ describe("sidequest-config", () => {
     it("falls back to DATABASE_PUBLIC_URL when DATABASE_URL is not set", async () => {
       delete process.env.DATABASE_URL;
       process.env.DATABASE_PUBLIC_URL = "postgres://public/test";
-      const { Sidequest } = await import("sidequest");
+      const { Sidequest } = await import("@/lib/sidequest-runtime");
       const { initializeSidequest } = await import("../sidequest-config");
 
       await initializeSidequest();
@@ -74,11 +71,7 @@ describe("sidequest-config", () => {
         expect.objectContaining({
           backend: {
             driver: "@sidequest/postgres-backend",
-            config: expect.objectContaining({
-              connection: expect.objectContaining({
-                connectionString: "postgres://public/test",
-              }),
-            }),
+            config: "postgres://public/test",
           },
         })
       );
@@ -87,7 +80,7 @@ describe("sidequest-config", () => {
     it("configures SSL for Railway deployments with railway.app domain", async () => {
       process.env.DATABASE_URL =
         "postgres://user:pass@railway.app:5432/habits";
-      const { Sidequest } = await import("sidequest");
+      const { Sidequest } = await import("@/lib/sidequest-runtime");
       const { initializeSidequest } = await import("../sidequest-config");
 
       await initializeSidequest();
@@ -96,11 +89,7 @@ describe("sidequest-config", () => {
         expect.objectContaining({
           backend: {
             driver: "@sidequest/postgres-backend",
-            config: expect.objectContaining({
-              connection: expect.objectContaining({
-                ssl: { rejectUnauthorized: false },
-              }),
-            }),
+            config: expect.stringContaining("sslmode=require"),
           },
         })
       );
@@ -109,7 +98,7 @@ describe("sidequest-config", () => {
     it("configures SSL for Railway deployments with railway.internal domain", async () => {
       process.env.DATABASE_URL =
         "postgres://user:pass@railway.internal:5432/habits";
-      const { Sidequest } = await import("sidequest");
+      const { Sidequest } = await import("@/lib/sidequest-runtime");
       const { initializeSidequest } = await import("../sidequest-config");
 
       await initializeSidequest();
@@ -118,11 +107,7 @@ describe("sidequest-config", () => {
         expect.objectContaining({
           backend: {
             driver: "@sidequest/postgres-backend",
-            config: expect.objectContaining({
-              connection: expect.objectContaining({
-                ssl: { rejectUnauthorized: false },
-              }),
-            }),
+            config: expect.stringContaining("sslmode=require"),
           },
         })
       );
@@ -130,7 +115,7 @@ describe("sidequest-config", () => {
 
     it("does not configure SSL for non-Railway deployments", async () => {
       process.env.DATABASE_URL = "postgres://localhost:5432/habits";
-      const { Sidequest } = await import("sidequest");
+      const { Sidequest } = await import("@/lib/sidequest-runtime");
       const { initializeSidequest } = await import("../sidequest-config");
 
       await initializeSidequest();
@@ -139,11 +124,7 @@ describe("sidequest-config", () => {
         expect.objectContaining({
           backend: {
             driver: "@sidequest/postgres-backend",
-            config: expect.objectContaining({
-              connection: expect.objectContaining({
-                ssl: undefined,
-              }),
-            }),
+            config: "postgres://localhost:5432/habits",
           },
         })
       );
@@ -151,7 +132,7 @@ describe("sidequest-config", () => {
 
     it("configures three queues with correct settings", async () => {
       process.env.DATABASE_URL = "postgres://localhost/test";
-      const { Sidequest } = await import("sidequest");
+      const { Sidequest } = await import("@/lib/sidequest-runtime");
       const { initializeSidequest } = await import("../sidequest-config");
 
       await initializeSidequest();
@@ -169,7 +150,7 @@ describe("sidequest-config", () => {
 
     it("sets maxConcurrentJobs to 10", async () => {
       process.env.DATABASE_URL = "postgres://localhost/test";
-      const { Sidequest } = await import("sidequest");
+      const { Sidequest } = await import("@/lib/sidequest-runtime");
       const { initializeSidequest } = await import("../sidequest-config");
 
       await initializeSidequest();
@@ -183,7 +164,7 @@ describe("sidequest-config", () => {
 
     it("disables dashboard", async () => {
       process.env.DATABASE_URL = "postgres://localhost/test";
-      const { Sidequest } = await import("sidequest");
+      const { Sidequest } = await import("@/lib/sidequest-runtime");
       const { initializeSidequest } = await import("../sidequest-config");
 
       await initializeSidequest();
@@ -197,7 +178,7 @@ describe("sidequest-config", () => {
 
     it("enables manual job resolution with jobs file path", async () => {
       process.env.DATABASE_URL = "postgres://localhost/test";
-      const { Sidequest } = await import("sidequest");
+      const { Sidequest } = await import("@/lib/sidequest-runtime");
       const { initializeSidequest } = await import("../sidequest-config");
 
       await initializeSidequest();
@@ -205,7 +186,7 @@ describe("sidequest-config", () => {
       expect(Sidequest.start).toHaveBeenCalledWith(
         expect.objectContaining({
           manualJobResolution: true,
-          jobsFilePath: "./sidequest.jobs.ts",
+          jobsFilePath: path.resolve(process.cwd(), "sidequest.jobs.cjs"),
         })
       );
     });
@@ -213,7 +194,7 @@ describe("sidequest-config", () => {
     it("uses JSON logger in production", async () => {
       process.env.DATABASE_URL = "postgres://localhost/test";
       process.env.NODE_ENV = "production";
-      const { Sidequest } = await import("sidequest");
+      const { Sidequest } = await import("@/lib/sidequest-runtime");
       const { initializeSidequest } = await import("../sidequest-config");
 
       await initializeSidequest();
@@ -228,7 +209,7 @@ describe("sidequest-config", () => {
     it("does not configure logger in development", async () => {
       process.env.DATABASE_URL = "postgres://localhost/test";
       process.env.NODE_ENV = "development";
-      const { Sidequest } = await import("sidequest");
+      const { Sidequest } = await import("@/lib/sidequest-runtime");
       const { initializeSidequest } = await import("../sidequest-config");
 
       await initializeSidequest();
@@ -242,7 +223,7 @@ describe("sidequest-config", () => {
 
     it("only initializes once (singleton pattern)", async () => {
       process.env.DATABASE_URL = "postgres://localhost/test";
-      const { Sidequest } = await import("sidequest");
+      const { Sidequest } = await import("@/lib/sidequest-runtime");
       const { initializeSidequest } = await import("../sidequest-config");
 
       await initializeSidequest();
@@ -256,7 +237,7 @@ describe("sidequest-config", () => {
   describe("shutdownSidequest", () => {
     it("stops Sidequest when initialized", async () => {
       process.env.DATABASE_URL = "postgres://localhost/test";
-      const { Sidequest } = await import("sidequest");
+      const { Sidequest } = await import("@/lib/sidequest-runtime");
       const { initializeSidequest, shutdownSidequest } = await import(
         "../sidequest-config"
       );
@@ -268,7 +249,7 @@ describe("sidequest-config", () => {
     });
 
     it("does nothing when not initialized", async () => {
-      const { Sidequest } = await import("sidequest");
+      const { Sidequest } = await import("@/lib/sidequest-runtime");
       const { shutdownSidequest } = await import("../sidequest-config");
 
       await shutdownSidequest();
@@ -278,7 +259,7 @@ describe("sidequest-config", () => {
 
     it("allows re-initialization after shutdown", async () => {
       process.env.DATABASE_URL = "postgres://localhost/test";
-      const { Sidequest } = await import("sidequest");
+      const { Sidequest } = await import("@/lib/sidequest-runtime");
       const { initializeSidequest, shutdownSidequest } = await import(
         "../sidequest-config"
       );

@@ -16,32 +16,28 @@
 
 import { auth } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { Sidequest } from '@/lib/sidequest-runtime';
+import { initializeSidequest } from '@/lib/sidequest-config';
 
 export const runtime = 'nodejs';
 
 type RouteParams = { params: Promise<{ jobId: string }> };
 
 // Type definitions
-interface PdfExtractionJobRow {
+interface SidequestJobRow {
   id: number;
-  user_id: number;
-  total_pages: number | null;
-  pages_processed: number;
-  recipes_extracted: number;
-  status: 'pending' | 'processing' | 'pages_queued' | 'completed' | 'failed' | 'cancelled';
-  error_message: string | null;
-  created_at: Date;
-  completed_at: Date | null;
-}
-
-interface PageJobRow {
-  recipe_slug: string;
-  recipe_title: string;
-  page_number: number;
-}
-
-interface SkippedPageRow {
-  page_number: number;
+  state: string;
+  result: {
+    parentJobId?: number;
+    pageNumber?: number;
+    recipeSlug?: string;
+    recipeTitle?: string;
+    skipped?: boolean;
+  } | null;
+  args: Array<{
+    parentJobId?: number;
+    pageNumber?: number;
+  }>;
 }
 
 interface ExtractedRecipe {
@@ -82,61 +78,85 @@ export async function GET(request: Request, { params }: RouteParams) {
       return Response.json({ error: 'Invalid job ID' }, { status: 400 });
     }
 
-    // 2. Query parent job with ownership check
-    const jobResult = await query(
-      `SELECT id, user_id, total_pages, pages_processed, recipes_extracted,
-              status, error_message, created_at, completed_at
-       FROM pdf_extraction_jobs
-       WHERE id = $1 AND user_id = $2`,
-      [jobIdNum, userIdNum]
-    );
+    await initializeSidequest();
 
-    if (jobResult.rows.length === 0) {
+    const parentJob = await Sidequest.job.get(jobIdNum);
+    if (!parentJob) {
       return Response.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    const job = jobResult.rows[0] as PdfExtractionJobRow;
+    const parentArgs = Array.isArray(parentJob.args) ? parentJob.args[0] : null;
+    if (!parentArgs || parentArgs.userId !== userIdNum) {
+      return Response.json({ error: 'Job not found' }, { status: 404 });
+    }
 
-    // 3. Query completed recipes and skipped pages in parallel
-    const [recipesResult, skippedResult] = await Promise.all([
-      query(
-        `SELECT recipe_slug, recipe_title, page_number
-         FROM pdf_page_extraction_jobs
-         WHERE pdf_job_id = $1 AND status = 'completed'
-         ORDER BY page_number ASC`,
-        [jobIdNum]
-      ),
-      query(
-        `SELECT page_number
-         FROM pdf_page_extraction_jobs
-         WHERE pdf_job_id = $1 AND status = 'skipped'
-         ORDER BY page_number ASC`,
-        [jobIdNum]
-      ),
-    ]);
+    const totalPages = parentArgs.totalPages ?? 0;
 
-    // 4. Build response
-    const recipes: ExtractedRecipe[] = (recipesResult.rows as PageJobRow[]).map((row) => ({
-      slug: row.recipe_slug,
-      title: row.recipe_title,
-      pageNumber: row.page_number,
-    }));
+    const childJobsResult = await query(
+      `SELECT id, state, result, args
+       FROM sidequest_jobs
+       WHERE class = $1 AND args->0->>'parentJobId' = $2
+       ORDER BY id ASC`,
+      ['ExtractRecipeFromImageJob', String(jobIdNum)]
+    );
 
-    const skippedPages: number[] = (skippedResult.rows as SkippedPageRow[]).map((row) => row.page_number);
+    const childJobs = childJobsResult.rows as SidequestJobRow[];
+    const terminalStates = new Set(['completed', 'failed', 'canceled']);
+    const completedJobs = childJobs.filter((job) => terminalStates.has(job.state));
+    const failedJobs = childJobs.filter((job) => job.state === 'failed');
+
+    const recipes: ExtractedRecipe[] = childJobs
+      .filter((job) => job.state === 'completed' && job.result?.recipeSlug)
+      .map((job) => ({
+        slug: job.result!.recipeSlug!,
+        title: job.result!.recipeTitle ?? 'Untitled recipe',
+        pageNumber: job.result!.pageNumber ?? 0,
+      }))
+      .sort((a, b) => a.pageNumber - b.pageNumber);
+
+    const skippedPages = childJobs
+      .filter((job) => job.result?.skipped && job.result?.pageNumber)
+      .map((job) => job.result!.pageNumber!)
+      .sort((a, b) => a - b);
+
+    let status: JobStatusResponse['status'] = 'pending';
+    let errorMessage: string | null = null;
+
+    if (parentJob.state === 'failed') {
+      status = 'failed';
+      errorMessage = parentJob.errors?.[0]?.message ?? 'Job failed';
+    } else if (parentJob.state === 'canceled') {
+      status = 'cancelled';
+    } else if (parentJob.state === 'completed') {
+      if (failedJobs.length > 0) {
+        status = 'failed';
+        errorMessage = 'One or more pages failed to process';
+      } else if (completedJobs.length >= totalPages && totalPages > 0) {
+        status = 'completed';
+      } else if (totalPages === 0) {
+        status = 'completed';
+      } else {
+        status = 'pages_queued';
+      }
+    } else if (parentJob.state === 'running' || parentJob.state === 'claimed') {
+      status = 'processing';
+    } else {
+      status = 'pending';
+    }
 
     const response: JobStatusResponse = {
-      jobId: job.id,
-      status: job.status,
+      jobId: parentJob.id,
+      status,
       progress: {
-        currentPage: job.pages_processed,
-        totalPages: job.total_pages ?? 0,
-        recipesExtracted: job.recipes_extracted,
+        currentPage: completedJobs.length,
+        totalPages,
+        recipesExtracted: recipes.length,
       },
       recipes,
       skippedPages,
-      error: job.error_message,
-      createdAt: job.created_at.toISOString(),
-      completedAt: job.completed_at?.toISOString() ?? null,
+      error: errorMessage,
+      createdAt: parentJob.inserted_at?.toISOString?.() ?? new Date().toISOString(),
+      completedAt: parentJob.completed_at?.toISOString?.() ?? null,
     };
 
     return Response.json(response);
@@ -166,42 +186,39 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       return Response.json({ error: 'Invalid job ID' }, { status: 400 });
     }
 
-    // 2. Query job with ownership check
-    const jobResult = await query(
-      `SELECT id, status, sidequest_job_id
-       FROM pdf_extraction_jobs
-       WHERE id = $1 AND user_id = $2`,
-      [jobIdNum, userIdNum]
-    );
+    await initializeSidequest();
 
-    if (jobResult.rows.length === 0) {
+    const parentJob = await Sidequest.job.get(jobIdNum);
+    if (!parentJob) {
       return Response.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    const job = jobResult.rows[0] as { id: number; status: string; sidequest_job_id: string | null };
+    const parentArgs = Array.isArray(parentJob.args) ? parentJob.args[0] : null;
+    if (!parentArgs || parentArgs.userId !== userIdNum) {
+      return Response.json({ error: 'Job not found' }, { status: 404 });
+    }
 
     // 3. Check if job is already finished
-    if (job.status === 'completed' || job.status === 'failed' || job.status === 'cancelled') {
+    if (parentJob.state === 'completed' || parentJob.state === 'failed' || parentJob.state === 'canceled') {
       return Response.json(
-        { error: `Cannot cancel job: job is already ${job.status}` },
+        { error: `Cannot cancel job: job is already ${parentJob.state}` },
         { status: 400 }
       );
     }
 
-    // 4. Update job status to 'cancelled'
-    await query(
-      `UPDATE pdf_extraction_jobs
-       SET status = 'cancelled', completed_at = NOW()
-       WHERE id = $1`,
-      [jobIdNum]
+    await Sidequest.job.cancel(jobIdNum);
+
+    const childJobsResult = await query(
+      `SELECT id
+       FROM sidequest_jobs
+       WHERE class = $1
+         AND args->0->>'parentJobId' = $2
+         AND state IN ('waiting', 'claimed', 'running')`,
+      ['ExtractRecipeFromImageJob', String(jobIdNum)]
     );
 
-    // 5. Also skip any pending child page jobs (use 'skipped' per DB constraint)
-    await query(
-      `UPDATE pdf_page_extraction_jobs
-       SET status = 'skipped', completed_at = NOW()
-       WHERE pdf_job_id = $1 AND status = 'pending'`,
-      [jobIdNum]
+    await Promise.all(
+      childJobsResult.rows.map((row) => Sidequest.job.cancel(row.id))
     );
 
     return Response.json({ success: true });

@@ -1,4 +1,5 @@
-import { Sidequest } from "sidequest";
+import path from "node:path";
+import { Sidequest } from "@/lib/sidequest-runtime";
 import type { Knex } from "knex";
 
 let initialized = false;
@@ -6,17 +7,24 @@ let initialized = false;
 /**
  * Build database configuration with SSL settings for Railway deployments.
  */
-function buildDatabaseConfig(connectionString: string): Knex.Config {
+function buildDatabaseConfig(connectionString: string): Knex.Config | string {
   const isRailway =
     connectionString.includes("railway.app") ||
     connectionString.includes("railway.internal");
 
-  return {
-    connection: {
-      connectionString,
-      ssl: isRailway ? { rejectUnauthorized: false } : undefined,
-    },
-  };
+  if (!isRailway) {
+    return connectionString;
+  }
+
+  try {
+    const url = new URL(connectionString);
+    if (!url.searchParams.has("sslmode")) {
+      url.searchParams.set("sslmode", "require");
+    }
+    return url.toString();
+  } catch {
+    return connectionString;
+  }
 }
 
 /**
@@ -38,6 +46,12 @@ export async function initializeSidequest(): Promise<void> {
   }
 
   const isProduction = process.env.NODE_ENV === "production";
+
+  const cwd =
+    typeof process !== "undefined" && typeof process.cwd === "function"
+      ? process.cwd()
+      : ".";
+  const jobsFilePath = path.resolve(cwd, "sidequest.jobs.cjs");
 
   await Sidequest.start({
     backend: {
@@ -65,7 +79,7 @@ export async function initializeSidequest(): Promise<void> {
     // Manual job resolution allows us to control which job classes are loaded
     // Jobs will be registered in subsequent issues (e.g., PdfProcessingJob, RecipeExtractionJob)
     manualJobResolution: true,
-    jobsFilePath: "./sidequest.jobs.ts",
+    jobsFilePath,
     logger: isProduction
       ? {
           level: "info",

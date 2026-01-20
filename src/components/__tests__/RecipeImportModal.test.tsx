@@ -590,7 +590,7 @@ describe('RecipeImportModal', () => {
       await screen.findByText(/pdf processing failed/i, {}, { timeout: 5000 });
     });
 
-    it('calls DELETE endpoint and closes modal when Cancel button is clicked during extraction', async () => {
+    it('calls DELETE endpoint and resets modal when Cancel button is clicked during extraction', async () => {
       vi.mocked(validateImportFile).mockReturnValue({ valid: true, fileType: 'pdf' });
 
       // Mock that keeps returning 'processing' so cancel button stays visible
@@ -660,8 +660,205 @@ describe('RecipeImportModal', () => {
         );
       });
 
-      // Verify modal was closed
-      expect(onClose).toHaveBeenCalled();
+      // Verify modal was reset without closing
+      await screen.findByText('Import Recipe');
+      expect(onClose).not.toHaveBeenCalled();
+    }, 20000);
+
+    it('shows loading state while cancelling extraction', async () => {
+      vi.mocked(validateImportFile).mockReturnValue({ valid: true, fileType: 'pdf' });
+
+      // Mock that delays DELETE response to show loading state
+      mockFetch.mockImplementation((url: string, options?: { method?: string }) => {
+        if (url === '/api/recipes/extract-from-pdf' && options?.method === 'POST') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ jobId: 888 }),
+          });
+        }
+        if (url === '/api/recipes/extract-from-pdf/888' && options?.method === 'DELETE') {
+          // Delay the DELETE response to allow checking loading state
+          return new Promise((resolve) =>
+            setTimeout(
+              () =>
+                resolve({
+                  ok: true,
+                  json: () => Promise.resolve({ success: true }),
+                }),
+              200
+            )
+          );
+        }
+        if (url === '/api/recipes/extract-from-pdf/888') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              status: 'processing',
+              progress: { currentPage: 1, totalPages: 5, recipesExtracted: 0 },
+              recipes: [],
+              skippedPages: [],
+            }),
+          });
+        }
+        return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
+      });
+
+      const onClose = vi.fn();
+      const user = userEvent.setup();
+      render(<RecipeImportModal {...defaultProps} onClose={onClose} />);
+
+      const file = new File(['test'], 'recipes.pdf', { type: 'application/pdf' });
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+
+      await user.upload(input, file);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /import recipe/i })).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByRole('button', { name: /import recipe/i }));
+
+      // Wait for cancel button to appear
+      const cancelButton = await screen.findByTestId('cancel-extraction-button', {}, { timeout: 8000 });
+      expect(cancelButton).toBeInTheDocument();
+      expect(cancelButton).not.toBeDisabled();
+
+      await user.click(cancelButton);
+
+      // Check for loading state - button should be disabled and show "Cancelling..."
+      await waitFor(() => {
+        expect(cancelButton).toBeDisabled();
+        expect(screen.getByText('Cancelling...')).toBeInTheDocument();
+      });
+
+      // Wait for reset to finish after DELETE completes
+      await waitFor(() => {
+        expect(screen.getByText('Import Recipe')).toBeInTheDocument();
+      });
+      expect(onClose).not.toHaveBeenCalled();
+    }, 20000);
+
+    it('shows error and keeps modal open when cancel request fails', async () => {
+      vi.mocked(validateImportFile).mockReturnValue({ valid: true, fileType: 'pdf' });
+
+      mockFetch.mockImplementation((url: string, options?: { method?: string }) => {
+        if (url === '/api/recipes/extract-from-pdf' && options?.method === 'POST') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ jobId: 777 }),
+          });
+        }
+        if (url === '/api/recipes/extract-from-pdf/777' && options?.method === 'DELETE') {
+          // DELETE fails with error
+          return Promise.resolve({
+            ok: false,
+            json: () => Promise.resolve({ error: 'Job already completed' }),
+          });
+        }
+        if (url === '/api/recipes/extract-from-pdf/777') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              status: 'processing',
+              progress: { currentPage: 1, totalPages: 5, recipesExtracted: 0 },
+              recipes: [],
+              skippedPages: [],
+            }),
+          });
+        }
+        return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
+      });
+
+      const onClose = vi.fn();
+      const user = userEvent.setup();
+      render(<RecipeImportModal {...defaultProps} onClose={onClose} />);
+
+      const file = new File(['test'], 'recipes.pdf', { type: 'application/pdf' });
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+
+      await user.upload(input, file);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /import recipe/i })).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByRole('button', { name: /import recipe/i }));
+
+      // Wait for cancel button to appear
+      const cancelButton = await screen.findByTestId('cancel-extraction-button', {}, { timeout: 8000 });
+
+      await user.click(cancelButton);
+
+      // Should show error message
+      await waitFor(() => {
+        expect(screen.getByText('Job already completed')).toBeInTheDocument();
+      });
+
+      // Button should be re-enabled after error
+      expect(cancelButton).not.toBeDisabled();
+
+      // Modal should NOT be closed
+      expect(onClose).not.toHaveBeenCalled();
+    }, 20000);
+
+    it('shows generic error when cancel request throws network error', async () => {
+      vi.mocked(validateImportFile).mockReturnValue({ valid: true, fileType: 'pdf' });
+
+      mockFetch.mockImplementation((url: string, options?: { method?: string }) => {
+        if (url === '/api/recipes/extract-from-pdf' && options?.method === 'POST') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ jobId: 666 }),
+          });
+        }
+        if (url === '/api/recipes/extract-from-pdf/666' && options?.method === 'DELETE') {
+          // Network error
+          return Promise.reject(new Error('Network error'));
+        }
+        if (url === '/api/recipes/extract-from-pdf/666') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              status: 'processing',
+              progress: { currentPage: 1, totalPages: 5, recipesExtracted: 0 },
+              recipes: [],
+              skippedPages: [],
+            }),
+          });
+        }
+        return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
+      });
+
+      const onClose = vi.fn();
+      const user = userEvent.setup();
+      render(<RecipeImportModal {...defaultProps} onClose={onClose} />);
+
+      const file = new File(['test'], 'recipes.pdf', { type: 'application/pdf' });
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+
+      await user.upload(input, file);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /import recipe/i })).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByRole('button', { name: /import recipe/i }));
+
+      // Wait for cancel button to appear
+      const cancelButton = await screen.findByTestId('cancel-extraction-button', {}, { timeout: 8000 });
+
+      await user.click(cancelButton);
+
+      // Should show generic error message
+      await waitFor(() => {
+        expect(screen.getByText('Failed to cancel extraction')).toBeInTheDocument();
+      });
+
+      // Button should be re-enabled after error
+      expect(cancelButton).not.toBeDisabled();
+
+      // Modal should NOT be closed
+      expect(onClose).not.toHaveBeenCalled();
     }, 20000);
   });
 

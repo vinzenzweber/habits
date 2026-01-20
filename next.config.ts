@@ -14,6 +14,14 @@ const withSerwist = withSerwistInit({
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  serverExternalPackages: [
+    "sidequest",
+    "@sidequest/backend",
+    "@sidequest/core",
+    "@sidequest/engine",
+    "@sidequest/postgres-backend",
+    "knex",
+  ],
   images: {
     // User-provided recipe images are rendered with unoptimized={true}
     // to avoid SSRF risks from Next.js image optimization fetching arbitrary URLs.

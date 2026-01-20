@@ -8,16 +8,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock sidequest module
-vi.mock('sidequest', () => ({
+vi.mock('@/lib/sidequest-runtime', () => ({
   Job: class MockJob {},
+  Sidequest: {
+    job: {
+      get: vi.fn(),
+    },
+  },
 }));
 
-// Mock database
-vi.mock('@/lib/db', () => ({
-  query: vi.fn(),
-}));
-
-import { query } from '@/lib/db';
+import { Sidequest } from '@/lib/sidequest-runtime';
 import {
   ExtractRecipeFromImageJob,
   type ExtractRecipeFromImageJobParams,
@@ -26,7 +26,7 @@ import {
 
 describe('ExtractRecipeFromImageJob', () => {
   const defaultParams: ExtractRecipeFromImageJobParams = {
-    pdfJobId: 1,
+    parentJobId: 1,
     pageNumber: 1,
     imageBase64: Buffer.from('test-image-data').toString('base64'),
     targetLocale: 'en-US',
@@ -40,29 +40,18 @@ describe('ExtractRecipeFromImageJob', () => {
 
   describe('cancellation check', () => {
     it('marks page as skipped when parent job is cancelled', async () => {
-      vi.mocked(query)
-        .mockResolvedValueOnce({ rows: [{ status: 'cancelled' }] })
-        .mockResolvedValueOnce({ rows: [] });
+      vi.mocked(Sidequest.job.get).mockResolvedValueOnce({ state: 'canceled' } as never);
 
       const job = new ExtractRecipeFromImageJob();
       const result = await job.run(defaultParams);
 
       expect(result.skipped).toBe(true);
-      expect(result.pdfJobId).toBe(1);
+      expect(result.parentJobId).toBe(1);
       expect(result.pageNumber).toBe(1);
-
-      // Verify page job update query (uses 'skipped' per DB constraint on pdf_page_extraction_jobs)
-      expect(query).toHaveBeenNthCalledWith(
-        2,
-        expect.stringContaining("status = 'skipped'"),
-        [1, 1]
-      );
     });
 
     it('marks page as skipped when parent job not found', async () => {
-      vi.mocked(query)
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] });
+      vi.mocked(Sidequest.job.get).mockResolvedValueOnce(null as never);
 
       const job = new ExtractRecipeFromImageJob();
       const result = await job.run(defaultParams);
@@ -71,7 +60,7 @@ describe('ExtractRecipeFromImageJob', () => {
     });
 
     it('proceeds with processing when parent job is not cancelled', async () => {
-      vi.mocked(query).mockResolvedValueOnce({ rows: [{ status: 'pages_queued' }] });
+      vi.mocked(Sidequest.job.get).mockResolvedValueOnce({ state: 'running' } as never);
 
       const job = new ExtractRecipeFromImageJob();
 
@@ -80,32 +69,11 @@ describe('ExtractRecipeFromImageJob', () => {
         'ExtractRecipeFromImageJob not yet implemented'
       );
     });
-
-    it('proceeds when parent job is processing', async () => {
-      vi.mocked(query).mockResolvedValueOnce({ rows: [{ status: 'processing' }] });
-
-      const job = new ExtractRecipeFromImageJob();
-
-      await expect(job.run(defaultParams)).rejects.toThrow(
-        'ExtractRecipeFromImageJob not yet implemented'
-      );
-    });
-
-    it('proceeds when parent job is pending', async () => {
-      vi.mocked(query).mockResolvedValueOnce({ rows: [{ status: 'pending' }] });
-
-      const job = new ExtractRecipeFromImageJob();
-
-      await expect(job.run(defaultParams)).rejects.toThrow(
-        'ExtractRecipeFromImageJob not yet implemented'
-      );
-    });
   });
 
   describe('placeholder behavior', () => {
     beforeEach(() => {
-      // Mock parent job as not cancelled for placeholder tests
-      vi.mocked(query).mockResolvedValueOnce({ rows: [{ status: 'pages_queued' }] });
+      vi.mocked(Sidequest.job.get).mockResolvedValueOnce({ state: 'running' } as never);
     });
 
     it('throws "not yet implemented" error', async () => {
@@ -130,12 +98,11 @@ describe('ExtractRecipeFromImageJob', () => {
   });
 
   describe('interface types', () => {
-    it('accepts required params (pdfJobId, pageNumber, imageBase64, locale, region, userId)', async () => {
-      // Mock parent job as not cancelled
-      vi.mocked(query).mockResolvedValueOnce({ rows: [{ status: 'pages_queued' }] });
+    it('accepts required params (parentJobId, pageNumber, imageBase64, locale, region, userId)', async () => {
+      vi.mocked(Sidequest.job.get).mockResolvedValueOnce({ state: 'running' } as never);
 
       const params: ExtractRecipeFromImageJobParams = {
-        pdfJobId: 99,
+        parentJobId: 99,
         pageNumber: 5,
         imageBase64: 'base64encodedimage==',
         targetLocale: 'de-DE',
@@ -150,13 +117,12 @@ describe('ExtractRecipeFromImageJob', () => {
     });
 
     it('defines result type structure', () => {
-      // This test verifies the type definition is correct at compile time
       const result: ExtractRecipeFromImageJobResult = {
-        pdfJobId: 1,
+        parentJobId: 1,
         pageNumber: 1,
       };
 
-      expect(result.pdfJobId).toBe(1);
+      expect(result.parentJobId).toBe(1);
       expect(result.pageNumber).toBe(1);
       expect(result.recipeSlug).toBeUndefined();
       expect(result.recipeTitle).toBeUndefined();
@@ -164,16 +130,15 @@ describe('ExtractRecipeFromImageJob', () => {
     });
 
     it('result type allows optional fields', () => {
-      // Verify all optional fields are correctly typed
       const resultWithRecipe: ExtractRecipeFromImageJobResult = {
-        pdfJobId: 1,
+        parentJobId: 1,
         pageNumber: 1,
         recipeSlug: 'test-recipe-slug',
         recipeTitle: 'Test Recipe Title',
       };
 
       const resultSkipped: ExtractRecipeFromImageJobResult = {
-        pdfJobId: 1,
+        parentJobId: 1,
         pageNumber: 1,
         skipped: true,
       };
@@ -188,13 +153,11 @@ describe('ExtractRecipeFromImageJob', () => {
     it('extends Job class from sidequest', () => {
       const job = new ExtractRecipeFromImageJob();
 
-      // The job should be an instance of the class
       expect(job).toBeInstanceOf(ExtractRecipeFromImageJob);
     });
 
     it('has run method that returns a Promise', async () => {
-      // Mock parent job as not cancelled
-      vi.mocked(query).mockResolvedValueOnce({ rows: [{ status: 'pages_queued' }] });
+      vi.mocked(Sidequest.job.get).mockResolvedValueOnce({ state: 'running' } as never);
 
       const job = new ExtractRecipeFromImageJob();
 
@@ -202,7 +165,6 @@ describe('ExtractRecipeFromImageJob', () => {
 
       expect(result).toBeInstanceOf(Promise);
 
-      // Must handle the rejection to prevent unhandled promise rejection
       await expect(result).rejects.toThrow();
     });
   });
