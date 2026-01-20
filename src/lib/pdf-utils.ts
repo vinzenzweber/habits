@@ -3,21 +3,20 @@
  * Handles PDF parsing, text extraction, and page-to-image conversion
  */
 
-type PdfParseModule = ((buffer: Buffer) => Promise<{ numpages: number; text: string }>) | {
-  default?: (buffer: Buffer) => Promise<{ numpages: number; text: string }>;
-};
+type PdfParseFn = (buffer: Buffer) => Promise<{ numpages: number; text: string }>;
 
-let pdfParseModule: PdfParseModule | null = null;
+let pdfParseModule: unknown = null;
 
-const getPdfParser = async () => {
+const getPdfParser = async (): Promise<PdfParseFn> => {
   if (!pdfParseModule) {
     pdfParseModule = await import('pdf-parse');
   }
-  if (typeof pdfParseModule === 'function') {
-    return pdfParseModule;
+  const module = pdfParseModule as { default?: PdfParseFn } | PdfParseFn;
+  if (typeof module === 'function') {
+    return module;
   }
-  if (pdfParseModule && typeof pdfParseModule.default === 'function') {
-    return pdfParseModule.default;
+  if (module && typeof module.default === 'function') {
+    return module.default;
   }
   throw new Error('pdf-parse module did not provide a parser function');
 };
