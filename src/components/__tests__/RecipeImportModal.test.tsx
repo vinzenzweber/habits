@@ -321,22 +321,50 @@ describe('RecipeImportModal', () => {
     });
   });
 
-  describe('PDF upload and callback', () => {
-    it('calls PDF API for PDF files', async () => {
+  describe('PDF upload and callback (async polling)', () => {
+    it('calls PDF API and polls for single recipe result', async () => {
       vi.mocked(validateImportFile).mockReturnValue({ valid: true, fileType: 'pdf' });
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({
-          recipes: [{ slug: 'pdf-recipe', title: 'PDF Recipe', pageNumber: 1 }],
-          totalPages: 1,
-          extractedCount: 1,
-          skippedPages: [],
-        }),
+
+      // Mock POST to return jobId, then mock GET for polling
+      let pollCount = 0;
+      mockFetch.mockImplementation((url: string) => {
+        if (url === '/api/recipes/extract-from-pdf') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ jobId: 123 }),
+          });
+        }
+        if (url === '/api/recipes/extract-from-pdf/123') {
+          pollCount++;
+          // First poll: still processing, second poll: completed
+          if (pollCount === 1) {
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve({
+                status: 'processing',
+                progress: { currentPage: 0, totalPages: 1, recipesExtracted: 0 },
+                recipes: [],
+                skippedPages: [],
+              }),
+            });
+          }
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              status: 'completed',
+              progress: { currentPage: 1, totalPages: 1, recipesExtracted: 1 },
+              recipes: [{ slug: 'pdf-recipe', title: 'PDF Recipe', pageNumber: 1 }],
+              skippedPages: [],
+            }),
+          });
+        }
+        return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
       });
 
       const onImageCaptured = vi.fn();
+      const onClose = vi.fn();
       const user = userEvent.setup();
-      render(<RecipeImportModal {...defaultProps} onImageCaptured={onImageCaptured} />);
+      render(<RecipeImportModal {...defaultProps} onImageCaptured={onImageCaptured} onClose={onClose} />);
 
       const file = new File(['test'], 'recipes.pdf', { type: 'application/pdf' });
       const input = document.querySelector('input[type="file"]') as HTMLInputElement;
@@ -349,29 +377,45 @@ describe('RecipeImportModal', () => {
 
       await user.click(screen.getByRole('button', { name: /import recipe/i }));
 
+      // Wait for polling to complete and callback to be called
       await waitFor(() => {
         expect(mockFetch).toHaveBeenCalledWith(
           '/api/recipes/extract-from-pdf',
           expect.objectContaining({ method: 'POST' })
         );
-        // Single recipe from PDF should navigate directly
-        expect(onImageCaptured).toHaveBeenCalledWith({ type: 'extracted', slug: 'pdf-recipe' });
       });
+
+      // Wait for polling to complete
+      await waitFor(() => {
+        expect(onImageCaptured).toHaveBeenCalledWith({ type: 'extracted', slug: 'pdf-recipe' });
+      }, { timeout: 5000 });
     });
 
-    it('shows results for multi-recipe PDFs', async () => {
+    it('shows results for multi-recipe PDFs via polling', async () => {
       vi.mocked(validateImportFile).mockReturnValue({ valid: true, fileType: 'pdf' });
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({
-          recipes: [
-            { slug: 'recipe-1', title: 'Recipe 1', pageNumber: 1 },
-            { slug: 'recipe-2', title: 'Recipe 2', pageNumber: 2 },
-          ],
-          totalPages: 2,
-          extractedCount: 2,
-          skippedPages: [],
-        }),
+
+      mockFetch.mockImplementation((url: string) => {
+        if (url === '/api/recipes/extract-from-pdf') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ jobId: 456 }),
+          });
+        }
+        if (url === '/api/recipes/extract-from-pdf/456') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              status: 'completed',
+              progress: { currentPage: 2, totalPages: 2, recipesExtracted: 2 },
+              recipes: [
+                { slug: 'recipe-1', title: 'Recipe 1', pageNumber: 1 },
+                { slug: 'recipe-2', title: 'Recipe 2', pageNumber: 2 },
+              ],
+              skippedPages: [],
+            }),
+          });
+        }
+        return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
       });
 
       const user = userEvent.setup();
@@ -388,23 +432,34 @@ describe('RecipeImportModal', () => {
 
       await user.click(screen.getByRole('button', { name: /import recipe/i }));
 
-      // Wait for import results - use findByText for async lookups
-      await screen.findByText('Recipe 1');
+      // Wait for import results via polling
+      await screen.findByText('Recipe 1', {}, { timeout: 5000 });
       await screen.findByText('Recipe 2');
-      // Check that the "Done" button appears (indicates import results view)
       expect(screen.getByRole('button', { name: /done/i })).toBeInTheDocument();
     });
 
-    it('shows error when no recipes found in PDF', async () => {
+    it('shows error when no recipes found in PDF via polling', async () => {
       vi.mocked(validateImportFile).mockReturnValue({ valid: true, fileType: 'pdf' });
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({
-          recipes: [],
-          totalPages: 1,
-          extractedCount: 0,
-          skippedPages: [1],
-        }),
+
+      mockFetch.mockImplementation((url: string) => {
+        if (url === '/api/recipes/extract-from-pdf') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ jobId: 789 }),
+          });
+        }
+        if (url === '/api/recipes/extract-from-pdf/789') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              status: 'completed',
+              progress: { currentPage: 1, totalPages: 1, recipesExtracted: 0 },
+              recipes: [],
+              skippedPages: [1],
+            }),
+          });
+        }
+        return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
       });
 
       const user = userEvent.setup();
@@ -421,8 +476,118 @@ describe('RecipeImportModal', () => {
 
       await user.click(screen.getByRole('button', { name: /import recipe/i }));
 
-      // Error message should appear
-      await screen.findByText(/no recipes found in the pdf/i);
+      // Error message should appear via polling
+      await screen.findByText(/no recipes were found in this pdf/i, {}, { timeout: 5000 });
+    });
+
+    it('shows progress during polling', async () => {
+      vi.mocked(validateImportFile).mockReturnValue({ valid: true, fileType: 'pdf' });
+
+      let pollCount = 0;
+      mockFetch.mockImplementation((url: string) => {
+        if (url === '/api/recipes/extract-from-pdf') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ jobId: 111 }),
+          });
+        }
+        if (url === '/api/recipes/extract-from-pdf/111') {
+          pollCount++;
+          // Return processing first, then completed on second poll
+          if (pollCount === 1) {
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve({
+                status: 'processing',
+                progress: { currentPage: 1, totalPages: 3, recipesExtracted: 1 },
+                recipes: [{ slug: 'r1', title: 'First Recipe', pageNumber: 1 }],
+                skippedPages: [],
+              }),
+            });
+          }
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              status: 'completed',
+              progress: { currentPage: 3, totalPages: 3, recipesExtracted: 2 },
+              recipes: [
+                { slug: 'r1', title: 'First Recipe', pageNumber: 1 },
+                { slug: 'r2', title: 'Second Recipe', pageNumber: 3 },
+              ],
+              skippedPages: [2],
+            }),
+          });
+        }
+        return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
+      });
+
+      const user = userEvent.setup();
+      render(<RecipeImportModal {...defaultProps} />);
+
+      const file = new File(['test'], 'multi.pdf', { type: 'application/pdf' });
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+
+      await user.upload(input, file);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /import recipe/i })).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByRole('button', { name: /import recipe/i }));
+
+      // Should show processing state with partial results
+      await waitFor(() => {
+        // Look for partial results list showing the first recipe
+        const partialResult = screen.queryByText('First Recipe');
+        expect(partialResult).toBeInTheDocument();
+      }, { timeout: 6000 });
+
+      // Eventually shows completed results (2 recipes in import results view)
+      await screen.findByRole('button', { name: /done/i }, { timeout: 6000 });
+      expect(screen.getByText('Second Recipe')).toBeInTheDocument();
+    }, 15000); // Increase test timeout to 15s due to polling intervals
+
+    it('handles polling error gracefully', async () => {
+      vi.mocked(validateImportFile).mockReturnValue({ valid: true, fileType: 'pdf' });
+
+      mockFetch.mockImplementation((url: string) => {
+        if (url === '/api/recipes/extract-from-pdf') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ jobId: 222 }),
+          });
+        }
+        if (url === '/api/recipes/extract-from-pdf/222') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              status: 'failed',
+              progress: { currentPage: 1, totalPages: 2, recipesExtracted: 0 },
+              recipes: [],
+              skippedPages: [],
+              error: 'PDF processing failed',
+            }),
+          });
+        }
+        return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
+      });
+
+      const user = userEvent.setup();
+      render(<RecipeImportModal {...defaultProps} />);
+
+      const file = new File(['test'], 'bad.pdf', { type: 'application/pdf' });
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+
+      await user.upload(input, file);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /import recipe/i })).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByRole('button', { name: /import recipe/i }));
+
+      // Error from job failure should appear
+      await screen.findByText(/pdf processing failed/i, {}, { timeout: 5000 });
     });
   });
 

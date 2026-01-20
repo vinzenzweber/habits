@@ -99,6 +99,15 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
     totalPages: 0,
   });
 
+  // Polling state for async PDF extraction
+  const [pollingJobId, setPollingJobId] = useState<number | null>(null);
+  const [jobStatus, setJobStatus] = useState<string | null>(null);
+  const [partialResults, setPartialResults] = useState<Array<{
+    slug: string;
+    title: string;
+    pageNumber: number;
+  }>>([]);
+
   // Import results for multi-recipe PDFs
   const [importResults, setImportResults] = useState<{
     recipes: Array<{ slug: string; title: string; pageNumber: number }>;
@@ -147,8 +156,74 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
       setDragOver(false);
       setExtractionProgress({ currentPage: 0, totalPages: 0 });
       setImportResults(null);
+      // Clear polling state
+      setPollingJobId(null);
+      setJobStatus(null);
+      setPartialResults([]);
     }
   }, [isOpen, previewUrl]);
+
+  // Polling effect for async PDF extraction
+  useEffect(() => {
+    // Only poll when we have a job ID and job is still in progress
+    if (!pollingJobId) return;
+    if (jobStatus === 'completed' || jobStatus === 'failed' || jobStatus === 'cancelled') return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/recipes/extract-from-pdf/${pollingJobId}`);
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          setError(errorData.error || 'Failed to check extraction status');
+          setJobStatus('failed');
+          setIsExtracting(false);
+          setIsUploading(false);
+          return;
+        }
+
+        const data = await response.json();
+
+        setJobStatus(data.status);
+        setExtractionProgress({
+          currentPage: data.progress.currentPage,
+          totalPages: data.progress.totalPages,
+        });
+        setPartialResults(data.recipes || []);
+
+        if (data.status === 'completed') {
+          setIsExtracting(false);
+          setIsUploading(false);
+          if (data.recipes.length === 0) {
+            setError('No recipes were found in this PDF. Please try a different file.');
+          } else if (data.recipes.length === 1) {
+            // Single recipe - navigate directly
+            onImageCaptured({ type: 'extracted', slug: data.recipes[0].slug });
+            onClose();
+          } else {
+            // Multiple recipes - show selection UI
+            setImportResults({
+              recipes: data.recipes,
+              skippedPages: data.skippedPages || [],
+            });
+          }
+        } else if (data.status === 'failed') {
+          setError(data.error || 'Recipe extraction failed');
+          setIsExtracting(false);
+          setIsUploading(false);
+        } else if (data.status === 'cancelled') {
+          setError('Extraction was cancelled');
+          setIsExtracting(false);
+          setIsUploading(false);
+        }
+      } catch (err) {
+        console.error('Polling error:', err);
+        // Don't fail on transient network errors - keep polling
+      }
+    }, 2000); // Poll every 2 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [pollingJobId, jobStatus, onImageCaptured, onClose]);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -242,6 +317,10 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
     setError(null);
     setImportResults(null);
     setExtractionProgress({ currentPage: 0, totalPages: 0 });
+    // Clear polling state
+    setPollingJobId(null);
+    setJobStatus(null);
+    setPartialResults([]);
   }, [previewUrl]);
 
   /**
@@ -270,7 +349,7 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
 
     try {
       if (fileType === 'pdf') {
-        // Handle PDF extraction
+        // Handle PDF extraction (async with polling)
         const base64 = await fileToBase64(selectedFile);
 
         const response = await fetch('/api/recipes/extract-from-pdf', {
@@ -285,19 +364,12 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
           throw new Error(data.error || 'Failed to extract recipe from PDF');
         }
 
-        // Handle results
-        if (data.recipes.length === 0) {
-          throw new Error('No recipes found in the PDF. Please try a different file.');
-        } else if (data.recipes.length === 1) {
-          // Single recipe - navigate directly
-          onImageCaptured({ type: 'extracted', slug: data.recipes[0].slug });
-        } else {
-          // Multiple recipes - show results
-          setImportResults({
-            recipes: data.recipes,
-            skippedPages: data.skippedPages,
-          });
-        }
+        // API returns 202 with jobId for async processing
+        setPollingJobId(data.jobId);
+        setJobStatus('pending');
+        setPartialResults([]);
+        // Polling effect will handle the rest - don't set isUploading/isExtracting to false here
+        return;
       } else {
         // Handle image extraction (existing logic)
         const resizedBlob = await resizeImage(selectedFile);
@@ -450,20 +522,86 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
                 )}
                 {isUploading && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                    <div className="text-center">
+                    <div className="text-center px-4">
                       <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                      <p className="text-sm text-white">
-                        {isExtracting ? 'Extracting recipe...' : 'Processing...'}
-                      </p>
-                      {isExtracting && fileType === 'pdf' && extractionProgress.totalPages > 0 && (
-                        <p className="text-xs text-slate-300 mt-1">
-                          Page {extractionProgress.currentPage} of {extractionProgress.totalPages}
-                        </p>
-                      )}
-                      {isExtracting && (
-                        <p className="text-xs text-slate-300 mt-1">
-                          This may take a few seconds
-                        </p>
+
+                      {/* PDF extraction with polling progress */}
+                      {isExtracting && fileType === 'pdf' && pollingJobId ? (
+                        <>
+                          <p className="text-sm text-white mb-2">
+                            {extractionProgress.totalPages > 0
+                              ? `Processing page ${extractionProgress.currentPage} of ${extractionProgress.totalPages}...`
+                              : jobStatus === 'pending'
+                                ? 'Starting extraction...'
+                                : 'Analyzing PDF...'}
+                          </p>
+
+                          {extractionProgress.totalPages > 0 && (
+                            <>
+                              <p className="text-xs text-slate-300 mb-2">
+                                {partialResults.length} {partialResults.length === 1 ? 'recipe' : 'recipes'} extracted
+                              </p>
+
+                              {/* Progress bar */}
+                              <div className="w-full max-w-xs mx-auto bg-slate-700 rounded-full h-2 mb-3">
+                                <div
+                                  className="bg-emerald-500 h-2 rounded-full transition-all duration-300"
+                                  style={{
+                                    width: `${(extractionProgress.currentPage / extractionProgress.totalPages) * 100}%`
+                                  }}
+                                />
+                              </div>
+
+                              {/* Partial results list */}
+                              {partialResults.length > 0 && (
+                                <div className="text-left max-w-xs mx-auto mt-3 max-h-24 overflow-y-auto">
+                                  <p className="text-slate-400 text-xs uppercase tracking-wide mb-1">
+                                    Recipes found:
+                                  </p>
+                                  <ul className="text-xs text-slate-300 space-y-0.5">
+                                    {partialResults.map((recipe) => (
+                                      <li key={recipe.slug} className="flex items-center gap-1">
+                                        <span className="text-emerald-400">✓</span>
+                                        <span className="truncate">{recipe.title}</span>
+                                        <span className="text-slate-500 text-xs shrink-0">p.{recipe.pageNumber}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </>
+                          )}
+
+                          {/* Cancel button - calls DELETE endpoint */}
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              // Cancel the job via DELETE endpoint
+                              try {
+                                await fetch(`/api/recipes/extract-from-pdf/${pollingJobId}`, {
+                                  method: 'DELETE',
+                                });
+                              } catch {
+                                // Ignore errors - we're closing anyway
+                              }
+                              onClose();
+                            }}
+                            className="mt-4 px-4 py-2 text-sm text-slate-400 hover:text-slate-200 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-sm text-white">
+                            {isExtracting ? 'Extracting recipe...' : 'Processing...'}
+                          </p>
+                          {isExtracting && (
+                            <p className="text-xs text-slate-300 mt-1">
+                              This may take a few seconds
+                            </p>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
