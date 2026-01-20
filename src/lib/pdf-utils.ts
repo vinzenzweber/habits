@@ -11,12 +11,12 @@ const getPdfParser = async (): Promise<PdfParseFn> => {
   if (!pdfParseModule) {
     pdfParseModule = await import('pdf-parse');
   }
-  const module = pdfParseModule as { default?: PdfParseFn } | PdfParseFn;
-  if (typeof module === 'function') {
-    return module;
+  const pdfModule = pdfParseModule as { default?: PdfParseFn } | PdfParseFn;
+  if (typeof pdfModule === 'function') {
+    return pdfModule;
   }
-  if (module && typeof module.default === 'function') {
-    return module.default;
+  if (pdfModule && typeof pdfModule.default === 'function') {
+    return pdfModule.default;
   }
   throw new Error('pdf-parse module did not provide a parser function');
 };

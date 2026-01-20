@@ -102,6 +102,12 @@ export async function initializeSidequest(): Promise<void> {
     return;
   }
 
+  if (process.env.CI === "true" || process.env.DISABLE_SIDEQUEST_WORKERS === "true") {
+    await configureSidequest();
+    console.log("[SideQuest] Workers disabled");
+    return;
+  }
+
   await Sidequest.start(buildSidequestConfig());
 
   initialized = true;
