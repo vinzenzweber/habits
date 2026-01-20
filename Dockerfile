@@ -11,11 +11,12 @@ RUN npm ci
 
 FROM base AS builder
 ENV NODE_ENV=production
-# Cache bust argument - change this value to invalidate Docker layer cache
-ARG CACHE_BUST=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npm run build
+# Railway provides RAILWAY_GIT_COMMIT_SHA automatically on each deploy
+# This ARG declaration makes Docker aware of it for cache invalidation
+ARG RAILWAY_GIT_COMMIT_SHA=""
+RUN echo "Building commit: ${RAILWAY_GIT_COMMIT_SHA:-local}" && npm run build
 
 FROM base AS runner
 ENV NODE_ENV=production
