@@ -63,7 +63,7 @@ function buildSidequestConfig() {
       },
       {
         name: "recipe-extraction",
-        concurrency: 3,
+        concurrency: 10,
         priority: 50,
       },
       {

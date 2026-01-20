@@ -142,7 +142,7 @@ describe("sidequest-config", () => {
         expect.objectContaining({
           queues: [
             { name: "pdf-processing", concurrency: 1, priority: 100 },
-            { name: "recipe-extraction", concurrency: 3, priority: 50 },
+            { name: "recipe-extraction", concurrency: 10, priority: 50 },
             { name: "default", concurrency: 2, priority: 10 },
           ],
         })

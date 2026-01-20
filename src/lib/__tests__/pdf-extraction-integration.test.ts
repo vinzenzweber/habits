@@ -8,7 +8,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   getTestPdfBuffer,
+  getTestPdfImagesBuffer,
   testPdfExists,
+  testPdfImagesExists,
   expectedRecipe1,
   expectedRecipe2,
   getAllIngredientNames,
@@ -25,6 +27,7 @@ import { parseExtractionResponse } from '../recipe-extraction';
 describe('PDF Extraction Integration Tests', () => {
   // Skip all tests if the test PDF doesn't exist
   const pdfExists = testPdfExists();
+  const pdfImagesExists = testPdfImagesExists();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -128,6 +131,33 @@ describe('PDF Extraction Integration Tests', () => {
       // Total text should contain content from both recipes
       expect(result.totalText.toLowerCase()).toContain('obstsalat');
       expect(result.totalText.toLowerCase()).toContain('pfirsich');
+    });
+  });
+
+  describe('extractPdfPagesText with image-based PDF', () => {
+    it.skipIf(!pdfImagesExists)('should extract 2 pages from test-recipes-images.pdf', async () => {
+      const pdfBuffer = getTestPdfImagesBuffer();
+      const result = await extractPdfPagesText(pdfBuffer);
+
+      expect(result.pageCount).toBe(2);
+      expect(result.pages).toHaveLength(2);
+    });
+
+    it.skipIf(!pdfImagesExists)('should mark pages as having no significant text', async () => {
+      const pdfBuffer = getTestPdfImagesBuffer();
+      const result = await extractPdfPagesText(pdfBuffer);
+
+      expect(result.pages[0].hasSignificantText).toBe(false);
+      expect(result.pages[1].hasSignificantText).toBe(false);
+    });
+
+    it.skipIf(!pdfImagesExists)('should return empty text content for image-based pages', async () => {
+      const pdfBuffer = getTestPdfImagesBuffer();
+      const result = await extractPdfPagesText(pdfBuffer);
+
+      expect(result.pages[0].textContent).toBe('');
+      expect(result.pages[1].textContent).toBe('');
+      expect(result.totalText).toBe('');
     });
   });
 
