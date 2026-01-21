@@ -126,19 +126,6 @@ test.describe('PDF Recipe Import', () => {
       const jobId = 321;
       let pollCount = 0;
 
-      await authenticatedPage.route('**/api/recipes/extract-from-pdf', async (route) => {
-        if (route.request().method() !== 'POST') {
-          await route.continue();
-          return;
-        }
-
-        await route.fulfill({
-          status: 202,
-          contentType: 'application/json',
-          body: JSON.stringify({ jobId }),
-        });
-      });
-
       await authenticatedPage.route(
         `**/api/recipes/extract-from-pdf/${jobId}`,
         async (route) => {
@@ -185,6 +172,18 @@ test.describe('PDF Recipe Import', () => {
         }
       );
 
+      await authenticatedPage.route('**/api/recipes/extract-from-pdf', async (route) => {
+        if (route.request().method() !== 'POST') {
+          await route.fallback();
+          return;
+        }
+
+        await route.fulfill({
+          status: 202,
+          contentType: 'application/json',
+          body: JSON.stringify({ jobId }),
+        });
+      });
       await authenticatedPage.goto('/recipes');
 
       const importButton = authenticatedPage.getByRole('button', {
