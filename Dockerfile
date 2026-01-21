@@ -32,6 +32,8 @@ COPY --from=builder /app/public ./public
 # Copy migration dependencies (tsx requires node_modules)
 COPY --from=deps /app/node_modules ./node_modules
 COPY scripts ./scripts
+COPY src ./src
+COPY tsconfig.json ./tsconfig.json
 COPY package.json ./
 
 # Create directory for exercise image storage (Railway volume mount point)
