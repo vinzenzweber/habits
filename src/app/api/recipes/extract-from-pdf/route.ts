@@ -10,6 +10,9 @@
  *   - Error: { error: string }
  */
 
+import { mkdtemp, rm, writeFile } from 'fs/promises';
+import { join } from 'path';
+import { tmpdir } from 'os';
 import { auth } from '@/lib/auth';
 import { getRegionFromTimezone } from '@/lib/user-preferences';
 import { getPdfInfo, MAX_PDF_PAGES } from '@/lib/pdf-utils';
@@ -29,6 +32,8 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  let tempDir: string | null = null;
+  let jobEnqueued = false;
   try {
     const body = await request.json();
     const { pdfBase64 } = body;
@@ -79,6 +84,10 @@ export async function POST(request: Request) {
       );
     }
 
+    tempDir = await mkdtemp(join(tmpdir(), 'pdf-extraction-'));
+    const pdfPath = join(tempDir, 'upload.pdf');
+    await writeFile(pdfPath, pdfBuffer);
+
     const { configureSidequest } = await import('@/lib/sidequest-config');
     const { Sidequest } = await import('@/lib/sidequest-runtime');
     await configureSidequest();
@@ -92,17 +101,23 @@ export async function POST(request: Request) {
       .maxAttempts(1) // Don't retry entire PDF
       .enqueue({
         userId: userIdNum,
-        pdfBase64,
+        pdfPath,
         targetLocale: recipeLocale,
         targetRegion: userRegion,
         totalPages: pdfInfo.pageCount,
       });
+
+    jobEnqueued = true;
 
     // Return HTTP 202 Accepted with job ID
     const response: EnqueuedJobResponse = { jobId: Number(sidequestJob.id) };
     return Response.json(response, { status: 202 });
   } catch (error) {
     console.error('Error enqueueing PDF extraction job:', error);
+
+    if (tempDir && !jobEnqueued) {
+      await rm(tempDir, { recursive: true, force: true });
+    }
 
     return Response.json(
       { error: 'Failed to enqueue PDF processing. Please try again.' },

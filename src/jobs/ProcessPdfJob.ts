@@ -4,12 +4,15 @@
  * Renders each page of a PDF to an image and spawns child jobs
  * (ExtractRecipeFromImageJob) for recipe extraction per page.
  */
+import { readFile, rm } from "fs/promises";
+import { dirname, resolve } from "path";
+import { tmpdir } from "os";
 import { Job, Sidequest } from "@/lib/sidequest-runtime";
 import { getPdfInfo, renderPdfPageToImage } from "@/lib/pdf-utils";
 
 export interface ProcessPdfJobParams {
   userId: number;
-  pdfBase64: string; // Base64-encoded PDF data
+  pdfPath: string; // Temp file path for PDF data
   targetLocale: string; // e.g., 'en-US', 'de-DE'
   targetRegion: string; // e.g., 'US', 'DE'
   totalPages: number; // Stored on the parent Sidequest job args for polling
@@ -33,19 +36,24 @@ export interface ProcessPdfJobResult {
  */
 export class ProcessPdfJob extends Job {
   async run(params: ProcessPdfJobParams): Promise<ProcessPdfJobResult> {
-    const { userId, pdfBase64, targetLocale, targetRegion } = params;
+    const { userId, pdfPath, targetLocale, targetRegion, totalPages } = params;
+    let pdfBuffer: Buffer | null = null;
+    let pageCount = totalPages;
 
     try {
       // Parse PDF and get page count
-      const pdfBuffer = Buffer.from(pdfBase64, "base64");
-      const pdfInfo = await getPdfInfo(pdfBuffer);
+      pdfBuffer = await readFile(pdfPath);
+      if (!pageCount || pageCount <= 0) {
+        const pdfInfo = await getPdfInfo(pdfBuffer);
+        pageCount = pdfInfo.pageCount;
+      }
 
       const { ExtractRecipeFromImageJob } = await import(
         "./ExtractRecipeFromImageJob"
       );
 
       // Process each page: render to image and spawn child job
-      for (let pageNum = 1; pageNum <= pdfInfo.pageCount; pageNum++) {
+      for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
         // Render page to image (PNG at 200 DPI default)
         const imageBuffer = await renderPdfPageToImage(pdfBuffer, pageNum);
         const imageBase64 = imageBuffer.toString("base64");
@@ -67,12 +75,27 @@ export class ProcessPdfJob extends Job {
 
       return {
         parentJobId: this.id,
-        totalPages: pdfInfo.pageCount,
-        childJobsCreated: pdfInfo.pageCount,
+        totalPages: pageCount,
+        childJobsCreated: pageCount,
       };
     } catch (error) {
       // Re-throw to mark SideQuest job as failed
       throw error instanceof Error ? error : new Error("Unknown error");
+    } finally {
+      await cleanupTempPdf(pdfPath);
     }
+  }
+}
+
+async function cleanupTempPdf(pdfPath: string) {
+  try {
+    const resolvedDir = resolve(dirname(pdfPath));
+    const resolvedTmp = resolve(tmpdir());
+    if (!resolvedDir.startsWith(`${resolvedTmp}/`)) {
+      return;
+    }
+    await rm(resolvedDir, { recursive: true, force: true });
+  } catch {
+    // Best-effort cleanup only.
   }
 }

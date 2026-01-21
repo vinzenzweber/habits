@@ -1,6 +1,7 @@
 /**
  * Tests for ProcessPdfJob
  */
+import { tmpdir } from "os";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Mock modules before imports
@@ -8,6 +9,16 @@ vi.mock("@/lib/pdf-utils", () => ({
   getPdfInfo: vi.fn(),
   renderPdfPageToImage: vi.fn(),
 }));
+
+vi.mock("fs/promises", () => {
+  const readFile = vi.fn();
+  const rm = vi.fn();
+  return {
+    default: { readFile, rm },
+    readFile,
+    rm,
+  };
+});
 
 // Mock ExtractRecipeFromImageJob module
 vi.mock("../ExtractRecipeFromImageJob", () => ({
@@ -35,6 +46,7 @@ vi.mock("@/lib/sidequest-runtime", () => {
 
 import { getPdfInfo, renderPdfPageToImage } from "@/lib/pdf-utils";
 import { Sidequest } from "@/lib/sidequest-runtime";
+import { readFile, rm } from "fs/promises";
 import {
   ProcessPdfJob,
   type ProcessPdfJobParams,
@@ -59,14 +71,16 @@ describe("ProcessPdfJob", () => {
 
   const defaultParams: ProcessPdfJobParams = {
     userId: 456,
-    pdfBase64: Buffer.from("fake pdf content").toString("base64"),
+    pdfPath: `${tmpdir()}/pdf-extraction-test/upload.pdf`,
     targetLocale: "en-US",
     targetRegion: "US",
-    totalPages: 2,
+    totalPages: 0,
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(readFile).mockResolvedValue(Buffer.from("fake pdf content"));
+    vi.mocked(rm).mockResolvedValue();
     mockEnqueue.mockResolvedValue({ id: "child-job-123" });
     // Re-establish mockReturnValue for the builder chain after clearAllMocks
     mockJobBuilder.queue.mockReturnThis();
@@ -180,10 +194,13 @@ describe("ProcessPdfJob", () => {
   describe("error handling", () => {
     it("throws when PDF parsing fails", async () => {
       mockGetPdfInfo.mockRejectedValue(new Error("Invalid PDF format"));
+      vi.mocked(readFile).mockResolvedValue(Buffer.from("fake pdf content"));
 
       const job = new ProcessPdfJob();
       (job as { id: number }).id = 3;
-      await expect(job.run(defaultParams)).rejects.toThrow("Invalid PDF format");
+      await expect(
+        job.run({ ...defaultParams, totalPages: 0 })
+      ).rejects.toThrow("Invalid PDF format");
     });
 
     it("throws when page rendering fails", async () => {
@@ -218,10 +235,10 @@ describe("ProcessPdfJob", () => {
     });
   });
 
-  describe("base64 encoding", () => {
-    it("correctly decodes base64 PDF data", async () => {
+  describe("file handling", () => {
+    it("reads PDF data from the temp path", async () => {
       const originalContent = "PDF binary content here";
-      const base64Content = Buffer.from(originalContent).toString("base64");
+      vi.mocked(readFile).mockResolvedValue(Buffer.from(originalContent));
 
       mockGetPdfInfo.mockResolvedValue({ pageCount: 1 });
       mockRenderPdfPageToImage.mockResolvedValue(Buffer.from("image"));
@@ -230,7 +247,7 @@ describe("ProcessPdfJob", () => {
       (job as { id: number }).id = 7;
       await job.run({
         ...defaultParams,
-        pdfBase64: base64Content,
+        totalPages: 0,
       });
 
       const pdfBuffer = mockGetPdfInfo.mock.calls[0][0] as Buffer;
@@ -250,6 +267,39 @@ describe("ProcessPdfJob", () => {
       expect(childJobParams.imageBase64).toBe(
         Buffer.from(imageContent).toString("base64")
       );
+    });
+  });
+
+  describe("page count usage", () => {
+    it("uses provided totalPages without re-parsing the PDF", async () => {
+      mockGetPdfInfo.mockResolvedValue({ pageCount: 3 });
+      mockRenderPdfPageToImage.mockResolvedValue(Buffer.from("image"));
+
+      const job = new ProcessPdfJob();
+      (job as { id: number }).id = 12;
+      await job.run({
+        ...defaultParams,
+        totalPages: 2,
+      });
+
+      expect(mockGetPdfInfo).not.toHaveBeenCalled();
+      expect(mockRenderPdfPageToImage).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("cleanup", () => {
+    it("removes temp directory after processing", async () => {
+      mockGetPdfInfo.mockResolvedValue({ pageCount: 1 });
+      mockRenderPdfPageToImage.mockResolvedValue(Buffer.from("image"));
+
+      const job = new ProcessPdfJob();
+      (job as { id: number }).id = 11;
+      await job.run(defaultParams);
+
+      expect(rm).toHaveBeenCalledWith(`${tmpdir()}/pdf-extraction-test`, {
+        recursive: true,
+        force: true,
+      });
     });
   });
 
