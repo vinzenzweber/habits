@@ -184,7 +184,6 @@ test.describe('PDF Recipe Import', () => {
           body: JSON.stringify({ jobId }),
         });
       });
-
       await authenticatedPage.goto('/recipes');
 
       const importButton = authenticatedPage.getByRole('button', {
