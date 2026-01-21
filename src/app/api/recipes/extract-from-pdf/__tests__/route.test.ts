@@ -3,6 +3,7 @@
  * The route enqueues background jobs for async PDF processing
  */
 
+import { tmpdir } from 'os';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock auth
@@ -179,6 +180,7 @@ describe('POST /api/recipes/extract-from-pdf', () => {
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('This PDF is password-protected. Please provide an unprotected PDF.');
+      expect(rm).not.toHaveBeenCalled();
     });
 
     it('returns 400 when PDF has too many pages', async () => {
@@ -192,6 +194,7 @@ describe('POST /api/recipes/extract-from-pdf', () => {
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('PDF has too many pages (51). Maximum: 50');
+      expect(rm).not.toHaveBeenCalled();
     });
   });
 
@@ -220,6 +223,13 @@ describe('POST /api/recipes/extract-from-pdf', () => {
 
       await POST(request);
 
+      expect(mkdtemp).toHaveBeenCalledWith(
+        expect.stringContaining(`${tmpdir()}/pdf-extraction-`)
+      );
+      expect(writeFile).toHaveBeenCalledWith(
+        '/tmp/pdf-extraction-test/upload.pdf',
+        expect.any(Buffer)
+      );
       expect(sidequestMocks.mockBuild).toHaveBeenCalledWith(ProcessPdfJob);
       expect(sidequestMocks.mockQueue).toHaveBeenCalledWith('pdf-processing');
       expect(sidequestMocks.mockTimeout).toHaveBeenCalledWith(600000);
@@ -286,6 +296,7 @@ describe('POST /api/recipes/extract-from-pdf', () => {
 
       expect(response.status).toBe(500);
       expect(data.error).toBe('Failed to enqueue PDF processing. Please try again.');
+      expect(rm).not.toHaveBeenCalled();
     });
   });
 });
