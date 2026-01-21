@@ -95,7 +95,11 @@ describe("sidequest-config", () => {
             config: expect.objectContaining({
               client: "pg",
               connection: expect.objectContaining({
-                connectionString: expect.stringContaining("sslmode=require"),
+                host: "railway.app",
+                port: 5432,
+                user: "user",
+                password: "pass",
+                database: "habits",
                 ssl: { rejectUnauthorized: false },
               }),
             }),
@@ -119,7 +123,11 @@ describe("sidequest-config", () => {
             config: expect.objectContaining({
               client: "pg",
               connection: expect.objectContaining({
-                connectionString: expect.stringContaining("sslmode=require"),
+                host: "railway.internal",
+                port: 5432,
+                user: "user",
+                password: "pass",
+                database: "habits",
                 ssl: { rejectUnauthorized: false },
               }),
             }),

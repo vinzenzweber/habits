@@ -35,14 +35,14 @@ function buildDatabaseConfig(connectionString: string): Knex.Config | string {
       return connectionString;
     }
 
-    if (!url.searchParams.has("sslmode")) {
-      url.searchParams.set("sslmode", "require");
-    }
-
     return {
       client: "pg",
       connection: {
-        connectionString: url.toString(),
+        host: url.hostname,
+        port: url.port ? Number(url.port) : 5432,
+        user: decodeURIComponent(url.username),
+        password: decodeURIComponent(url.password),
+        database: url.pathname.replace(/^\//, ""),
         ssl: {
           rejectUnauthorized: false,
         },
