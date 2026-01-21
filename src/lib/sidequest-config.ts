@@ -15,19 +15,30 @@ function shouldDisableSidequest(): boolean {
  * Build database configuration with SSL settings for Railway deployments.
  */
 function buildDatabaseConfig(connectionString: string): Knex.Config | string {
-  const isRailway =
-    connectionString.includes("railway.app") ||
-    connectionString.includes("railway.internal");
-
-  if (!isRailway) {
-    return connectionString;
-  }
+  const railwayEnv = Boolean(
+    process.env.RAILWAY_ENVIRONMENT ||
+      process.env.RAILWAY_PROJECT_ID ||
+      process.env.RAILWAY_SERVICE_ID
+  );
 
   try {
     const url = new URL(connectionString);
+    const hostname = url.hostname.toLowerCase();
+    const isRailwayHost =
+      hostname.endsWith("railway.app") ||
+      hostname.endsWith("railway.internal") ||
+      hostname.endsWith("rlwy.net") ||
+      hostname.includes("railway");
+    const isRailway = railwayEnv || isRailwayHost;
+
+    if (!isRailway) {
+      return connectionString;
+    }
+
     if (!url.searchParams.has("sslmode")) {
       url.searchParams.set("sslmode", "require");
     }
+
     return {
       client: "pg",
       connection: {

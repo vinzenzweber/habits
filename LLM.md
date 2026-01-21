@@ -649,9 +649,13 @@ git checkout main && git pull
 
 ### Phase 8: Production Verification
 
-**8.1 Wait for Deployment (~3 minutes)**
 - Railway auto-deploys on merge to main
 - Deployment typically takes ~3 minutes
+
+**8.1 Review Build Logs**
+```bash
+railway logs --build            # View recent logs
+```
 
 **8.2 Review Deployment Logs**
 ```bash
@@ -687,7 +691,7 @@ railway logs 2>&1 | head -100   # Check for errors
 ### Phase 9: Documentation
 
 **9.1 Update Docs (if needed)**
-- Update `CLAUDE.md` with new patterns/learnings
+- Update `LLM.md` with new patterns/learnings
 - Commit and push documentation changes
 
 ### Workflow Quick Reference
@@ -708,4 +712,5 @@ Plan → Implement → Test → Fix → Commit → CI → Review → Merge → D
 | Dev server | `npm run dev` |
 | Watch CI | `gh pr checks <num> --watch` |
 | Merge | `gh pr merge <num> --squash --delete-branch` |
+| Build logs | `railway logs --build` |
 | Deploy logs | `railway logs` |
