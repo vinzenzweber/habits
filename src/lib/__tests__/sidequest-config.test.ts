@@ -92,7 +92,13 @@ describe("sidequest-config", () => {
         expect.objectContaining({
           backend: {
             driver: "@sidequest/postgres-backend",
-            config: expect.stringContaining("sslmode=require"),
+            config: expect.objectContaining({
+              client: "pg",
+              connection: expect.objectContaining({
+                connectionString: expect.stringContaining("sslmode=require"),
+                ssl: { rejectUnauthorized: false },
+              }),
+            }),
           },
         })
       );
@@ -110,7 +116,13 @@ describe("sidequest-config", () => {
         expect.objectContaining({
           backend: {
             driver: "@sidequest/postgres-backend",
-            config: expect.stringContaining("sslmode=require"),
+            config: expect.objectContaining({
+              client: "pg",
+              connection: expect.objectContaining({
+                connectionString: expect.stringContaining("sslmode=require"),
+                ssl: { rejectUnauthorized: false },
+              }),
+            }),
           },
         })
       );
