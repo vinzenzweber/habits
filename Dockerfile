@@ -34,6 +34,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY scripts ./scripts
 COPY src ./src
 COPY tsconfig.json ./tsconfig.json
+COPY sidequest.jobs.cjs ./sidequest.jobs.cjs
 COPY package.json ./
 
 # Create directory for exercise image storage (Railway volume mount point)
