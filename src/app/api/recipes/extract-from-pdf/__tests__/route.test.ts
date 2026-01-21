@@ -21,11 +21,6 @@ vi.mock('@/lib/sidequest-config', () => ({
 }));
 
 // Mock pdf-utils
-vi.mock('@/lib/pdf-utils', () => ({
-  getPdfInfo: vi.fn(),
-  MAX_PDF_PAGES: 50,
-}));
-
 const sidequestMocks = vi.hoisted(() => {
   const mockEnqueue = vi.fn();
   const mockMaxAttempts = vi.fn().mockReturnThis();
@@ -59,6 +54,23 @@ vi.mock('@/lib/sidequest-runtime', () => ({
   },
 }));
 
+vi.mock('@/lib/pdf-utils', () => ({
+  getPdfInfo: vi.fn(),
+  MAX_PDF_PAGES: 50,
+}));
+
+vi.mock('fs/promises', () => {
+  const mkdtemp = vi.fn();
+  const writeFile = vi.fn();
+  const rm = vi.fn();
+  return {
+    default: { mkdtemp, writeFile, rm },
+    mkdtemp,
+    writeFile,
+    rm,
+  };
+});
+
 vi.mock('@/jobs/ProcessPdfJob', () => ({
   ProcessPdfJob: class MockProcessPdfJob {},
 }));
@@ -66,6 +78,7 @@ vi.mock('@/jobs/ProcessPdfJob', () => ({
 import { auth } from '@/lib/auth';
 import { getPdfInfo } from '@/lib/pdf-utils';
 import { ProcessPdfJob } from '@/jobs/ProcessPdfJob';
+import { mkdtemp, rm, writeFile } from 'fs/promises';
 import { POST } from '../route';
 
 // Helper to create a mock request
@@ -91,6 +104,9 @@ describe('POST /api/recipes/extract-from-pdf', () => {
 
     // Default SideQuest enqueue response
     sidequestMocks.mockEnqueue.mockResolvedValue({ id: 42 });
+    vi.mocked(mkdtemp).mockResolvedValue('/tmp/pdf-extraction-test');
+    vi.mocked(writeFile).mockResolvedValue();
+    vi.mocked(rm).mockResolvedValue();
   });
 
   describe('authentication', () => {
@@ -210,7 +226,7 @@ describe('POST /api/recipes/extract-from-pdf', () => {
       expect(sidequestMocks.mockMaxAttempts).toHaveBeenCalledWith(1);
       expect(sidequestMocks.mockEnqueue).toHaveBeenCalledWith({
         userId: 123,
-        pdfBase64: 'somebase64data',
+        pdfPath: '/tmp/pdf-extraction-test/upload.pdf',
         targetLocale: 'de-DE',
         targetRegion: expect.any(String),
         totalPages: 1,
@@ -253,6 +269,10 @@ describe('POST /api/recipes/extract-from-pdf', () => {
 
       expect(response.status).toBe(500);
       expect(data.error).toBe('Failed to enqueue PDF processing. Please try again.');
+      expect(rm).toHaveBeenCalledWith('/tmp/pdf-extraction-test', {
+        recursive: true,
+        force: true,
+      });
     });
 
     it('returns 500 on unexpected PDF parsing error', async () => {
