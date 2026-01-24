@@ -35,7 +35,7 @@ export default async function RecipesPage() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="mx-auto flex max-w-3xl flex-col gap-8 px-5 pb-24 pt-12 sm:px-8">
+      <div className="mx-auto flex max-w-3xl flex-col gap-8 px-5 pb-24 pt-12 sm:px-8 lg:max-w-6xl lg:px-12">
         {/* Header */}
         <header className="flex items-center justify-between">
           <p className="text-xs font-semibold uppercase tracking-[0.4em] text-emerald-400">
@@ -79,18 +79,20 @@ function RecipeListSkeleton() {
         <div className="h-10 w-36 animate-pulse rounded-xl bg-slate-800" />
       </div>
       {/* Recipe cards skeleton */}
-      {[1, 2, 3].map((i) => (
-        <div
-          key={i}
-          className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/50"
-        >
-          <div className="aspect-video animate-pulse bg-slate-800" />
-          <div className="space-y-2 p-4">
-            <div className="h-5 w-2/3 animate-pulse rounded bg-slate-800" />
-            <div className="h-4 w-full animate-pulse rounded bg-slate-800" />
+      <div className="grid gap-4 lg:grid-cols-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div
+            key={i}
+            className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/50"
+          >
+            <div className="aspect-video animate-pulse bg-slate-800" />
+            <div className="space-y-2 p-4">
+              <div className="h-5 w-2/3 animate-pulse rounded bg-slate-800" />
+              <div className="h-4 w-full animate-pulse rounded bg-slate-800" />
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
