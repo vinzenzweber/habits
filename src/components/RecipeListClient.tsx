@@ -442,7 +442,7 @@ export function RecipeListClient({
             </section>
           ) : (
             /* Recipe list */
-            <section className="grid gap-3 lg:grid-cols-4 lg:gap-4">
+            <section className="grid gap-3 lg:grid-cols-6 lg:gap-3">
               {filteredRecipes.map((recipe) => (
                 <RecipeCard key={recipe.slug} recipe={recipe} />
               ))}
@@ -486,7 +486,7 @@ export function RecipeListClient({
             </section>
           ) : (
             /* Shared recipe list */
-            <section className="grid gap-3 lg:grid-cols-4 lg:gap-4">
+            <section className="grid gap-3 lg:grid-cols-6 lg:gap-3">
               {filteredSharedRecipes.map((sharedRecipe) => (
                 <SharedRecipeCard
                   key={sharedRecipe.shareId}
