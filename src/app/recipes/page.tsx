@@ -79,14 +79,14 @@ function RecipeListSkeleton() {
         <div className="h-10 w-36 animate-pulse rounded-xl bg-slate-800" />
       </div>
       {/* Recipe cards skeleton */}
-      <div className="grid gap-4 lg:grid-cols-4">
-        {[1, 2, 3, 4].map((i) => (
+      <div className="grid gap-4 lg:grid-cols-6 lg:gap-3">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
           <div
             key={i}
             className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/50"
           >
             <div className="aspect-video animate-pulse bg-slate-800" />
-            <div className="space-y-2 p-4">
+            <div className="space-y-2 p-4 lg:space-y-1.5 lg:p-2.5">
               <div className="h-5 w-2/3 animate-pulse rounded bg-slate-800" />
               <div className="h-4 w-full animate-pulse rounded bg-slate-800" />
             </div>

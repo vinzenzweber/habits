@@ -113,20 +113,20 @@ export function RecipeCard({
       </div>
 
       {/* Content section */}
-      <div className="space-y-2 p-4">
+      <div className="space-y-2 p-4 lg:space-y-1.5 lg:p-2.5">
         {/* Title */}
         <h3 className="truncate font-medium text-white">{recipe.title}</h3>
 
         {/* Description */}
         {recipe.description && (
-          <p className="line-clamp-2 text-sm text-slate-400">
+          <p className="line-clamp-2 text-sm text-slate-400 lg:line-clamp-1 lg:text-xs">
             {recipe.description}
           </p>
         )}
 
         {/* Tags */}
         {visibleTags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1.5 lg:gap-1">
             {visibleTags.map((tag) => {
               // Get predefined tag info for display label and color
               const predefinedTag = getTagById(tag);
@@ -136,14 +136,14 @@ export function RecipeCard({
               return (
                 <span
                   key={tag}
-                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs ${colorClass}`}
+                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs lg:px-1.5 ${colorClass}`}
                 >
                   {displayLabel}
                 </span>
               );
             })}
             {extraTagCount > 0 && (
-              <span className="inline-flex items-center rounded-full bg-slate-500/10 px-2 py-0.5 text-xs text-slate-400">
+              <span className="inline-flex items-center rounded-full bg-slate-500/10 px-2 py-0.5 text-xs text-slate-400 lg:px-1.5">
                 +{extraTagCount} more
               </span>
             )}
@@ -164,7 +164,7 @@ export function RecipeCard({
 
         {/* Time and servings */}
         {(showTimes || recipe.servings) && (
-          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 lg:gap-2">
             {showTimes && <span>🕐 {timeDisplay}</span>}
             {recipe.servings && <span>👥 {servingsDisplay}</span>}
           </div>
