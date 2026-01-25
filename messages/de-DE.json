@@ -29,7 +29,7 @@
     "welcomeBack": "Willkommen zurück",
     "getStarted": "Los geht's",
     "readyForWorkout": "Bereit für dein Workout?",
-    "buildYourStreak": "Baue deine Serie auf, transformiere deine Routine",
+    "buildYourStreak": "Baue deinen Streak auf, transformiere deine Routine",
     "sevenUniqueWorkouts": "7 einzigartige Workouts für jeden Tag der Woche",
     "email": "E-Mail",
     "password": "Passwort",
@@ -73,7 +73,12 @@
     "ingredientRegionDescription": "Passt Zutatennamen an deine Region an (z.B. österreichisches \"Schlagobers\" vs. deutsches \"Sahne\")",
     "showMeasurementConversions": "Maßeinheiten-Umrechnung anzeigen",
     "showMeasurementConversionsDescription": "Zeigt sowohl metrische als auch imperiale Maße in Rezepten an (z.B. \"500ml (2 cups)\")",
-    "savePreferences": "Einstellungen speichern"
+    "savePreferences": "Einstellungen speichern",
+    "savingPreferences": "Speichern...",
+    "detect": "Erkennen",
+    "session": "Sitzung",
+    "logOut": "Abmelden",
+    "loggingOut": "Abmelden..."
   },
   "home": {
     "today": "Heute",
@@ -84,17 +89,17 @@
     "workoutMissing": "Trainingsplan fehlt. Bitte kontaktiere den Support."
   },
   "streak": {
-    "startYourStreak": "Starte heute deine Serie",
+    "startYourStreak": "Starte deinen Streak",
     "completeFirstWorkout": "Absolviere dein erstes Workout, um zu beginnen",
-    "dayStreak": "{count}-Tage-Serie",
+    "dayStreak": "{count}-Tage-Streak",
     "atYourBest": "Du bist in Bestform!",
-    "keepGoing": "Mach weiter! Längste: {longest}",
+    "keepGoing": "Mach weiter! Längster: {longest}",
     "personalBest": "Persönlicher Rekord",
-    "dontBreakStreak": "Unterbrich deine Serie nicht!",
-    "completeToday": "Absolviere das heutige Workout, um sie am Leben zu halten",
-    "buildingMomentum": "Du baust Schwung auf! Längste: {longest}",
+    "dontBreakStreak": "Unterbrich deinen Streak nicht!",
+    "completeToday": "Absolviere das heutige Workout, um ihn am Leben zu halten",
+    "buildingMomentum": "Du baust Schwung auf! Längster: {longest}",
     "greatStart": "Toller Start - halte den Schwung aufrecht",
-    "startNewStreak": "Starte eine neue Serie",
+    "startNewStreak": "Starte einen neuen Streak",
     "yourBest": "Dein Rekord: {longest} Tage. Zeit, ihn zu schlagen!",
     "completeTodayToBegin": "Absolviere das heutige Workout, um zu beginnen",
     "shields": "{count, plural, one {# Schild} other {# Schilde}}",
@@ -103,14 +108,14 @@
   },
   "nanoWorkout": {
     "notFeelingIt": "Heute nicht so motiviert?",
-    "doNanoWorkout": "Mache ein 3-minütiges Nano-Workout, um deine Serie zu retten",
+    "doNanoWorkout": "Mache ein 3-minütiges Nano-Workout, um deinen Streak zu retten",
     "nanoRemaining": "{remaining} von {limit} Nano-Workouts diese Woche übrig",
     "startNano": "Nano starten"
   },
   "shieldBanner": {
     "restDayUsed": "Ruhetag verwendet!",
-    "shieldActivated": "Serien-Schild aktiviert!",
-    "streakProtected": "Deine {count}-Tage-Serie wurde geschützt. Mach heute weiter!"
+    "shieldActivated": "Streak-Schild aktiviert!",
+    "streakProtected": "Dein {count}-Tage-Streak wurde geschützt. Mach heute weiter!"
   },
   "motivationalHeader": {
     "default": "Dein Workout wartet",

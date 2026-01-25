@@ -73,7 +73,12 @@
     "ingredientRegionDescription": "Adapta los nombres de ingredientes a tu región (ej. \"aguacate\" vs. \"palta\" en diferentes regiones)",
     "showMeasurementConversions": "Mostrar conversiones de medidas",
     "showMeasurementConversionsDescription": "Muestra medidas métricas e imperiales en las recetas (ej. \"500ml (2 tazas)\")",
-    "savePreferences": "Guardar preferencias"
+    "savePreferences": "Guardar preferencias",
+    "savingPreferences": "Guardando...",
+    "detect": "Detectar",
+    "session": "Sesión",
+    "logOut": "Cerrar sesión",
+    "loggingOut": "Cerrando sesión..."
   },
   "home": {
     "today": "Hoy",
