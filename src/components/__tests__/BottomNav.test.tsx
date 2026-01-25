@@ -11,6 +11,18 @@ vi.mock('next/navigation', () => ({
   usePathname: vi.fn(),
 }));
 
+// Mock next-intl
+vi.mock('next-intl', () => ({
+  useTranslations: () => (key: string) => {
+    const translations: Record<string, string> = {
+      home: 'Home',
+      recipes: 'Recipes',
+      settings: 'Settings',
+    };
+    return translations[key] || key;
+  },
+}));
+
 import { usePathname } from 'next/navigation';
 
 describe('BottomNav', () => {
