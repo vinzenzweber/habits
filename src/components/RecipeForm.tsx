@@ -78,6 +78,7 @@ export function RecipeForm({
 }: RecipeFormProps) {
   const router = useRouter();
   const t = useTranslations('recipeFormLabels');
+  const tValidation = useTranslations('recipeForm');
   const tCommon = useTranslations('common');
   const tRecipes = useTranslations('recipes');
   const tErrors = useTranslations('errors');
@@ -131,31 +132,31 @@ export function RecipeForm({
 
   const validate = useCallback((): string | null => {
     if (!form.title.trim()) {
-      return t('titleRequired');
+      return tValidation('titleRequired');
     }
     if (!form.description.trim()) {
-      return t('descriptionRequired');
+      return tValidation('descriptionRequired');
     }
     if (form.images.length === 0) {
-      return t('imageRequired');
+      return tValidation('imageRequired');
     }
     if (form.servings < 1) {
-      return t('servingsMin');
+      return tValidation('servingsMin');
     }
     // Check ingredients
     const hasIngredients = form.ingredientGroups.some((g) =>
       g.ingredients.some((i) => i.name.trim())
     );
     if (!hasIngredients) {
-      return t('ingredientRequired');
+      return tValidation('ingredientRequired');
     }
     // Check steps
     const hasSteps = form.steps.some((s) => s.instruction.trim());
     if (!hasSteps) {
-      return t('stepRequired');
+      return tValidation('stepRequired');
     }
     return null;
-  }, [form, t]);
+  }, [form, tValidation]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
