@@ -7,6 +7,7 @@ import Link from "next/link";
 import { RecipeSummary } from "@/lib/recipe-types";
 import { SharedRecipeWithMe } from "@/lib/recipe-sharing-types";
 import { RecipeSharingTranslations } from "@/lib/translations/recipe-sharing";
+import { CollectionSummary, ReceivedCollection, Collection } from "@/lib/collection-types";
 import {
   SortOption,
   filterAndSortRecipes,
@@ -14,6 +15,8 @@ import {
 } from "@/lib/recipe-filter-utils";
 import { RecipeCard } from "./RecipeCard";
 import { SharedRecipeCard } from "./SharedRecipeCard";
+import { CollectionsDropdown } from "./CollectionsDropdown";
+import { CreateCollectionModal } from "./CreateCollectionModal";
 import type { PredefinedTag, TagCategory } from "@/lib/predefined-tags";
 
 type TabType = "my" | "shared";
@@ -24,6 +27,8 @@ interface RecipeListClientProps {
   predefinedTags?: PredefinedTag[];
   sharedRecipes?: SharedRecipeWithMe[];
   sharingTranslations?: RecipeSharingTranslations;
+  collections?: CollectionSummary[];
+  receivedCollections?: ReceivedCollection[];
 }
 
 // ============================================
@@ -128,10 +133,16 @@ export function RecipeListClient({
   predefinedTags = [],
   sharedRecipes = [],
   sharingTranslations,
+  collections: initialCollections = [],
+  receivedCollections = [],
 }: RecipeListClientProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  // Collections state
+  const [collections, setCollections] = useState<CollectionSummary[]>(initialCollections);
+  const [showCreateCollectionModal, setShowCreateCollectionModal] = useState(false);
 
   // Tab state
   const [activeTab, setActiveTab] = useState<TabType>(() => {
@@ -230,6 +241,22 @@ export function RecipeListClient({
     setSelectedTags([]);
     setFavoritesOnly(false);
     setSortBy("recent");
+  };
+
+  // Handle collection creation
+  const handleCollectionSaved = (newCollection: Collection) => {
+    setCollections((prev) => [
+      {
+        id: newCollection.id,
+        name: newCollection.name,
+        description: newCollection.description,
+        coverImageUrl: newCollection.coverImageUrl,
+        recipeCount: 0,
+        updatedAt: newCollection.updatedAt,
+      },
+      ...prev,
+    ]);
+    router.refresh();
   };
 
   // Tab change handler
@@ -355,6 +382,13 @@ export function RecipeListClient({
 
           {/* Filter bar */}
           <div className="flex items-center gap-3">
+            {/* Collections dropdown */}
+            <CollectionsDropdown
+              collections={collections}
+              receivedCollections={receivedCollections}
+              onCreateCollection={() => setShowCreateCollectionModal(true)}
+            />
+
             {/* Favorites toggle */}
             <button
               onClick={() => setFavoritesOnly((prev) => !prev)}
@@ -497,6 +531,13 @@ export function RecipeListClient({
           )}
         </>
       )}
+
+      {/* Create Collection Modal */}
+      <CreateCollectionModal
+        isOpen={showCreateCollectionModal}
+        onClose={() => setShowCreateCollectionModal(false)}
+        onSave={handleCollectionSaved}
+      />
     </div>
   );
 }
