@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { NANO_WEEKLY_LIMIT } from "@/lib/nanoWorkout";
 
 interface NanoWorkoutCardProps {
@@ -16,6 +17,8 @@ export function NanoWorkoutCard({
   nanoRemaining,
   hasCompletedToday,
 }: NanoWorkoutCardProps) {
+  const t = useTranslations('nanoWorkout');
+
   // Don't show if already completed today or no nano workouts remaining
   if (hasCompletedToday || nanoRemaining <= 0) {
     return null;
@@ -29,12 +32,12 @@ export function NanoWorkoutCard({
             ⚡
           </span>
           <div>
-            <p className="font-medium text-purple-300">Not feeling it today?</p>
+            <p className="font-medium text-purple-300">{t('notFeelingIt')}</p>
             <p className="mt-1 text-sm text-slate-400">
-              Do a 3-minute nano workout to save your streak
+              {t('doNanoWorkout')}
             </p>
             <p className="mt-2 text-xs text-slate-500">
-              {nanoRemaining} of {NANO_WEEKLY_LIMIT} nano workouts left this week
+              {t('nanoRemaining', { remaining: nanoRemaining, limit: NANO_WEEKLY_LIMIT })}
             </p>
           </div>
         </div>
@@ -42,7 +45,7 @@ export function NanoWorkoutCard({
           href="/workouts/nano"
           className="shrink-0 rounded-xl bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-500"
         >
-          Start Nano
+          {t('startNano')}
         </Link>
       </div>
     </div>

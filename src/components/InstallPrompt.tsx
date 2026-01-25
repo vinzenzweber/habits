@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useCanInstallPWA, useIsPWA } from "@/lib/pwa";
 
 export function InstallPrompt() {
+  const t = useTranslations('install');
+  const tCommon = useTranslations('common');
   const isPWA = useIsPWA();
   const { canInstall, promptInstall } = useCanInstallPWA();
   const [isDismissed, setIsDismissed] = useState(false);
@@ -42,10 +45,10 @@ export function InstallPrompt() {
         </div>
         <div className="flex-1">
           <h3 className="text-lg font-semibold text-white">
-            Install Habits App
+            {t('title')}
           </h3>
           <p className="mt-2 text-sm text-slate-300">
-            Install this app on your home screen for the best experience.
+            {t('description')}
           </p>
           <div className="mt-4 flex gap-3">
             <button
@@ -53,14 +56,14 @@ export function InstallPrompt() {
               onClick={handleInstall}
               className="rounded-full bg-emerald-500 px-6 py-2 text-sm font-semibold uppercase tracking-wider text-slate-950 transition hover:bg-emerald-400"
             >
-              Install
+              {tCommon('install')}
             </button>
             <button
               type="button"
               onClick={handleDismiss}
               className="rounded-full border border-slate-700 px-6 py-2 text-sm font-semibold uppercase tracking-wider text-slate-400 transition hover:border-slate-600 hover:text-slate-300"
             >
-              Not Now
+              {tCommon('notNow')}
             </button>
           </div>
         </div>
