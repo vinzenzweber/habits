@@ -26,8 +26,17 @@ export default getRequestConfig(async () => {
   // Get base locale for loading messages (de-AT uses de-DE messages)
   const baseLocale = getBaseLocale(locale);
 
-  // Load messages for the base locale
-  const messages = (await import(`../../messages/${baseLocale}.json`)).default;
+  // Load messages for the base locale using explicit imports for better bundler optimization
+  const messages = await (async () => {
+    switch (baseLocale) {
+      case 'de-DE':
+        return (await import('../../messages/de-DE.json')).default;
+      case 'es-ES':
+        return (await import('../../messages/es-ES.json')).default;
+      default:
+        return (await import('../../messages/en-US.json')).default;
+    }
+  })();
 
   return {
     locale,

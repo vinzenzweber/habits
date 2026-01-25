@@ -86,7 +86,7 @@
   "streak": {
     "startYourStreak": "Start your streak today",
     "completeFirstWorkout": "Complete your first workout to begin",
-    "dayStreak": "{count} Day Streak",
+    "dayStreak": "{count, plural, one {#-Day Streak} other {#-Day Streak}}",
     "atYourBest": "You're at your best!",
     "keepGoing": "Keep going! Longest: {longest}",
     "personalBest": "Personal Best",

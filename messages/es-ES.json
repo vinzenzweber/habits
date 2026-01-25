@@ -70,7 +70,7 @@
     "defaultRecipeLanguage": "Idioma predeterminado para recetas",
     "defaultRecipeLanguageDescription": "Idioma usado cuando la IA crea nuevas recetas para ti",
     "ingredientRegion": "Región de ingredientes",
-    "ingredientRegionDescription": "Adapta los nombres de ingredientes a tu región",
+    "ingredientRegionDescription": "Adapta los nombres de ingredientes a tu región (ej. \"aguacate\" vs. \"palta\" en diferentes regiones)",
     "showMeasurementConversions": "Mostrar conversiones de medidas",
     "showMeasurementConversionsDescription": "Muestra medidas métricas e imperiales en las recetas (ej. \"500ml (2 tazas)\")",
     "savePreferences": "Guardar preferencias"

@@ -31,6 +31,16 @@ export function isValidLocale(locale: string): locale is Locale {
 }
 
 /**
+ * Default locale for each language family.
+ * Used when Accept-Language contains only a language code (e.g., "de" -> "de-DE").
+ */
+export const languageDefaultLocale: Record<string, Locale> = {
+  en: 'en-US',
+  de: 'de-DE',
+  es: 'es-ES',
+};
+
+/**
  * Get the best matching locale from Accept-Language header.
  */
 export function matchLocale(acceptLanguage: string | null): Locale {
@@ -52,11 +62,11 @@ export function matchLocale(acceptLanguage: string | null): Locale {
       return locale;
     }
 
-    // Check language-only match (e.g., "de" -> "de-DE")
+    // Check language-only match using explicit mapping (e.g., "de" -> "de-DE")
     const language = locale.split('-')[0];
-    const match = locales.find((l) => l.startsWith(language + '-'));
-    if (match) {
-      return match;
+    const defaultForLanguage = languageDefaultLocale[language];
+    if (defaultForLanguage) {
+      return defaultForLanguage;
     }
   }
 
