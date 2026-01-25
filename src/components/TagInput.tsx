@@ -121,7 +121,7 @@ export function TagInput({
     }
 
     return result;
-  }, [suggestions, predefinedTags, categories, input, tags]);
+  }, [suggestions, predefinedTags, categories, input, tags, t]);
 
   // Get only selectable items (not headers) for keyboard navigation
   const selectableItems = useMemo(
