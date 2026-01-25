@@ -7,23 +7,6 @@ export type Locale = (typeof locales)[number];
 export const defaultLocale: Locale = 'en-US';
 
 /**
- * Mapping from locale variants to their base translation locale.
- * de-AT and es-CO use base translations with locale-specific formatting via Intl APIs.
- */
-export const localeBaseMap: Record<string, string> = {
-  'de-AT': 'de-DE',
-  'es-CO': 'es-ES',
-};
-
-/**
- * Get the base translation locale for a given locale.
- * Used to share translations between regional variants.
- */
-export function getBaseLocale(locale: string): string {
-  return localeBaseMap[locale] ?? locale;
-}
-
-/**
  * Check if a locale is supported.
  */
 export function isValidLocale(locale: string): locale is Locale {

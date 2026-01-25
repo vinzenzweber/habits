@@ -1,7 +1,7 @@
 import { getRequestConfig } from 'next-intl/server';
 import { cookies } from 'next/headers';
 import { auth } from '@/lib/auth';
-import { defaultLocale, getBaseLocale, isValidLocale, type Locale } from './config';
+import { defaultLocale, isValidLocale, type Locale } from './config';
 
 /**
  * Request-time configuration for next-intl.
@@ -23,16 +23,17 @@ export default getRequestConfig(async () => {
     }
   }
 
-  // Get base locale for loading messages (de-AT uses de-DE messages)
-  const baseLocale = getBaseLocale(locale);
-
-  // Load messages for the base locale using explicit imports for better bundler optimization
+  // Load messages for the locale
   const messages = await (async () => {
-    switch (baseLocale) {
+    switch (locale) {
       case 'de-DE':
         return (await import('../../messages/de-DE.json')).default;
+      case 'de-AT':
+        return (await import('../../messages/de-AT.json')).default;
       case 'es-ES':
         return (await import('../../messages/es-ES.json')).default;
+      case 'es-CO':
+        return (await import('../../messages/es-CO.json')).default;
       default:
         return (await import('../../messages/en-US.json')).default;
     }
