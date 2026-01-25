@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 
 import { RecipeImage } from "@/lib/recipe-types";
 
@@ -13,21 +13,31 @@ interface RecipeImageGalleryProps {
 /**
  * Image carousel/gallery component for recipe detail page.
  * Shows a hero image with navigation dots and swipe support for multiple images.
+ * Primary image is always displayed first.
  */
 export function RecipeImageGallery({ images, title }: RecipeImageGalleryProps) {
+  // Sort images so primary image is first
+  const sortedImages = useMemo(() => {
+    return [...images].sort((a, b) => {
+      if (a.isPrimary && !b.isPrimary) return -1;
+      if (!a.isPrimary && b.isPrimary) return 1;
+      return 0;
+    });
+  }, [images]);
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [imageError, setImageError] = useState<Set<number>>(new Set());
   const [touchStart, setTouchStart] = useState<number | null>(null);
 
-  const hasMultipleImages = images.length > 1;
+  const hasMultipleImages = sortedImages.length > 1;
 
   const goToNext = useCallback(() => {
-    setCurrentIndex((prev) => (prev + 1) % images.length);
-  }, [images.length]);
+    setCurrentIndex((prev) => (prev + 1) % sortedImages.length);
+  }, [sortedImages.length]);
 
   const goToPrev = useCallback(() => {
-    setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
-  }, [images.length]);
+    setCurrentIndex((prev) => (prev - 1 + sortedImages.length) % sortedImages.length);
+  }, [sortedImages.length]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     setTouchStart(e.touches[0].clientX);
@@ -58,7 +68,7 @@ export function RecipeImageGallery({ images, title }: RecipeImageGalleryProps) {
     setImageError((prev) => new Set(prev).add(index));
   }, []);
 
-  const currentImage = images[currentIndex];
+  const currentImage = sortedImages[currentIndex];
   const hasError = imageError.has(currentIndex);
 
   return (
@@ -141,7 +151,7 @@ export function RecipeImageGallery({ images, title }: RecipeImageGalleryProps) {
       {/* Navigation dots */}
       {hasMultipleImages && (
         <div className="flex justify-center gap-2 py-3">
-          {images.map((image, index) => (
+          {sortedImages.map((image, index) => (
             <button
               key={image.url}
               onClick={() => setCurrentIndex(index)}
