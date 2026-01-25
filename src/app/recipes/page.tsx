@@ -5,7 +5,6 @@ import { auth } from "@/lib/auth";
 import { getUserRecipeSummaries, getUserTags } from "@/lib/recipes";
 import { getUserCollections, getReceivedCollections } from "@/lib/collection-db";
 import { getSharedWithMe } from "@/lib/recipe-sharing";
-import { LogoutButton } from "@/components/LogoutButton";
 import { RecipeListClient } from "@/components/RecipeListClient";
 import { RecipePageHeader } from "@/components/RecipePageHeader";
 import { PREDEFINED_TAGS } from "@/lib/predefined-tags";
@@ -36,11 +35,10 @@ export default async function RecipesPage() {
     <main className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto flex max-w-3xl flex-col gap-8 px-5 pb-24 pt-12 sm:px-8 lg:max-w-6xl lg:px-12">
         {/* Header */}
-        <header className="flex items-center justify-between">
+        <header>
           <p className="text-xs font-semibold uppercase tracking-[0.4em] text-emerald-400">
             FitStreak
           </p>
-          <LogoutButton />
         </header>
 
         {/* Title section with Add and Camera buttons */}
