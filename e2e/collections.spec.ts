@@ -5,29 +5,37 @@
 import { test, expect } from './fixtures/auth.fixture';
 
 test.describe('Recipe Collections', () => {
-  test.describe('Collections Section on Recipes Page', () => {
-    test('shows collections section on recipes page', async ({ authenticatedPage }) => {
+  test.describe('Collections Dropdown on Recipes Page', () => {
+    test('shows collections dropdown on recipes page', async ({ authenticatedPage }) => {
       await authenticatedPage.goto('/recipes');
 
-      // Collections heading should be visible
-      const collectionsHeading = authenticatedPage.getByRole('heading', { name: /collections/i });
-      await expect(collectionsHeading).toBeVisible();
+      // Collections dropdown button should be visible
+      const collectionsDropdown = authenticatedPage.getByRole('button', { name: /collections/i });
+      await expect(collectionsDropdown).toBeVisible();
     });
 
-    test('shows create collection button', async ({ authenticatedPage }) => {
+    test('shows create collection option in dropdown', async ({ authenticatedPage }) => {
       await authenticatedPage.goto('/recipes');
 
-      // New Collection button should be visible
-      const createButton = authenticatedPage.getByRole('button', { name: /new collection/i });
-      await expect(createButton).toBeVisible();
+      // Open dropdown
+      const collectionsDropdown = authenticatedPage.getByRole('button', { name: /collections/i });
+      await collectionsDropdown.click();
+
+      // "Create new collection" option should be visible
+      const createOption = authenticatedPage.getByRole('menuitem', { name: /create new collection/i });
+      await expect(createOption).toBeVisible();
     });
 
     test('can open create collection modal', async ({ authenticatedPage }) => {
       await authenticatedPage.goto('/recipes');
 
-      // Click new collection button
-      const createButton = authenticatedPage.getByRole('button', { name: /new collection/i });
-      await createButton.click();
+      // Open dropdown
+      const collectionsDropdown = authenticatedPage.getByRole('button', { name: /collections/i });
+      await collectionsDropdown.click();
+
+      // Click create new collection
+      const createOption = authenticatedPage.getByRole('menuitem', { name: /create new collection/i });
+      await createOption.click();
 
       // Modal should appear
       const modal = authenticatedPage.getByRole('heading', { name: /create collection/i });
@@ -41,9 +49,13 @@ test.describe('Recipe Collections', () => {
     test('can create a new collection', async ({ authenticatedPage }) => {
       await authenticatedPage.goto('/recipes');
 
-      // Click new collection button
-      const createButton = authenticatedPage.getByRole('button', { name: /new collection/i });
-      await createButton.click();
+      // Open dropdown
+      const collectionsDropdown = authenticatedPage.getByRole('button', { name: /collections/i });
+      await collectionsDropdown.click();
+
+      // Click create new collection
+      const createOption = authenticatedPage.getByRole('menuitem', { name: /create new collection/i });
+      await createOption.click();
 
       // Fill in the name
       const nameInput = authenticatedPage.getByLabel(/name/i);
@@ -53,8 +65,10 @@ test.describe('Recipe Collections', () => {
       const submitButton = authenticatedPage.getByRole('button', { name: /create collection/i });
       await submitButton.click();
 
-      // Wait for modal to close and collection to appear
-      await expect(authenticatedPage.getByText('My Test Collection')).toBeVisible({ timeout: 5000 });
+      // Wait for modal to close, then open dropdown again and check collection appears
+      await authenticatedPage.waitForTimeout(1000);
+      await collectionsDropdown.click();
+      await expect(authenticatedPage.getByRole('menuitem', { name: /my test collection/i })).toBeVisible({ timeout: 5000 });
     });
   });
 
@@ -63,8 +77,12 @@ test.describe('Recipe Collections', () => {
       // First create a collection
       await authenticatedPage.goto('/recipes');
 
-      const createButton = authenticatedPage.getByRole('button', { name: /new collection/i });
-      await createButton.click();
+      // Open dropdown and create
+      const collectionsDropdown = authenticatedPage.getByRole('button', { name: /collections/i });
+      await collectionsDropdown.click();
+
+      const createOption = authenticatedPage.getByRole('menuitem', { name: /create new collection/i });
+      await createOption.click();
 
       const nameInput = authenticatedPage.getByLabel(/name/i);
       await nameInput.fill('Test Collection');
@@ -72,11 +90,13 @@ test.describe('Recipe Collections', () => {
       const submitButton = authenticatedPage.getByRole('button', { name: /create collection/i });
       await submitButton.click();
 
-      // Wait for collection to appear
-      await expect(authenticatedPage.getByText('Test Collection')).toBeVisible({ timeout: 5000 });
+      // Wait for modal to close, then open dropdown and click on collection
+      await authenticatedPage.waitForTimeout(1000);
+      await collectionsDropdown.click();
 
-      // Click on the collection
-      await authenticatedPage.getByText('Test Collection').click();
+      const collectionItem = authenticatedPage.getByRole('menuitem', { name: /test collection/i });
+      await expect(collectionItem).toBeVisible({ timeout: 5000 });
+      await collectionItem.click();
 
       // Should navigate to collection detail page
       await expect(authenticatedPage).toHaveURL(/\/recipes\/collections\/\d+/, { timeout: 5000 });
@@ -89,8 +109,12 @@ test.describe('Recipe Collections', () => {
       // Create a collection
       await authenticatedPage.goto('/recipes');
 
-      const createButton = authenticatedPage.getByRole('button', { name: /new collection/i });
-      await createButton.click();
+      // Open dropdown and create
+      const collectionsDropdown = authenticatedPage.getByRole('button', { name: /collections/i });
+      await collectionsDropdown.click();
+
+      const createOption = authenticatedPage.getByRole('menuitem', { name: /create new collection/i });
+      await createOption.click();
 
       const nameInput = authenticatedPage.getByLabel(/name/i);
       await nameInput.fill('Empty Collection');
@@ -98,9 +122,13 @@ test.describe('Recipe Collections', () => {
       const submitButton = authenticatedPage.getByRole('button', { name: /create collection/i });
       await submitButton.click();
 
-      // Wait and click on collection
-      await expect(authenticatedPage.getByText('Empty Collection')).toBeVisible({ timeout: 5000 });
-      await authenticatedPage.getByText('Empty Collection').click();
+      // Wait and click on collection in dropdown
+      await authenticatedPage.waitForTimeout(1000);
+      await collectionsDropdown.click();
+
+      const collectionItem = authenticatedPage.getByRole('menuitem', { name: /empty collection/i });
+      await expect(collectionItem).toBeVisible({ timeout: 5000 });
+      await collectionItem.click();
 
       // Should show empty state
       await expect(authenticatedPage.getByText(/no recipes in this collection/i)).toBeVisible();
@@ -110,8 +138,12 @@ test.describe('Recipe Collections', () => {
       // Create a collection
       await authenticatedPage.goto('/recipes');
 
-      const createButton = authenticatedPage.getByRole('button', { name: /new collection/i });
-      await createButton.click();
+      // Open dropdown and create
+      const collectionsDropdown = authenticatedPage.getByRole('button', { name: /collections/i });
+      await collectionsDropdown.click();
+
+      const createOption = authenticatedPage.getByRole('menuitem', { name: /create new collection/i });
+      await createOption.click();
 
       const nameInput = authenticatedPage.getByLabel(/name/i);
       await nameInput.fill('Edit Test');
@@ -120,8 +152,12 @@ test.describe('Recipe Collections', () => {
       await submitButton.click();
 
       // Navigate to collection
-      await expect(authenticatedPage.getByText('Edit Test')).toBeVisible({ timeout: 5000 });
-      await authenticatedPage.getByText('Edit Test').click();
+      await authenticatedPage.waitForTimeout(1000);
+      await collectionsDropdown.click();
+
+      const collectionItem = authenticatedPage.getByRole('menuitem', { name: /edit test/i });
+      await expect(collectionItem).toBeVisible({ timeout: 5000 });
+      await collectionItem.click();
 
       // Click edit button
       await authenticatedPage.getByRole('button', { name: /edit/i }).click();
@@ -135,9 +171,12 @@ test.describe('Recipe Collections', () => {
     test('shows error for empty collection name', async ({ authenticatedPage }) => {
       await authenticatedPage.goto('/recipes');
 
-      // Click new collection button
-      const createButton = authenticatedPage.getByRole('button', { name: /new collection/i });
-      await createButton.click();
+      // Open dropdown and create
+      const collectionsDropdown = authenticatedPage.getByRole('button', { name: /collections/i });
+      await collectionsDropdown.click();
+
+      const createOption = authenticatedPage.getByRole('menuitem', { name: /create new collection/i });
+      await createOption.click();
 
       // Try to submit with empty name
       const submitButton = authenticatedPage.getByRole('button', { name: /create collection/i });
@@ -149,9 +188,12 @@ test.describe('Recipe Collections', () => {
     test('shows character count for collection name', async ({ authenticatedPage }) => {
       await authenticatedPage.goto('/recipes');
 
-      // Click new collection button
-      const createButton = authenticatedPage.getByRole('button', { name: /new collection/i });
-      await createButton.click();
+      // Open dropdown and create
+      const collectionsDropdown = authenticatedPage.getByRole('button', { name: /collections/i });
+      await collectionsDropdown.click();
+
+      const createOption = authenticatedPage.getByRole('menuitem', { name: /create new collection/i });
+      await createOption.click();
 
       // Type in the name
       const nameInput = authenticatedPage.getByLabel(/name/i);

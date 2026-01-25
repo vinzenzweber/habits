@@ -8,7 +8,6 @@ import { getSharedWithMe } from "@/lib/recipe-sharing";
 import { LogoutButton } from "@/components/LogoutButton";
 import { RecipeListClient } from "@/components/RecipeListClient";
 import { RecipePageHeader } from "@/components/RecipePageHeader";
-import { CollectionsSectionWrapper } from "@/components/CollectionsSectionWrapper";
 import { PREDEFINED_TAGS } from "@/lib/predefined-tags";
 import { getRecipeSharingTranslations } from "@/lib/translations/recipe-sharing";
 
@@ -47,12 +46,6 @@ export default async function RecipesPage() {
         {/* Title section with Add and Camera buttons */}
         <RecipePageHeader />
 
-        {/* Collections section */}
-        <CollectionsSectionWrapper
-          initialCollections={collections}
-          initialReceivedCollections={receivedCollections}
-        />
-
         {/* Search, filter, and recipe list - wrapped in Suspense for useSearchParams */}
         <Suspense fallback={<RecipeListSkeleton />}>
           <RecipeListClient
@@ -61,6 +54,8 @@ export default async function RecipesPage() {
             predefinedTags={PREDEFINED_TAGS}
             sharedRecipes={sharedRecipes}
             sharingTranslations={sharingTranslations}
+            collections={collections}
+            receivedCollections={receivedCollections}
           />
         </Suspense>
       </div>
