@@ -121,43 +121,44 @@ describe('RecipeForm', () => {
     it('renders all form sections', () => {
       render(<RecipeForm />);
 
-      expect(screen.getByText('Basic Info')).toBeInTheDocument();
-      expect(screen.getByText('Images')).toBeInTheDocument();
-      expect(screen.getByText('Time & Servings')).toBeInTheDocument();
-      expect(screen.getByText('Nutrition (per serving)')).toBeInTheDocument();
-      expect(screen.getByText('Ingredients')).toBeInTheDocument();
-      expect(screen.getByText('Steps')).toBeInTheDocument();
+      // Translation keys are returned by the mock useTranslations
+      expect(screen.getByText('basicInfo')).toBeInTheDocument();
+      expect(screen.getByText('images')).toBeInTheDocument();
+      expect(screen.getByText('timeAndServings')).toBeInTheDocument();
+      expect(screen.getByText('nutritionPerServing')).toBeInTheDocument();
+      expect(screen.getByText('ingredients')).toBeInTheDocument();
+      expect(screen.getByText('steps')).toBeInTheDocument();
     });
 
     it('renders title and description inputs', () => {
       render(<RecipeForm />);
 
-      expect(screen.getByLabelText(/Title/)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Description/)).toBeInTheDocument();
+      expect(screen.getByLabelText(/title/)).toBeInTheDocument();
+      expect(screen.getByLabelText(/description/)).toBeInTheDocument();
     });
 
     it('renders time and servings inputs', () => {
       render(<RecipeForm />);
 
-      expect(screen.getByLabelText(/Prep time/)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Cook time/)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Servings/)).toBeInTheDocument();
+      expect(screen.getByLabelText(/prepTimeMin/)).toBeInTheDocument();
+      expect(screen.getByLabelText(/cookTimeMin/)).toBeInTheDocument();
+      expect(screen.getByLabelText(/servings/i)).toBeInTheDocument();
     });
 
     it('renders nutrition inputs', () => {
       render(<RecipeForm />);
 
-      expect(screen.getByLabelText(/Calories/)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Protein/)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Carbs/)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Fat/)).toBeInTheDocument();
+      expect(screen.getByLabelText(/calories/)).toBeInTheDocument();
+      expect(screen.getByLabelText(/proteinG/)).toBeInTheDocument();
+      expect(screen.getByLabelText(/carbsG/)).toBeInTheDocument();
+      expect(screen.getByLabelText(/fatG/)).toBeInTheDocument();
     });
 
     it('renders submit and cancel buttons', () => {
       render(<RecipeForm />);
 
-      expect(screen.getByRole('button', { name: /Cancel/ })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Create Recipe/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /cancel/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /createRecipe/ })).toBeInTheDocument();
     });
 
     it('renders mock child components', () => {
@@ -183,32 +184,32 @@ describe('RecipeForm', () => {
       render(<RecipeForm initialRecipe={initialRecipe} slug="existing-recipe" />);
 
       // Check title input value
-      const titleInput = screen.getByLabelText(/Title/) as HTMLInputElement;
+      const titleInput = screen.getByLabelText(/title/) as HTMLInputElement;
       expect(titleInput.value).toBe('Existing Recipe');
 
       // Check description
-      const descriptionInput = screen.getByLabelText(/Description/) as HTMLTextAreaElement;
+      const descriptionInput = screen.getByLabelText(/description/) as HTMLTextAreaElement;
       expect(descriptionInput.value).toBe('Existing description');
 
       // Check numeric fields
-      const servingsInput = screen.getByLabelText(/Servings/) as HTMLInputElement;
+      const servingsInput = screen.getByLabelText(/servings/) as HTMLInputElement;
       expect(servingsInput.value).toBe('4');
 
-      const prepTimeInput = screen.getByLabelText(/Prep time/) as HTMLInputElement;
+      const prepTimeInput = screen.getByLabelText(/prepTimeMin/) as HTMLInputElement;
       expect(prepTimeInput.value).toBe('15');
 
-      const cookTimeInput = screen.getByLabelText(/Cook time/) as HTMLInputElement;
+      const cookTimeInput = screen.getByLabelText(/cookTimeMin/) as HTMLInputElement;
       expect(cookTimeInput.value).toBe('30');
     });
 
     it('shows Save Changes button when editing', () => {
       render(<RecipeForm initialRecipe={createMockRecipeJson()} slug="existing-recipe" />);
-      expect(screen.getByRole('button', { name: /Save Changes/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /saveChanges/ })).toBeInTheDocument();
     });
 
     it('shows Create Recipe button when creating new', () => {
       render(<RecipeForm />);
-      expect(screen.getByRole('button', { name: /Create Recipe/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /createRecipe/ })).toBeInTheDocument();
     });
   });
 
@@ -223,17 +224,17 @@ describe('RecipeForm', () => {
       await user.click(screen.getByText('Add Mock Step'));
 
       // Fill description using fireEvent.change for controlled input
-      const descriptionInput = screen.getByLabelText(/Description/);
+      const descriptionInput = screen.getByLabelText(/description/);
       fireEvent.change(descriptionInput, { target: { value: 'Test description' } });
 
       // Fill title with whitespace only (passes browser required check but fails our trim validation)
-      const titleInput = screen.getByLabelText(/Title/);
+      const titleInput = screen.getByLabelText(/title/);
       fireEvent.change(titleInput, { target: { value: '   ' } });
 
-      await user.click(screen.getByRole('button', { name: /Create Recipe/ }));
+      await user.click(screen.getByRole('button', { name: /createRecipe/ }));
 
       await waitFor(() => {
-        expect(screen.getByText('Title is required')).toBeInTheDocument();
+        expect(screen.getByText('titleRequired')).toBeInTheDocument();
       });
     });
 
@@ -242,21 +243,21 @@ describe('RecipeForm', () => {
       render(<RecipeForm />);
 
       // Fill title using fireEvent.change for controlled input
-      const titleInput = screen.getByLabelText(/Title/);
+      const titleInput = screen.getByLabelText(/title/);
       fireEvent.change(titleInput, { target: { value: 'Test Recipe' } });
 
       // Fill description with whitespace only (passes browser required check but fails our trim validation)
-      const descriptionInput = screen.getByLabelText(/Description/);
+      const descriptionInput = screen.getByLabelText(/description/);
       fireEvent.change(descriptionInput, { target: { value: '   ' } });
 
       await user.click(screen.getByText('Add Mock Image'));
       await user.click(screen.getByText('Add Mock Ingredient'));
       await user.click(screen.getByText('Add Mock Step'));
 
-      await user.click(screen.getByRole('button', { name: /Create Recipe/ }));
+      await user.click(screen.getByRole('button', { name: /createRecipe/ }));
 
       await waitFor(() => {
-        expect(screen.getByText('Description is required')).toBeInTheDocument();
+        expect(screen.getByText('descriptionRequired')).toBeInTheDocument();
       });
     });
 
@@ -264,15 +265,15 @@ describe('RecipeForm', () => {
       const user = userEvent.setup();
       render(<RecipeForm />);
 
-      await user.type(screen.getByLabelText(/Title/), 'Test Recipe');
-      await user.type(screen.getByLabelText(/Description/), 'Test description');
+      await user.type(screen.getByLabelText(/title/), 'Test Recipe');
+      await user.type(screen.getByLabelText(/description/), 'Test description');
       await user.click(screen.getByText('Add Mock Ingredient'));
       await user.click(screen.getByText('Add Mock Step'));
 
-      await user.click(screen.getByRole('button', { name: /Create Recipe/ }));
+      await user.click(screen.getByRole('button', { name: /createRecipe/ }));
 
       await waitFor(() => {
-        expect(screen.getByText('At least one image is required')).toBeInTheDocument();
+        expect(screen.getByText('imageRequired')).toBeInTheDocument();
       });
     });
 
@@ -282,7 +283,7 @@ describe('RecipeForm', () => {
       // does `parseInt(e.target.value) || 1`, which means 0 is falsy and becomes 1.
       render(<RecipeForm />);
 
-      const servingsInput = screen.getByLabelText(/Servings/) as HTMLInputElement;
+      const servingsInput = screen.getByLabelText(/servings/) as HTMLInputElement;
 
       // Initial value should be 2 (default)
       expect(servingsInput.value).toBe('2');
@@ -298,16 +299,16 @@ describe('RecipeForm', () => {
       const user = userEvent.setup();
       render(<RecipeForm />);
 
-      await user.type(screen.getByLabelText(/Title/), 'Test Recipe');
-      await user.type(screen.getByLabelText(/Description/), 'Test description');
+      await user.type(screen.getByLabelText(/title/), 'Test Recipe');
+      await user.type(screen.getByLabelText(/description/), 'Test description');
       await user.click(screen.getByText('Add Mock Image'));
       await user.click(screen.getByText('Add Mock Step'));
       // Don't add ingredients
 
-      await user.click(screen.getByRole('button', { name: /Create Recipe/ }));
+      await user.click(screen.getByRole('button', { name: /createRecipe/ }));
 
       await waitFor(() => {
-        expect(screen.getByText('At least one ingredient is required')).toBeInTheDocument();
+        expect(screen.getByText('ingredientRequired')).toBeInTheDocument();
       });
     });
 
@@ -315,16 +316,16 @@ describe('RecipeForm', () => {
       const user = userEvent.setup();
       render(<RecipeForm />);
 
-      await user.type(screen.getByLabelText(/Title/), 'Test Recipe');
-      await user.type(screen.getByLabelText(/Description/), 'Test description');
+      await user.type(screen.getByLabelText(/title/), 'Test Recipe');
+      await user.type(screen.getByLabelText(/description/), 'Test description');
       await user.click(screen.getByText('Add Mock Image'));
       await user.click(screen.getByText('Add Mock Ingredient'));
       // Don't add steps
 
-      await user.click(screen.getByRole('button', { name: /Create Recipe/ }));
+      await user.click(screen.getByRole('button', { name: /createRecipe/ }));
 
       await waitFor(() => {
-        expect(screen.getByText('At least one step is required')).toBeInTheDocument();
+        expect(screen.getByText('stepRequired')).toBeInTheDocument();
       });
     });
   });
@@ -335,13 +336,13 @@ describe('RecipeForm', () => {
       render(<RecipeForm />);
 
       // Fill required fields
-      await user.type(screen.getByLabelText(/Title/), 'Test Recipe');
-      await user.type(screen.getByLabelText(/Description/), 'Test description');
+      await user.type(screen.getByLabelText(/title/), 'Test Recipe');
+      await user.type(screen.getByLabelText(/description/), 'Test description');
       await user.click(screen.getByText('Add Mock Image'));
       await user.click(screen.getByText('Add Mock Ingredient'));
       await user.click(screen.getByText('Add Mock Step'));
 
-      await user.click(screen.getByRole('button', { name: /Create Recipe/ }));
+      await user.click(screen.getByRole('button', { name: /createRecipe/ }));
 
       await waitFor(() => {
         expect(mockFetch).toHaveBeenCalledWith(
@@ -355,7 +356,7 @@ describe('RecipeForm', () => {
       const user = userEvent.setup();
       render(<RecipeForm initialRecipe={createMockRecipeJson()} slug="existing-recipe" />);
 
-      await user.click(screen.getByRole('button', { name: /Save Changes/ }));
+      await user.click(screen.getByRole('button', { name: /saveChanges/ }));
 
       await waitFor(() => {
         expect(mockFetch).toHaveBeenCalledWith(
@@ -369,13 +370,13 @@ describe('RecipeForm', () => {
       const user = userEvent.setup();
       render(<RecipeForm />);
 
-      await user.type(screen.getByLabelText(/Title/), 'Test Recipe');
-      await user.type(screen.getByLabelText(/Description/), 'Test description');
+      await user.type(screen.getByLabelText(/title/), 'Test Recipe');
+      await user.type(screen.getByLabelText(/description/), 'Test description');
       await user.click(screen.getByText('Add Mock Image'));
       await user.click(screen.getByText('Add Mock Ingredient'));
       await user.click(screen.getByText('Add Mock Step'));
 
-      await user.click(screen.getByRole('button', { name: /Create Recipe/ }));
+      await user.click(screen.getByRole('button', { name: /createRecipe/ }));
 
       await waitFor(() => {
         expect(mockPush).toHaveBeenCalledWith('/recipes/test-recipe');
@@ -392,13 +393,13 @@ describe('RecipeForm', () => {
       const user = userEvent.setup();
       render(<RecipeForm />);
 
-      await user.type(screen.getByLabelText(/Title/), 'Test Recipe');
-      await user.type(screen.getByLabelText(/Description/), 'Test description');
+      await user.type(screen.getByLabelText(/title/), 'Test Recipe');
+      await user.type(screen.getByLabelText(/description/), 'Test description');
       await user.click(screen.getByText('Add Mock Image'));
       await user.click(screen.getByText('Add Mock Ingredient'));
       await user.click(screen.getByText('Add Mock Step'));
 
-      await user.click(screen.getByRole('button', { name: /Create Recipe/ }));
+      await user.click(screen.getByRole('button', { name: /createRecipe/ }));
 
       await waitFor(() => {
         expect(screen.getByText('Server error')).toBeInTheDocument();
@@ -426,15 +427,15 @@ describe('RecipeForm', () => {
       const user = userEvent.setup();
       render(<RecipeForm />);
 
-      await user.type(screen.getByLabelText(/Title/), 'Test Recipe');
-      await user.type(screen.getByLabelText(/Description/), 'Test description');
+      await user.type(screen.getByLabelText(/title/), 'Test Recipe');
+      await user.type(screen.getByLabelText(/description/), 'Test description');
       await user.click(screen.getByText('Add Mock Image'));
       await user.click(screen.getByText('Add Mock Ingredient'));
       await user.click(screen.getByText('Add Mock Step'));
 
-      await user.click(screen.getByRole('button', { name: /Create Recipe/ }));
+      await user.click(screen.getByRole('button', { name: /createRecipe/ }));
 
-      expect(screen.getByRole('button', { name: /Saving/ })).toBeDisabled();
+      expect(screen.getByRole('button', { name: /saving/ })).toBeDisabled();
     });
 
     it('shows Saving... text while submitting', async () => {
@@ -455,15 +456,15 @@ describe('RecipeForm', () => {
       const user = userEvent.setup();
       render(<RecipeForm />);
 
-      await user.type(screen.getByLabelText(/Title/), 'Test Recipe');
-      await user.type(screen.getByLabelText(/Description/), 'Test description');
+      await user.type(screen.getByLabelText(/title/), 'Test Recipe');
+      await user.type(screen.getByLabelText(/description/), 'Test description');
       await user.click(screen.getByText('Add Mock Image'));
       await user.click(screen.getByText('Add Mock Ingredient'));
       await user.click(screen.getByText('Add Mock Step'));
 
-      await user.click(screen.getByRole('button', { name: /Create Recipe/ }));
+      await user.click(screen.getByRole('button', { name: /createRecipe/ }));
 
-      expect(screen.getByText('Saving...')).toBeInTheDocument();
+      expect(screen.getByText('saving')).toBeInTheDocument();
     });
   });
 
@@ -472,7 +473,7 @@ describe('RecipeForm', () => {
       const user = userEvent.setup();
       render(<RecipeForm />);
 
-      await user.click(screen.getByRole('button', { name: /Cancel/ }));
+      await user.click(screen.getByRole('button', { name: /cancel/ }));
 
       expect(mockBack).toHaveBeenCalled();
     });

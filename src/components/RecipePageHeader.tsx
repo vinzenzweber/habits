@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { RecipeImportModal, type RecipeImportResult } from './RecipeImportModal';
 
 const PlusIcon = () => (
@@ -41,6 +42,7 @@ const CameraIcon = () => (
 export function RecipePageHeader() {
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const t = useTranslations('recipeList');
 
   const handleImageCaptured = (result: RecipeImportResult) => {
     if (result.type === 'extracted') {
@@ -61,14 +63,14 @@ export function RecipePageHeader() {
     <>
       <section className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-white sm:text-3xl">
-          Recipes
+          {t('title')}
         </h1>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsModalOpen(true)}
             className="inline-flex items-center justify-center rounded-xl bg-slate-700 p-2.5 text-slate-100 transition hover:bg-slate-600"
-            aria-label="Import recipe from photo or PDF"
-            title="Import from photo or PDF"
+            aria-label={t('importFromPhotoOrPdf')}
+            title={t('importFromPhotoOrPdf')}
           >
             <CameraIcon />
           </button>
@@ -77,7 +79,7 @@ export function RecipePageHeader() {
             className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-emerald-400"
           >
             <PlusIcon />
-            Add Recipe
+            {t('addRecipe')}
           </Link>
         </div>
       </section>

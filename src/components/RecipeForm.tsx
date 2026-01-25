@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { RecipeImageUpload } from './RecipeImageUpload';
 import { TagInput } from './TagInput';
 import { IngredientGroupEditor } from './IngredientGroupEditor';
@@ -76,6 +77,10 @@ export function RecipeForm({
   initialImageUrl,
 }: RecipeFormProps) {
   const router = useRouter();
+  const t = useTranslations('recipeFormLabels');
+  const tCommon = useTranslations('common');
+  const tRecipes = useTranslations('recipes');
+  const tErrors = useTranslations('errors');
   const isEditing = Boolean(slug);
 
   const [form, setForm] = useState<FormState>(() => {
@@ -126,31 +131,31 @@ export function RecipeForm({
 
   const validate = useCallback((): string | null => {
     if (!form.title.trim()) {
-      return 'Title is required';
+      return t('titleRequired');
     }
     if (!form.description.trim()) {
-      return 'Description is required';
+      return t('descriptionRequired');
     }
     if (form.images.length === 0) {
-      return 'At least one image is required';
+      return t('imageRequired');
     }
     if (form.servings < 1) {
-      return 'Servings must be at least 1';
+      return t('servingsMin');
     }
     // Check ingredients
     const hasIngredients = form.ingredientGroups.some((g) =>
       g.ingredients.some((i) => i.name.trim())
     );
     if (!hasIngredients) {
-      return 'At least one ingredient is required';
+      return t('ingredientRequired');
     }
     // Check steps
     const hasSteps = form.steps.some((s) => s.instruction.trim());
     if (!hasSteps) {
-      return 'At least one step is required';
+      return t('stepRequired');
     }
     return null;
-  }, [form]);
+  }, [form, t]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -215,14 +220,14 @@ export function RecipeForm({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to save recipe');
+        throw new Error(data.error || tErrors('failedToSaveRecipe'));
       }
 
       // Redirect to recipe detail page
       router.push(`/recipes/${data.recipe.slug}`);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save recipe');
+      setError(err instanceof Error ? err.message : t('failedToSave'));
     } finally {
       setLoading(false);
     }
@@ -239,12 +244,12 @@ export function RecipeForm({
 
       {/* Basic info section */}
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold">Basic Info</h2>
+        <h2 className="text-lg font-semibold">{t('basicInfo')}</h2>
 
         {/* Title */}
         <div>
           <label htmlFor="title" className="block text-sm mb-2">
-            Title <span className="text-red-400">*</span>
+            {t('title')} <span className="text-red-400">*</span>
           </label>
           <input
             id="title"
@@ -255,14 +260,14 @@ export function RecipeForm({
             maxLength={200}
             disabled={loading}
             className="w-full p-3 rounded bg-slate-800 border border-slate-700 focus:border-emerald-500 outline-none disabled:opacity-50"
-            placeholder="Recipe title"
+            placeholder={t('titlePlaceholder')}
           />
         </div>
 
         {/* Description */}
         <div>
           <label htmlFor="description" className="block text-sm mb-2">
-            Description <span className="text-red-400">*</span>
+            {t('description')} <span className="text-red-400">*</span>
           </label>
           <textarea
             id="description"
@@ -273,13 +278,13 @@ export function RecipeForm({
             disabled={loading}
             rows={3}
             className="w-full p-3 rounded bg-slate-800 border border-slate-700 focus:border-emerald-500 outline-none resize-none disabled:opacity-50"
-            placeholder="Brief description of the recipe"
+            placeholder={t('descriptionPlaceholder')}
           />
         </div>
 
         {/* Tags */}
         <div>
-          <label className="block text-sm mb-2">Tags</label>
+          <label className="block text-sm mb-2">{t('tags')}</label>
           <TagInput
             tags={form.tags}
             onChange={(tags) => updateField('tags', tags)}
@@ -294,7 +299,7 @@ export function RecipeForm({
       {/* Images section */}
       <section className="space-y-4">
         <h2 className="text-lg font-semibold">
-          Images <span className="text-red-400">*</span>
+          {t('images')} <span className="text-red-400">*</span>
         </h2>
         <RecipeImageUpload
           images={form.images}
@@ -306,12 +311,12 @@ export function RecipeForm({
 
       {/* Time and servings section */}
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold">Time & Servings</h2>
+        <h2 className="text-lg font-semibold">{t('timeAndServings')}</h2>
         <div className="grid grid-cols-3 gap-4">
           {/* Prep time */}
           <div>
             <label htmlFor="prepTime" className="block text-sm mb-2">
-              Prep time (min)
+              {t('prepTimeMin')}
             </label>
             <input
               id="prepTime"
@@ -330,7 +335,7 @@ export function RecipeForm({
           {/* Cook time */}
           <div>
             <label htmlFor="cookTime" className="block text-sm mb-2">
-              Cook time (min)
+              {t('cookTimeMin')}
             </label>
             <input
               id="cookTime"
@@ -349,7 +354,7 @@ export function RecipeForm({
           {/* Servings */}
           <div>
             <label htmlFor="servings" className="block text-sm mb-2">
-              Servings <span className="text-red-400">*</span>
+              {tRecipes('servings')} <span className="text-red-400">*</span>
             </label>
             <input
               id="servings"
@@ -368,12 +373,12 @@ export function RecipeForm({
 
       {/* Nutrition section */}
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold">Nutrition (per serving)</h2>
+        <h2 className="text-lg font-semibold">{t('nutritionPerServing')}</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {/* Calories */}
           <div>
             <label htmlFor="calories" className="block text-sm mb-2">
-              Calories
+              {t('calories')}
             </label>
             <input
               id="calories"
@@ -390,7 +395,7 @@ export function RecipeForm({
           {/* Protein */}
           <div>
             <label htmlFor="protein" className="block text-sm mb-2">
-              Protein (g)
+              {t('proteinG')}
             </label>
             <input
               id="protein"
@@ -408,7 +413,7 @@ export function RecipeForm({
           {/* Carbs */}
           <div>
             <label htmlFor="carbs" className="block text-sm mb-2">
-              Carbs (g)
+              {t('carbsG')}
             </label>
             <input
               id="carbs"
@@ -426,7 +431,7 @@ export function RecipeForm({
           {/* Fat */}
           <div>
             <label htmlFor="fat" className="block text-sm mb-2">
-              Fat (g)
+              {t('fatG')}
             </label>
             <input
               id="fat"
@@ -446,7 +451,7 @@ export function RecipeForm({
       {/* Ingredients section */}
       <section className="space-y-4">
         <h2 className="text-lg font-semibold">
-          Ingredients <span className="text-red-400">*</span>
+          {tRecipes('ingredients')} <span className="text-red-400">*</span>
         </h2>
         <IngredientGroupEditor
           groups={form.ingredientGroups}
@@ -458,7 +463,7 @@ export function RecipeForm({
       {/* Steps section */}
       <section className="space-y-4">
         <h2 className="text-lg font-semibold">
-          Steps <span className="text-red-400">*</span>
+          {t('steps')} <span className="text-red-400">*</span>
         </h2>
         <StepsEditor
           steps={form.steps}
@@ -475,14 +480,14 @@ export function RecipeForm({
           disabled={loading}
           className="flex-1 py-3 rounded bg-slate-700 hover:bg-slate-600 transition font-medium disabled:opacity-50"
         >
-          Cancel
+          {tCommon('cancel')}
         </button>
         <button
           type="submit"
           disabled={loading || isUploading}
           className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 py-3 rounded font-medium transition disabled:opacity-50"
         >
-          {loading ? 'Saving...' : isUploading ? 'Uploading images...' : isEditing ? 'Save Changes' : 'Create Recipe'}
+          {loading ? tCommon('saving') : isUploading ? t('uploadingImages') : isEditing ? t('saveChanges') : t('createRecipe')}
         </button>
       </div>
     </form>

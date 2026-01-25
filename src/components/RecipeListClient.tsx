@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 import { RecipeSummary } from "@/lib/recipe-types";
 import { SharedRecipeWithMe } from "@/lib/recipe-sharing-types";
@@ -139,6 +140,7 @@ export function RecipeListClient({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const t = useTranslations("recipeList");
 
   // Collections state
   const [collections, setCollections] = useState<CollectionSummary[]>(initialCollections);
@@ -298,7 +300,7 @@ export function RecipeListClient({
                 : "text-slate-300 hover:text-white"
             }`}
           >
-            {sharingTranslations?.myRecipes ?? "My Recipes"}
+            {sharingTranslations?.myRecipes ?? t("myRecipes")}
             <span className="ml-1.5 text-xs opacity-70">({initialRecipes.length})</span>
           </button>
           <button
@@ -309,7 +311,7 @@ export function RecipeListClient({
                 : "text-slate-300 hover:text-white"
             }`}
           >
-            {sharingTranslations?.sharedWithMe ?? "Shared with me"}
+            {sharingTranslations?.sharedWithMe ?? t("sharedWithMe")}
             <span className="ml-1.5 text-xs opacity-70">({sharedRecipes.length})</span>
           </button>
         </div>
@@ -324,14 +326,14 @@ export function RecipeListClient({
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search recipes..."
+          placeholder={t("searchRecipes")}
           className="w-full rounded-xl border border-slate-700 bg-slate-800 py-3 pl-10 pr-10 text-sm text-slate-100 placeholder-slate-500 transition focus:border-emerald-500 focus:outline-none"
         />
         {searchQuery && (
           <button
             onClick={() => setSearchQuery("")}
             className="absolute inset-y-0 right-0 flex items-center pr-4 text-slate-500 hover:text-slate-300"
-            aria-label="Clear search"
+            aria-label={t("clearSearch")}
           >
             <ClearIcon />
           </button>
@@ -399,7 +401,7 @@ export function RecipeListClient({
               }`}
             >
               <span>❤️</span>
-              <span>Favorites</span>
+              <span>{t("favorites")}</span>
             </button>
 
             {/* Sort dropdown */}
@@ -409,9 +411,9 @@ export function RecipeListClient({
                 onChange={(e) => setSortBy(e.target.value as SortOption)}
                 className="appearance-none rounded-xl border border-slate-700 bg-slate-800 py-2 pl-4 pr-10 text-sm text-slate-100 transition focus:border-emerald-500 focus:outline-none"
               >
-                <option value="recent">Most recent</option>
-                <option value="alpha">A-Z</option>
-                <option value="rating">Highest rated</option>
+                <option value="recent">{t("mostRecent")}</option>
+                <option value="alpha">{t("alphabetical")}</option>
+                <option value="rating">{t("highestRated")}</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
                 <ChevronDownIcon />
@@ -424,7 +426,7 @@ export function RecipeListClient({
                 onClick={clearFilters}
                 className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-slate-800 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700"
               >
-                <span>{activeFilterCount} active</span>
+                <span>{t("activeFilters", { count: activeFilterCount })}</span>
                 <ClearIcon />
               </button>
             )}
@@ -440,17 +442,16 @@ export function RecipeListClient({
             <section className="rounded-2xl border border-slate-800 bg-slate-900/50 p-8 text-center">
               <div className="mx-auto flex max-w-sm flex-col items-center gap-4">
                 <span className="text-5xl">🍳</span>
-                <h2 className="text-xl font-semibold text-white">No recipes yet</h2>
+                <h2 className="text-xl font-semibold text-white">{t("noRecipesYet")}</h2>
                 <p className="text-slate-400">
-                  Start building your collection of healthy recipes. Import from the
-                  web or create your own.
+                  {t("startBuildingCollection")}
                 </p>
                 <Link
                   href="/recipes/new"
                   className="mt-2 inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-medium text-slate-950 transition hover:bg-emerald-400"
                 >
                   <PlusIcon />
-                  Add your first recipe
+                  {t("addFirstRecipe")}
                 </Link>
               </div>
             </section>
@@ -460,17 +461,16 @@ export function RecipeListClient({
               <div className="mx-auto flex max-w-sm flex-col items-center gap-4">
                 <span className="text-5xl">🔍</span>
                 <h2 className="text-xl font-semibold text-white">
-                  No recipes match your filters
+                  {t("noRecipesMatchFilters")}
                 </h2>
                 <p className="text-slate-400">
-                  Try adjusting your search or clearing some filters to see more
-                  recipes.
+                  {t("tryAdjustingFilters")}
                 </p>
                 <button
                   onClick={clearFilters}
                   className="mt-2 inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-medium text-slate-950 transition hover:bg-emerald-400"
                 >
-                  Clear filters
+                  {t("clearFilters")}
                 </button>
               </div>
             </section>
@@ -493,9 +493,9 @@ export function RecipeListClient({
             <section className="rounded-2xl border border-slate-800 bg-slate-900/50 p-8 text-center">
               <div className="mx-auto flex max-w-sm flex-col items-center gap-4">
                 <span className="text-5xl">📬</span>
-                <h2 className="text-xl font-semibold text-white">No shared recipes</h2>
+                <h2 className="text-xl font-semibold text-white">{t("noSharedRecipes")}</h2>
                 <p className="text-slate-400">
-                  When someone shares a recipe with you, it will appear here.
+                  {t("sharedRecipesAppearHere")}
                 </p>
               </div>
             </section>
@@ -505,16 +505,16 @@ export function RecipeListClient({
               <div className="mx-auto flex max-w-sm flex-col items-center gap-4">
                 <span className="text-5xl">🔍</span>
                 <h2 className="text-xl font-semibold text-white">
-                  No recipes match your search
+                  {t("noRecipesMatchSearch")}
                 </h2>
                 <p className="text-slate-400">
-                  Try a different search term.
+                  {t("tryDifferentSearchTerm")}
                 </p>
                 <button
                   onClick={() => setSearchQuery("")}
                   className="mt-2 inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-medium text-slate-950 transition hover:bg-emerald-400"
                 >
-                  Clear search
+                  {t("clearSearchButton")}
                 </button>
               </div>
             </section>

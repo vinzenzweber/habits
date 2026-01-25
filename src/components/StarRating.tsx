@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 interface StarRatingProps {
   rating: number; // Current rating (0-5, can be fractional for display)
@@ -25,6 +26,7 @@ export function StarRating({
   onRate,
   showCount,
 }: StarRatingProps) {
+  const t = useTranslations("starRating");
   const [hoverRating, setHoverRating] = useState(0);
   const displayRating = hoverRating || rating;
   const sizeClass = STAR_SIZES[size];
@@ -54,7 +56,7 @@ export function StarRating({
               onMouseEnter={() => interactive && setHoverRating(starIndex)}
               onMouseLeave={() => setHoverRating(0)}
               className={`relative ${interactive ? "cursor-pointer" : "cursor-default"}`}
-              aria-label={`Rate ${starIndex} star${starIndex > 1 ? "s" : ""}`}
+              aria-label={t("rateStars", { count: starIndex })}
             >
               {/* Empty star (background) */}
               <svg

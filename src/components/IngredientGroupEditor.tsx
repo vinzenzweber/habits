@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import type { IngredientGroup, Ingredient } from '@/lib/recipe-types';
 
 interface IngredientGroupEditorProps {
@@ -14,6 +15,9 @@ export function IngredientGroupEditor({
   onChange,
   disabled = false,
 }: IngredientGroupEditorProps) {
+  const t = useTranslations('recipeForm');
+  const tIngredients = useTranslations('ingredientEditor');
+
   const addGroup = useCallback(() => {
     onChange([
       ...groups,
@@ -83,7 +87,7 @@ export function IngredientGroupEditor({
               type="text"
               value={group.name}
               onChange={(e) => updateGroupName(groupIndex, e.target.value)}
-              placeholder="Group name (e.g., Dairy, Spices)"
+              placeholder={tIngredients('groupNamePlaceholder')}
               disabled={disabled}
               className="flex-1 p-2 rounded bg-slate-800 border border-slate-700 focus:border-emerald-500 outline-none text-sm disabled:opacity-50"
             />
@@ -93,7 +97,7 @@ export function IngredientGroupEditor({
                 onClick={() => removeGroup(groupIndex)}
                 disabled={disabled}
                 className="p-2 text-slate-400 hover:text-red-400 transition disabled:opacity-50"
-                title="Remove group"
+                title={t('removeGroup')}
               >
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -117,7 +121,7 @@ export function IngredientGroupEditor({
                       quantity: parseFloat(e.target.value) || 0,
                     })
                   }
-                  placeholder="Qty"
+                  placeholder={tIngredients('qtyPlaceholder')}
                   disabled={disabled}
                   className="w-20 p-2 rounded bg-slate-800 border border-slate-700 focus:border-emerald-500 outline-none text-sm disabled:opacity-50"
                 />
@@ -131,7 +135,7 @@ export function IngredientGroupEditor({
                       unit: e.target.value,
                     })
                   }
-                  placeholder="Unit"
+                  placeholder={tIngredients('unitPlaceholder')}
                   disabled={disabled}
                   className="w-24 p-2 rounded bg-slate-800 border border-slate-700 focus:border-emerald-500 outline-none text-sm disabled:opacity-50"
                 />
@@ -145,7 +149,7 @@ export function IngredientGroupEditor({
                       name: e.target.value,
                     })
                   }
-                  placeholder="Ingredient name"
+                  placeholder={tIngredients('namePlaceholder')}
                   disabled={disabled}
                   className="flex-1 p-2 rounded bg-slate-800 border border-slate-700 focus:border-emerald-500 outline-none text-sm disabled:opacity-50"
                 />
@@ -157,7 +161,7 @@ export function IngredientGroupEditor({
                     onClick={() => removeIngredient(groupIndex, ingredientIndex)}
                     disabled={disabled}
                     className="p-2 text-slate-400 hover:text-red-400 transition disabled:opacity-50"
-                    title="Remove ingredient"
+                    title={t('removeIngredient')}
                   >
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -175,7 +179,7 @@ export function IngredientGroupEditor({
             disabled={disabled}
             className="mt-3 text-sm text-emerald-400 hover:text-emerald-300 transition disabled:opacity-50"
           >
-            + Add ingredient
+            + {tIngredients('addIngredient')}
           </button>
         </div>
       ))}
@@ -187,7 +191,7 @@ export function IngredientGroupEditor({
         disabled={disabled}
         className="w-full py-3 border-2 border-dashed border-slate-700 rounded-lg text-slate-400 hover:border-slate-600 hover:text-slate-300 transition disabled:opacity-50"
       >
-        + Add ingredient group
+        + {tIngredients('addIngredientGroup')}
       </button>
     </div>
   );

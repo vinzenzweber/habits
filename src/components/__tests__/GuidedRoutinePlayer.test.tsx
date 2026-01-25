@@ -438,7 +438,7 @@ describe('GuidedRoutinePlayer countdown beeps', () => {
         await Promise.resolve();
       });
 
-      expect(getByText(/no guided plan available/i)).toBeInTheDocument();
+      expect(getByText(/noGuidedPlan/)).toBeInTheDocument();
       // createBufferSource shouldn't be called for empty workout
       expect(mockStart).not.toHaveBeenCalled();
     });

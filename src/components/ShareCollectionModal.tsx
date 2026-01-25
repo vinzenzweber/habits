@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { CollectionWithRecipes } from "@/lib/collection-types";
 
 interface ShareCollectionModalProps {
@@ -22,6 +23,9 @@ export function ShareCollectionModal({
   collection,
   onShareSuccess,
 }: ShareCollectionModalProps) {
+  const t = useTranslations("shareCollection");
+  const tCommon = useTranslations("common");
+
   const [state, setState] = useState<ShareState>("input");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
@@ -76,7 +80,7 @@ export function ShareCollectionModal({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to share collection");
+        throw new Error(data.error || t("failedToShare"));
       }
 
       setRecipientName(data.recipientName);
@@ -85,7 +89,7 @@ export function ShareCollectionModal({
       onShareSuccess?.();
     } catch (err) {
       setState("input");
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : tCommon("error"));
     }
   };
 
@@ -113,13 +117,13 @@ export function ShareCollectionModal({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-700 p-4">
           <h2 id="share-collection-title" className="text-lg font-semibold">
-            {state === "success" ? "Collection Shared!" : "Share Collection"}
+            {state === "success" ? t("collectionShared") : t("shareCollection")}
           </h2>
           {state !== "loading" && (
             <button
               onClick={onClose}
               className="text-2xl leading-none text-slate-400 hover:text-white"
-              aria-label="Close"
+              aria-label={tCommon("close")}
             >
               &times;
             </button>
@@ -139,14 +143,12 @@ export function ShareCollectionModal({
 
               {/* Collection preview */}
               <div className="rounded-xl border border-slate-700 bg-slate-800 p-4">
-                <p className="text-sm text-slate-400">Sharing</p>
+                <p className="text-sm text-slate-400">{t("sharing")}</p>
                 <p className="text-lg font-medium text-white">
                   {collection.name}
                 </p>
                 <p className="mt-1 text-sm text-slate-400">
-                  {collection.recipeCount}{" "}
-                  {collection.recipeCount === 1 ? "recipe" : "recipes"} will be
-                  copied
+                  {t("recipesWillBeCopied", { count: collection.recipeCount })}
                 </p>
 
                 {/* Expandable recipe list */}
@@ -156,7 +158,7 @@ export function ShareCollectionModal({
                       onClick={() => setShowRecipes(!showRecipes)}
                       className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300"
                     >
-                      {showRecipes ? "Hide" : "Show"} recipes
+                      {showRecipes ? t("hideRecipes") : t("showRecipes")}
                       <svg
                         className={`h-4 w-4 transition ${showRecipes ? "rotate-180" : ""}`}
                         fill="none"
@@ -193,14 +195,14 @@ export function ShareCollectionModal({
                   htmlFor="recipient-email"
                   className="mb-1 block text-sm font-medium text-slate-300"
                 >
-                  Recipient&apos;s Email <span className="text-red-400">*</span>
+                  {t("recipientEmail")} <span className="text-red-400">*</span>
                 </label>
                 <input
                   id="recipient-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="friend@example.com"
+                  placeholder={t("emailPlaceholder")}
                   className="w-full rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
                   autoFocus
                 />
@@ -212,23 +214,21 @@ export function ShareCollectionModal({
                   htmlFor="share-message"
                   className="mb-1 block text-sm font-medium text-slate-300"
                 >
-                  Personal Message
+                  {t("personalMessage")}
                 </label>
                 <textarea
                   id="share-message"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   rows={2}
-                  placeholder="Optional message to include"
+                  placeholder={t("optionalMessage")}
                   className="w-full resize-none rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
                 />
               </div>
 
               {/* Info text */}
               <p className="text-xs text-slate-500">
-                The recipient will receive their own copies of this collection
-                and all its recipes. They can modify their copies without
-                affecting your originals.
+                {t("infoText")}
               </p>
             </div>
           )}
@@ -236,9 +236,9 @@ export function ShareCollectionModal({
           {state === "loading" && (
             <div className="flex flex-col items-center justify-center py-12">
               <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
-              <p className="text-slate-300">Sharing collection...</p>
+              <p className="text-slate-300">{t("sharingCollection")}</p>
               <p className="mt-1 text-xs text-slate-500">
-                Copying {collection.recipeCount} recipes
+                {t("copyingRecipes", { count: collection.recipeCount })}
               </p>
             </div>
           )}
@@ -263,19 +263,18 @@ export function ShareCollectionModal({
               </div>
 
               <h3 className="mb-2 text-xl font-semibold text-white">
-                Collection sent to {recipientName}!
+                {t("sentTo", { name: recipientName })}
               </h3>
 
               <p className="mb-4 text-sm text-slate-400">
-                They received copies of {copiedRecipeCount}{" "}
-                {copiedRecipeCount === 1 ? "recipe" : "recipes"} they can edit.
+                {t("recipientReceived", { count: copiedRecipeCount })}
               </p>
 
               <button
                 onClick={onClose}
                 className="rounded-xl bg-emerald-500 px-8 py-3 font-medium text-slate-950 transition hover:bg-emerald-400"
               >
-                Done
+                {tCommon("done")}
               </button>
             </div>
           )}
@@ -289,13 +288,13 @@ export function ShareCollectionModal({
               disabled={!email.trim()}
               className="w-full rounded-xl bg-emerald-500 py-3 font-medium text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Share Collection
+              {t("shareCollection")}
             </button>
             <button
               onClick={onClose}
               className="mt-2 w-full py-2 text-slate-400 transition hover:text-white"
             >
-              Cancel
+              {tCommon("cancel")}
             </button>
           </div>
         )}

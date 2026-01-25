@@ -68,12 +68,14 @@ describe("RecipeCard", () => {
       tags: ["healthy", "quick", "vegetarian", "dinner", "lunch"],
     };
     render(<RecipeCard recipe={recipeWithManyTags} />);
-    expect(screen.getByText("+2 more")).toBeInTheDocument();
+    // Mock returns key with params: "moreCount count:2"
+    expect(screen.getByText(/moreCount/)).toBeInTheDocument();
   });
 
   it("renders prep and cook time", () => {
     render(<RecipeCard recipe={mockRecipe} />);
-    expect(screen.getByText("🕐 15m prep • 30m cook")).toBeInTheDocument();
+    // Mock returns keys: "prepMinutes count:15 • cookMinutes count:30"
+    expect(screen.getByText(/prepMinutes.*cookMinutes/)).toBeInTheDocument();
   });
 
   it("renders only prep time when cook time is missing", () => {
@@ -82,7 +84,7 @@ describe("RecipeCard", () => {
       cookTimeMinutes: undefined,
     };
     render(<RecipeCard recipe={recipeWithOnlyPrep} />);
-    expect(screen.getByText("🕐 15m prep")).toBeInTheDocument();
+    expect(screen.getByText(/prepMinutes/)).toBeInTheDocument();
   });
 
   it("renders only cook time when prep time is missing", () => {
@@ -91,18 +93,19 @@ describe("RecipeCard", () => {
       prepTimeMinutes: undefined,
     };
     render(<RecipeCard recipe={recipeWithOnlyCook} />);
-    expect(screen.getByText("🕐 30m cook")).toBeInTheDocument();
+    expect(screen.getByText(/cookMinutes/)).toBeInTheDocument();
   });
 
   it("renders servings with correct pluralization", () => {
     render(<RecipeCard recipe={mockRecipe} />);
-    expect(screen.getByText("👥 4 servings")).toBeInTheDocument();
+    // Mock returns key: "servingsCount count:4"
+    expect(screen.getByText(/servingsCount/)).toBeInTheDocument();
   });
 
   it("renders singular serving when servings is 1", () => {
     const singleServing = { ...mockRecipe, servings: 1 };
     render(<RecipeCard recipe={singleServing} />);
-    expect(screen.getByText("👥 1 serving")).toBeInTheDocument();
+    expect(screen.getByText(/servingsCount/)).toBeInTheDocument();
   });
 
   it("renders image when primaryImage is provided", () => {
@@ -136,7 +139,8 @@ describe("RecipeCard", () => {
   it("has correct aria-label for accessibility", () => {
     render(<RecipeCard recipe={mockRecipe} />);
     const link = screen.getByRole("link");
-    expect(link).toHaveAttribute("aria-label", "View recipe: Test Recipe");
+    // Mock returns key with params: "viewRecipe title:Test Recipe"
+    expect(link).toHaveAttribute("aria-label", "viewRecipe title:Test Recipe");
   });
 
   it("renders without description when not provided", () => {

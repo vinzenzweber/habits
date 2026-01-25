@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 import { SharedRecipeWithMe } from "@/lib/recipe-sharing-types";
 import { SharedRecipeBadge } from "./SharedRecipeBadge";
@@ -17,6 +18,8 @@ interface SharedRecipeCardProps {
  */
 export function SharedRecipeCard({ sharedRecipe }: SharedRecipeCardProps) {
   const [imageError, setImageError] = useState(false);
+  const t = useTranslations("recipeCard");
+  const tSharing = useTranslations("sharing");
   const { recipe, owner, permission } = sharedRecipe;
 
   // Use shared route for viewing shared recipes
@@ -27,16 +30,16 @@ export function SharedRecipeCard({ sharedRecipe }: SharedRecipeCardProps) {
   const timeDisplay = (() => {
     const parts: string[] = [];
     if (recipe.prepTimeMinutes) {
-      parts.push(`${recipe.prepTimeMinutes}m prep`);
+      parts.push(t("prepMinutes", { count: recipe.prepTimeMinutes }));
     }
     if (recipe.cookTimeMinutes) {
-      parts.push(`${recipe.cookTimeMinutes}m cook`);
+      parts.push(t("cookMinutes", { count: recipe.cookTimeMinutes }));
     }
     return parts.join(" • ");
   })();
 
   // Servings display with proper singular/plural
-  const servingsDisplay = `${recipe.servings} ${recipe.servings === 1 ? "serving" : "servings"}`;
+  const servingsDisplay = t("servingsCount", { count: recipe.servings });
   const showTimes = recipe.prepTimeMinutes !== undefined || recipe.cookTimeMinutes !== undefined;
 
   return (
@@ -74,7 +77,7 @@ export function SharedRecipeCard({ sharedRecipe }: SharedRecipeCardProps) {
                 : "bg-slate-500/20 text-slate-400"
             }`}
           >
-            {permission === "edit" ? "Can edit" : "View only"}
+            {permission === "edit" ? tSharing("canEdit") : tSharing("canView")}
           </span>
         </div>
       </div>
@@ -104,7 +107,7 @@ export function SharedRecipeCard({ sharedRecipe }: SharedRecipeCardProps) {
             ))}
             {recipe.tags.length > 3 && (
               <span className="inline-flex items-center rounded-full bg-slate-500/10 px-2 py-0.5 text-xs text-slate-400 lg:px-1.5">
-                +{recipe.tags.length - 3} more
+                {t("moreCount", { count: recipe.tags.length - 3 })}
               </span>
             )}
           </div>

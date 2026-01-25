@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { GroceryListSummary } from "@/lib/grocery-types";
 
 interface AddToGroceryListModalProps {
@@ -26,6 +27,10 @@ export function AddToGroceryListModal({
   ingredientCount,
   onSuccess,
 }: AddToGroceryListModalProps) {
+  const t = useTranslations("addToGroceryList");
+  const tCommon = useTranslations("common");
+  const tGrocery = useTranslations("groceryLists");
+
   const [groceryLists, setGroceryLists] = useState<GroceryListSummary[]>([]);
   const [selectedListId, setSelectedListId] = useState<number | null>(null);
   const [servingsMultiplier, setServingsMultiplier] = useState(1);
@@ -50,7 +55,7 @@ export function AddToGroceryListModal({
     try {
       const response = await fetch("/api/grocery-lists");
       if (!response.ok) {
-        throw new Error("Failed to fetch grocery lists");
+        throw new Error(t("failedToFetch"));
       }
 
       const data = await response.json();
@@ -61,7 +66,7 @@ export function AddToGroceryListModal({
         setShowCreateForm(true);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : tCommon("error"));
     } finally {
       setIsLoading(false);
     }
@@ -109,7 +114,7 @@ export function AddToGroceryListModal({
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to create list");
+        throw new Error(data.error || t("failedToCreateList"));
       }
 
       const newList = await response.json();
@@ -132,7 +137,7 @@ export function AddToGroceryListModal({
       setShowCreateForm(false);
       setNewListName("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : tCommon("error"));
     }
   };
 
@@ -154,7 +159,7 @@ export function AddToGroceryListModal({
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to generate grocery list");
+        throw new Error(data.error || t("failedToGenerate"));
       }
 
       const data = await response.json();
@@ -167,7 +172,7 @@ export function AddToGroceryListModal({
 
       onSuccess?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : tCommon("error"));
     } finally {
       setIsSaving(false);
     }
@@ -202,12 +207,12 @@ export function AddToGroceryListModal({
               id="add-to-grocery-list-title"
               className="text-lg font-semibold"
             >
-              Added to Grocery List
+              {t("addedToList")}
             </h2>
             <button
               onClick={onClose}
               className="text-2xl leading-none text-slate-400 hover:text-white"
-              aria-label="Close"
+              aria-label={tCommon("close")}
             >
               &times;
             </button>
@@ -217,10 +222,10 @@ export function AddToGroceryListModal({
           <div className="flex-1 overflow-y-auto p-6 text-center">
             <div className="mb-4 text-4xl">✅</div>
             <p className="mb-2 text-lg font-medium text-white">
-              {success.itemCount} items added
+              {t("itemsAdded", { count: success.itemCount })}
             </p>
             <p className="text-sm text-slate-400">
-              Added to &quot;{success.listName}&quot;
+              {t("addedToListName", { name: success.listName })}
             </p>
           </div>
 
@@ -230,13 +235,13 @@ export function AddToGroceryListModal({
               href={`/grocery-lists/${success.listId}`}
               className="block w-full rounded-xl bg-emerald-500 py-3 text-center font-medium text-slate-950 transition hover:bg-emerald-400"
             >
-              View Grocery List
+              {t("viewGroceryList")}
             </a>
             <button
               onClick={onClose}
               className="mt-2 w-full py-2 text-slate-400 transition hover:text-white"
             >
-              Close
+              {tCommon("close")}
             </button>
           </div>
         </div>
@@ -266,12 +271,12 @@ export function AddToGroceryListModal({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-700 p-4">
           <h2 id="add-to-grocery-list-title" className="text-lg font-semibold">
-            Add to Grocery List
+            {t("addToGroceryList")}
           </h2>
           <button
             onClick={onClose}
             className="text-2xl leading-none text-slate-400 hover:text-white"
-            aria-label="Close"
+            aria-label={tCommon("close")}
           >
             &times;
           </button>
@@ -283,14 +288,14 @@ export function AddToGroceryListModal({
           <div className="mb-4 rounded-xl border border-slate-700 bg-slate-800 p-3">
             <p className="font-medium text-white">{recipeName}</p>
             <p className="text-sm text-slate-400">
-              {ingredientCount} ingredients
+              {t("ingredientCount", { count: ingredientCount })}
             </p>
           </div>
 
           {/* Servings multiplier */}
           <div className="mb-4">
             <label className="mb-2 block text-sm font-medium text-slate-300">
-              Servings
+              {t("servings")}
             </label>
             <div className="flex items-center gap-3">
               <button
@@ -306,7 +311,7 @@ export function AddToGroceryListModal({
                   {servingsMultiplier}x
                 </span>
                 <span className="ml-2 text-sm text-slate-400">
-                  ({Math.round(defaultServings * servingsMultiplier)} servings)
+                  ({t("servingsCount", { count: Math.round(defaultServings * servingsMultiplier) })})
                 </span>
               </div>
               <button
@@ -340,7 +345,7 @@ export function AddToGroceryListModal({
                     type="text"
                     value={newListName}
                     onChange={(e) => setNewListName(e.target.value)}
-                    placeholder="List name"
+                    placeholder={tGrocery("listName")}
                     maxLength={100}
                     className="mb-2 w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-white placeholder-slate-400 focus:border-emerald-500 focus:outline-none"
                     autoFocus
@@ -351,7 +356,7 @@ export function AddToGroceryListModal({
                       disabled={!newListName.trim()}
                       className="flex-1 rounded-lg bg-emerald-500 py-2 text-sm font-medium text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      Create
+                      {t("create")}
                     </button>
                     <button
                       onClick={() => {
@@ -360,7 +365,7 @@ export function AddToGroceryListModal({
                       }}
                       className="flex-1 rounded-lg bg-slate-700 py-2 text-sm font-medium text-white hover:bg-slate-600"
                     >
-                      Cancel
+                      {tCommon("cancel")}
                     </button>
                   </div>
                 </div>
@@ -369,7 +374,7 @@ export function AddToGroceryListModal({
                   onClick={() => setShowCreateForm(true)}
                   className="mb-4 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-700 py-3 text-sm text-slate-400 transition hover:border-slate-600 hover:text-white"
                 >
-                  <span>+</span> Create New List
+                  <span>+</span> {t("createNewList")}
                 </button>
               )}
 
@@ -377,7 +382,7 @@ export function AddToGroceryListModal({
               {groceryLists.length > 0 && (
                 <>
                   <p className="mb-2 text-sm font-medium text-slate-300">
-                    Or add to existing list:
+                    {t("orAddToExisting")}
                   </p>
                   {groceryLists.map((list) => (
                     <button
@@ -408,9 +413,9 @@ export function AddToGroceryListModal({
                           {list.name}
                         </p>
                         <p className="text-xs text-slate-400">
-                          {list.itemCount} items
+                          {t("itemCount", { count: list.itemCount })}
                           {list.checkedCount > 0 &&
-                            ` • ${list.checkedCount} checked`}
+                            ` • ${t("checkedCount", { count: list.checkedCount })}`}
                         </p>
                       </div>
                     </button>
@@ -429,16 +434,16 @@ export function AddToGroceryListModal({
             className="w-full rounded-xl bg-emerald-500 py-3 font-medium text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSaving
-              ? "Adding..."
+              ? t("adding")
               : selectedListId
-                ? "Add to Selected List"
-                : "Create List & Add"}
+                ? t("addToSelectedList")
+                : t("createListAndAdd")}
           </button>
           <button
             onClick={onClose}
             className="mt-2 w-full py-2 text-slate-400 transition hover:text-white"
           >
-            Cancel
+            {tCommon("cancel")}
           </button>
         </div>
       </div>

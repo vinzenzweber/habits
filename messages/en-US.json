@@ -17,7 +17,18 @@
     "dismiss": "Dismiss",
     "detect": "Detect",
     "install": "Install",
-    "notNow": "Not Now"
+    "notNow": "Not Now",
+    "menu": "Menu",
+    "remove": "Remove",
+    "days": {
+      "monday": "Monday",
+      "tuesday": "Tuesday",
+      "wednesday": "Wednesday",
+      "thursday": "Thursday",
+      "friday": "Friday",
+      "saturday": "Saturday",
+      "sunday": "Sunday"
+    }
   },
   "nav": {
     "home": "Home",
@@ -40,6 +51,7 @@
     "register": "Register",
     "creatingAccount": "Creating account...",
     "logout": "Logout",
+    "loggingOut": "Logging out...",
     "invalidCredentials": "Invalid email or password",
     "registrationFailed": "Registration failed",
     "registrationSuccessLoginFailed": "Registration successful, but login failed. Please try logging in.",
@@ -137,6 +149,7 @@
     }
   },
   "workout": {
+    "todaysWorkout": "Today's Workout",
     "guidedTimer": "Guided Timer",
     "overallProgress": "Overall progress",
     "timeLeft": "{time} left",
@@ -149,6 +162,26 @@
     "autoStarted": "Auto-started · {count} steps",
     "noGuidedPlan": "No guided plan available for this day.",
     "addRoutine": "Add a routine in the workout plan to start training.",
+    "enterFullscreen": "Enter fullscreen",
+    "exitFullscreen": "Exit fullscreen",
+    "segment": "Segment",
+    "back": "← Back",
+    "completedToday": "Completed today",
+    "today": "Today",
+    "yourWorkout": "Your {label} Workout",
+    "playAgain": "Play Again",
+    "start": "Start",
+    "workoutPlan": "Workout plan",
+    "exercises": "{count} exercises",
+    "total": "total",
+    "nanoLimitReached": "Nano Limit Reached",
+    "usedAllNano": "You've used all {limit} nano workouts this week.",
+    "completeFullWorkout": "Complete a full workout to keep your streak going!",
+    "backToHome": "Back to Home",
+    "streakSaver": "Streak Saver",
+    "quickRoutine": "Quick Routine",
+    "nanoWorkoutPlan": "Nano workout plan",
+    "workoutPlanAriaLabel": "Workout plan",
     "categories": {
       "prep": "Prep",
       "warmup": "Warmup",
@@ -158,12 +191,45 @@
       "rest": "Rest"
     }
   },
+  "defaultWorkouts": {
+    "monday": {
+      "title": "Push (Moderate)",
+      "focus": "Upper body push movements"
+    },
+    "tuesday": {
+      "title": "Pull (Moderate)",
+      "focus": "Upper body pull movements"
+    },
+    "wednesday": {
+      "title": "Lower (Moderate)",
+      "focus": "Legs and posterior chain"
+    },
+    "thursday": {
+      "title": "HIIT Circuit",
+      "focus": "High intensity intervals"
+    },
+    "friday": {
+      "title": "Full Body Flow",
+      "focus": "Compound movements"
+    },
+    "saturday": {
+      "title": "Active Recovery",
+      "focus": "Mobility and light work"
+    },
+    "sunday": {
+      "title": "Rest & Restore",
+      "focus": "Gentle movement"
+    }
+  },
   "install": {
     "title": "Install Habits App",
     "description": "Install this app on your home screen for the best experience."
   },
   "recipes": {
     "backToRecipes": "← Back to recipes",
+    "backToRecipe": "← Back to Recipe",
+    "newRecipe": "New Recipe",
+    "editRecipe": "Edit Recipe",
     "edit": "Edit",
     "share": "Share",
     "prepTime": "Prep",
@@ -178,6 +244,11 @@
     "fiber": "Fiber",
     "ingredients": "Ingredients",
     "instructions": "Instructions",
+    "timeAndServingsAriaLabel": "Time and servings",
+    "nutritionInfoAriaLabel": "Nutrition information",
+    "tagsAriaLabel": "Tags",
+    "ingredientsAriaLabel": "Ingredients",
+    "instructionsAriaLabel": "Instructions",
     "yourRating": "Your rating",
     "averageRating": "Average",
     "ratings": "ratings",
@@ -196,7 +267,46 @@
     "preview": "Preview Translation",
     "saveTranslation": "Save Translation",
     "translating": "Translating...",
-    "translationPreview": "Translation Preview"
+    "translationPreview": "Translation Preview",
+    "translationFailed": "Translation failed",
+    "failedToSaveTranslation": "Failed to save translation",
+    "shared": "Shared"
+  },
+  "recipeDetailError": {
+    "backToRecipes": "← Back to recipes",
+    "somethingWentWrong": "Something went wrong",
+    "couldNotLoadRecipe": "We couldn't load this recipe. Please try again.",
+    "tryAgain": "Try again",
+    "viewAllRecipes": "View all recipes"
+  },
+  "recipeList": {
+    "title": "Recipes",
+    "addRecipe": "Add Recipe",
+    "importFromPhotoOrPdf": "Import from photo or PDF",
+    "searchRecipes": "Search recipes...",
+    "clearSearch": "Clear search",
+    "favorites": "Favorites",
+    "mostRecent": "Most recent",
+    "alphabetical": "A-Z",
+    "highestRated": "Highest rated",
+    "activeFilters": "{count} active",
+    "noRecipesYet": "No recipes yet",
+    "startBuildingCollection": "Start building your collection of healthy recipes. Import from the web or create your own.",
+    "addFirstRecipe": "Add your first recipe",
+    "noRecipesMatchFilters": "No recipes match your filters",
+    "tryAdjustingFilters": "Try adjusting your search or clearing some filters to see more recipes.",
+    "clearFilters": "Clear filters",
+    "noSharedRecipes": "No shared recipes",
+    "sharedRecipesAppearHere": "When someone shares a recipe with you, it will appear here.",
+    "noRecipesMatchSearch": "No recipes match your search",
+    "tryDifferentSearchTerm": "Try a different search term.",
+    "clearSearchButton": "Clear search",
+    "addToCollection": "Add to collection",
+    "addToGroceryList": "Add to grocery list",
+    "addToCollectionLabel": "Add to Collection",
+    "addToListLabel": "Add to List",
+    "myRecipes": "My Recipes",
+    "sharedWithMe": "Shared with me"
   },
   "sharing": {
     "shareRecipe": "Share Recipe",
@@ -230,6 +340,7 @@
   "groceryLists": {
     "title": "Grocery Lists",
     "createList": "Create List",
+    "create": "Create",
     "newList": "New List",
     "listName": "List name",
     "emptyList": "No items yet",
@@ -242,7 +353,19 @@
     "exitShopping": "Exit shopping",
     "allDone": "All done!",
     "itemsRemaining": "{count, plural, one {# item remaining} other {# items remaining}}",
-    "progress": "Progress"
+    "progress": "Progress",
+    "searchLists": "Search lists...",
+    "all": "All",
+    "myLists": "My Lists",
+    "shared": "Shared",
+    "noListsFound": "No lists found",
+    "tryDifferentSearch": "Try a different search term",
+    "noPersonalLists": "No personal lists",
+    "noSharedLists": "No shared lists",
+    "createToStart": "Create a list to get started",
+    "sharedListsAppearHere": "Lists shared with you will appear here",
+    "noGroceryListsYet": "No grocery lists yet",
+    "createFirstList": "Create your first list to start shopping"
   },
   "errors": {
     "generic": "An error occurred. Please try again.",
@@ -253,7 +376,26 @@
     "failedToLoad": "Failed to load. Please try again.",
     "failedToCreate": "Failed to create. Please try again.",
     "failedToDelete": "Failed to delete. Please try again.",
-    "failedToUpdate": "Failed to update. Please try again."
+    "failedToUpdate": "Failed to update. Please try again.",
+    "somethingWentWrong": "Something went wrong",
+    "couldntLoadRecipes": "We couldn't load your recipes. Please try again.",
+    "tryAgain": "Try again",
+    "youreOffline": "You're Offline",
+    "checkConnection": "Please check your internet connection and try again.",
+    "failedToSaveRecipe": "Failed to save recipe",
+    "failedToStartOnboarding": "Failed to start onboarding",
+    "noResponseBody": "No response body",
+    "failedToSendMessage": "Failed to send message",
+    "failedToSaveRating": "Failed to save rating",
+    "ttsFailed": "Text-to-speech failed",
+    "failedToLoadSession": "Failed to load session",
+    "failedToLoadChatHistory": "Failed to load chat history",
+    "failedToToggleItem": "Failed to toggle item",
+    "failedToDeleteItem": "Failed to delete item",
+    "failedToClearCheckedItems": "Failed to clear checked items",
+    "failedToDeleteList": "Failed to delete list",
+    "uploadFailed": "Upload failed",
+    "failedToSaveWorkoutCompletion": "Failed to save workout completion"
   },
   "recipeImport": {
     "importRecipe": "Import Recipe",
@@ -278,7 +420,15 @@
     "chooseDifferentFile": "Choose Different File",
     "dropFileHere": "Drop file here or browse",
     "fileRequirements": "JPEG, PNG, WebP, GIF, HEIC, or PDF up to {maxSize}MB",
-    "import": "Import"
+    "import": "Import",
+    "invalidFile": "Invalid file",
+    "failedToCancelExtraction": "Failed to cancel extraction",
+    "unexpectedResponse": "Unexpected response from server",
+    "failedToCheckStatus": "Failed to check extraction status",
+    "extractionFailed": "Recipe extraction failed",
+    "failedToExtractPdf": "Failed to extract recipe from PDF",
+    "failedToExtract": "Failed to extract recipe",
+    "pageNumber": "(page {number})"
   },
   "groceryModal": {
     "createGroceryList": "Create Grocery List",
@@ -321,8 +471,119 @@
     "removeStep": "Remove step",
     "removeGroup": "Remove group",
     "removeIngredient": "Remove ingredient",
+    "addStep": "Add step",
     "dropImagesHere": "Drop images here or browse",
-    "imageRequirements": "JPEG, PNG, WebP, GIF up to 10MB"
+    "imageRequirements": "JPEG, PNG, WebP, GIF up to 10MB",
+    "primary": "Primary",
+    "setAsPrimary": "Set as primary",
+    "remove": "Remove",
+    "captionOptional": "Caption (optional)",
+    "uploading": "Uploading...",
+    "imageCount": "{current} of {max} images",
+    "atLeastOneRequired": "(at least 1 required)",
+    "maxImagesAllowed": "Maximum {max} images allowed"
+  },
+  "tagInput": {
+    "addTag": "Add tag...",
+    "yourTags": "Your tags",
+    "tagCount": "{current} of {max} tags"
+  },
+  "ingredientEditor": {
+    "groupNamePlaceholder": "Group name (e.g., Dairy, Spices)",
+    "qtyPlaceholder": "Qty",
+    "unitPlaceholder": "Unit",
+    "namePlaceholder": "Ingredient name",
+    "addIngredient": "Add ingredient",
+    "addIngredientGroup": "Add ingredient group"
+  },
+  "recipeFormLabels": {
+    "basicInfo": "Basic Info",
+    "title": "Title",
+    "titlePlaceholder": "Recipe title",
+    "description": "Description",
+    "descriptionPlaceholder": "Brief description of the recipe",
+    "tags": "Tags",
+    "images": "Images",
+    "timeAndServings": "Time & Servings",
+    "prepTimeMin": "Prep time (min)",
+    "cookTimeMin": "Cook time (min)",
+    "nutritionPerServing": "Nutrition (per serving)",
+    "calories": "Calories",
+    "proteinG": "Protein (g)",
+    "carbsG": "Carbs (g)",
+    "fatG": "Fat (g)",
+    "steps": "Steps",
+    "uploadingImages": "Uploading images...",
+    "saveChanges": "Save Changes",
+    "createRecipe": "Create Recipe"
+  },
+  "addToGroceryList": {
+    "addToGroceryList": "Add to Grocery List",
+    "addedToList": "Added to Grocery List",
+    "itemsAdded": "{count, plural, one {# item added} other {# items added}}",
+    "addedToListName": "Added to \"{name}\"",
+    "viewGroceryList": "View Grocery List",
+    "ingredientCount": "{count, plural, one {# ingredient} other {# ingredients}}",
+    "servings": "Servings",
+    "servingsCount": "{count, plural, one {# serving} other {# servings}}",
+    "create": "Create",
+    "createNewList": "Create New List",
+    "orAddToExisting": "Or add to existing list:",
+    "itemCount": "{count, plural, one {# item} other {# items}}",
+    "checkedCount": "{count} checked",
+    "adding": "Adding...",
+    "addToSelectedList": "Add to Selected List",
+    "createListAndAdd": "Create List & Add",
+    "failedToFetch": "Failed to fetch grocery lists",
+    "failedToCreateList": "Failed to create list",
+    "failedToGenerate": "Failed to generate grocery list"
+  },
+  "addToCollection": {
+    "addingRecipe": "Adding \"{name}\"",
+    "collectionNamePlaceholder": "Collection name",
+    "create": "Create",
+    "noCollectionsYet": "No collections yet. Create one above!",
+    "recipeCount": "{count, plural, one {# recipe} other {# recipes}}",
+    "alreadyAdded": "Already added",
+    "addToSelected": "Add to Selected",
+    "recipeNotFound": "Recipe not found",
+    "failedToCheckMembership": "Failed to check collection membership",
+    "failedToAdd": "Failed to add to collection"
+  },
+  "shareCollection": {
+    "shareCollection": "Share Collection",
+    "collectionShared": "Collection Shared!",
+    "sharing": "Sharing",
+    "recipesWillBeCopied": "{count, plural, one {# recipe will be copied} other {# recipes will be copied}}",
+    "showRecipes": "Show recipes",
+    "hideRecipes": "Hide recipes",
+    "recipientEmail": "Recipient's Email",
+    "emailPlaceholder": "friend@example.com",
+    "personalMessage": "Personal Message",
+    "optionalMessage": "Optional message to include",
+    "infoText": "The recipient will receive their own copies of this collection and all its recipes. They can modify their copies without affecting your originals.",
+    "sharingCollection": "Sharing collection...",
+    "copyingRecipes": "Copying {count, plural, one {# recipe} other {# recipes}}",
+    "sentTo": "Collection sent to {name}!",
+    "recipientReceived": "They received copies of {count, plural, one {# recipe} other {# recipes}} they can edit.",
+    "failedToShare": "Failed to share collection"
+  },
+  "collectionModal": {
+    "createCollection": "Create Collection",
+    "editCollection": "Edit Collection",
+    "name": "Name",
+    "namePlaceholder": "e.g., Weeknight Dinners",
+    "nameRequired": "Name is required",
+    "description": "Description",
+    "optionalDescription": "Optional description",
+    "coverImageUrl": "Cover Image URL",
+    "saveChanges": "Save Changes",
+    "deleteCollection": "Delete Collection",
+    "deleteConfirmation": "Are you sure? This will remove the collection but not the recipes.",
+    "yesDelete": "Yes, Delete",
+    "deleting": "Deleting...",
+    "failedToSave": "Failed to save collection",
+    "failedToDelete": "Failed to delete collection"
   },
   "collections": {
     "collections": "Collections",
@@ -334,7 +595,53 @@
     "removeFromCollection": "Remove from collection",
     "failedToFetch": "Failed to fetch collections",
     "failedToCreate": "Failed to create collection",
-    "failedToRemove": "Failed to remove recipe from collection"
+    "failedToRemove": "Failed to remove recipe from collection",
+    "noRecipesInCollection": "No recipes in this collection",
+    "addRecipesFromLibrary": "Add recipes from your recipe library",
+    "remove": "Remove",
+    "cancel": "Cancel",
+    "removeFromCollectionLabel": "Remove {title} from collection"
+  },
+  "collectionDetail": {
+    "sharedBy": "Shared by {name}",
+    "recipeCount": "{count, plural, one {# recipe} other {# recipes}}",
+    "share": "Share",
+    "addRecipe": "Add Recipe",
+    "addRecipes": "Add Recipes",
+    "selectRecipesToAdd": "Select recipes to add to \"{name}\"",
+    "allRecipesAdded": "All your recipes are already in this collection",
+    "adding": "Adding...",
+    "addCount": "{count, plural, one {Add # Recipe} other {Add # Recipes}}",
+    "failedToFetchRecipes": "Failed to fetch recipes"
+  },
+  "shareGroceryList": {
+    "shareList": "Share List",
+    "shareWith": "Share with",
+    "searching": "Searching...",
+    "permission": "Permission",
+    "sharing": "Sharing...",
+    "alreadyShared": "This list is already shared with this user",
+    "failedToShare": "Failed to share list",
+    "failedToRemove": "Failed to remove share",
+    "failedToUpdate": "Failed to update permission",
+    "removeUserLabel": "Remove {name}"
+  },
+  "recipeCard": {
+    "prepMinutes": "{count}m prep",
+    "cookMinutes": "{count}m cook",
+    "servingsCount": "{count, plural, one {# serving} other {# servings}}",
+    "viewRecipe": "View recipe: {title}",
+    "addToCollection": "Add {title} to collection",
+    "moreCount": "+{count} more"
+  },
+  "groceryItem": {
+    "checkItem": "Check item",
+    "uncheckItem": "Uncheck item",
+    "deleteItem": "Delete item"
+  },
+  "exerciseImages": {
+    "showStartPosition": "Show start position",
+    "showEndPosition": "Show end position"
   },
   "chat": {
     "fitStreakAI": "FitStreak AI",
@@ -350,6 +657,90 @@
     "recording": "Recording...",
     "transcribing": "Transcribing...",
     "clickToRecord": "Click to record",
-    "clickToStopAndSend": "Click to stop and send"
+    "clickToStopAndSend": "Click to stop and send",
+    "ratingError": "Could not save your rating. Please try again.",
+    "ratingTooEasy": "That workout felt too easy for me.",
+    "ratingJustRight": "That workout was just right - good challenge!",
+    "ratingTooHard": "That workout was too hard for me.",
+    "microphoneError": "Could not access microphone. Please check permissions.",
+    "sessionLoadError": "Failed to load chat session. Please try again.",
+    "buttonTooEasy": "Too Easy",
+    "buttonJustRight": "Just Right",
+    "buttonTooHard": "Too Hard",
+    "aiAssistantDescription": "Your AI-powered fitness and nutrition assistant",
+    "canHelpWith": "I can help with:",
+    "helpExercise": "Exercise technique, form, and modifications",
+    "helpRecipe": "Recipe ideas and nutrition advice",
+    "helpProgress": "Workout history and progress tracking",
+    "helpMotivation": "Personalized motivation and encouragement",
+    "helpEquipment": "Equipment and training recommendations",
+    "rememberPreferences": "I remember your equipment, goals, and preferences between sessions!",
+    "voiceEnabled": "Voice enabled — tap the mic to talk to me!",
+    "errorEncountered": "Sorry, I encountered an error. Please try again.",
+    "stopSpeaking": "Stop speaking",
+    "listenToResponse": "Listen to response",
+    "stopButton": "Stop",
+    "listenButton": "Listen"
+  },
+  "chatTools": {
+    "get_workout": "Fetched workout",
+    "get_all_workouts": "Fetched all workouts",
+    "update_workout": "Updated workout",
+    "save_memory": "Saved to memory",
+    "get_memories": "Retrieved memories",
+    "delete_memory": "Deleted memory",
+    "web_search": "Searched the web",
+    "create_feedback_issue": "Recorded feedback",
+    "search_exercises": "Searched exercises",
+    "create_exercise": "Created exercise",
+    "get_exercise_images": "Checked exercise images",
+    "get_workout_stats": "Analyzed workout history",
+    "search_recipes": "Searched recipes",
+    "get_recipe": "Fetched recipe",
+    "create_recipe": "Created recipe",
+    "update_recipe": "Updated recipe"
+  },
+  "chatHistory": {
+    "title": "Chat History",
+    "closeHistory": "Close history",
+    "tryAgain": "Try Again",
+    "noConversations": "No conversations yet",
+    "startChatting": "Start chatting to see your history here.",
+    "newChat": "New Chat",
+    "messageCount": "{count, plural, one {# message} other {# messages}}",
+    "current": "Current",
+    "loadMore": "Load More",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "daysAgo": "{count, plural, one {# day ago} other {# days ago}}"
+  },
+  "recipeGallery": {
+    "previousImage": "Previous image",
+    "nextImage": "Next image",
+    "goToImage": "Go to image {index}"
+  },
+  "favorite": {
+    "removeFromFavorites": "Remove from favorites",
+    "addToFavorites": "Add to favorites"
+  },
+  "starRating": {
+    "rateStars": "{count, plural, one {Rate # star} other {Rate # stars}}"
+  },
+  "onboarding": {
+    "welcomeTitle": "Welcome to Your Fitness Journey",
+    "welcomeDescription": "Let's create a personalized workout plan just for you. I'll ask a few questions about your experience, goals, and equipment to design the perfect program.",
+    "getStarted": "Get Started",
+    "timeEstimate": "This takes about 5 minutes",
+    "settingUpTitle": "Setting Up Your Program",
+    "settingUpDescription": "Answer a few questions to get your personalized plan",
+    "microphoneError": "Could not access microphone. Please check permissions.",
+    "errorEncountered": "Sorry, I encountered an error. Please try again.",
+    "startError": "Sorry, I had trouble starting. Please refresh the page and try again.",
+    "recording": "Recording...",
+    "transcribing": "Transcribing...",
+    "typeYourAnswer": "Type your answer...",
+    "releaseToSend": "Release to send",
+    "holdToRecord": "Hold to record",
+    "send": "Send"
   }
 }

@@ -35,6 +35,7 @@ export function GroceryListDetailClient({
   const tModal = useTranslations("groceryModal");
   const tCommon = useTranslations("common");
   const tSharing = useTranslations("sharing");
+  const tErrors = useTranslations("errors");
   const [list, setList] = useState(initialList);
   const [userNames, setUserNames] = useState(checkedByNames);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -113,7 +114,7 @@ export function GroceryListDetailClient({
       });
 
       if (!res.ok) {
-        throw new Error("Failed to toggle item");
+        throw new Error(tErrors("failedToToggleItem"));
       }
 
       const data = await res.json();
@@ -137,7 +138,7 @@ export function GroceryListDetailClient({
     });
 
     if (!res.ok) {
-      throw new Error("Failed to delete item");
+      throw new Error(tErrors("failedToDeleteItem"));
     }
 
     // Update local state
@@ -158,7 +159,7 @@ export function GroceryListDetailClient({
       });
 
       if (!res.ok) {
-        throw new Error("Failed to clear checked items");
+        throw new Error(tErrors("failedToClearCheckedItems"));
       }
 
       // Update local state
@@ -187,7 +188,7 @@ export function GroceryListDetailClient({
       });
 
       if (!res.ok) {
-        throw new Error("Failed to delete list");
+        throw new Error(tErrors("failedToDeleteList"));
       }
 
       router.push("/grocery-lists");
@@ -252,7 +253,7 @@ export function GroceryListDetailClient({
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-800 hover:text-white"
-              aria-label="Menu"
+              aria-label={tCommon("menu")}
             >
               <svg
                 className="h-5 w-5"

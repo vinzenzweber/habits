@@ -17,7 +17,18 @@
     "dismiss": "Ausblenden",
     "detect": "Erkennen",
     "install": "Installieren",
-    "notNow": "Nicht jetzt"
+    "notNow": "Nicht jetzt",
+    "menu": "Menü",
+    "remove": "Entfernen",
+    "days": {
+      "monday": "Montag",
+      "tuesday": "Dienstag",
+      "wednesday": "Mittwoch",
+      "thursday": "Donnerstag",
+      "friday": "Freitag",
+      "saturday": "Samstag",
+      "sunday": "Sonntag"
+    }
   },
   "nav": {
     "home": "Home",
@@ -40,6 +51,7 @@
     "register": "Registrieren",
     "creatingAccount": "Konto erstellen...",
     "logout": "Abmelden",
+    "loggingOut": "Abmelden...",
     "invalidCredentials": "Ungültige E-Mail oder Passwort",
     "registrationFailed": "Registrierung fehlgeschlagen",
     "registrationSuccessLoginFailed": "Registrierung erfolgreich, aber Anmeldung fehlgeschlagen. Bitte versuche dich anzumelden.",
@@ -137,6 +149,7 @@
     }
   },
   "workout": {
+    "todaysWorkout": "Heutiges Workout",
     "guidedTimer": "Geführter Timer",
     "overallProgress": "Gesamtfortschritt",
     "timeLeft": "{time} übrig",
@@ -149,6 +162,26 @@
     "autoStarted": "Automatisch gestartet · {count} Schritte",
     "noGuidedPlan": "Kein geführter Plan für diesen Tag verfügbar.",
     "addRoutine": "Füge eine Routine zum Trainingsplan hinzu, um zu trainieren.",
+    "enterFullscreen": "Vollbild aktivieren",
+    "exitFullscreen": "Vollbild beenden",
+    "segment": "Segment",
+    "back": "← Zurück",
+    "completedToday": "Heute abgeschlossen",
+    "today": "Heute",
+    "yourWorkout": "Dein {label} Workout",
+    "playAgain": "Nochmal spielen",
+    "start": "Start",
+    "workoutPlan": "Trainingsplan",
+    "exercises": "{count} Übungen",
+    "total": "gesamt",
+    "nanoLimitReached": "Nano-Limit erreicht",
+    "usedAllNano": "Du hast alle {limit} Nano-Workouts diese Woche genutzt.",
+    "completeFullWorkout": "Absolviere ein vollständiges Workout, um deine Streak aufrechtzuerhalten!",
+    "backToHome": "Zurück zur Startseite",
+    "streakSaver": "Streak-Retter",
+    "quickRoutine": "Schnelle Routine",
+    "nanoWorkoutPlan": "Nano-Trainingsplan",
+    "workoutPlanAriaLabel": "Trainingsplan",
     "categories": {
       "prep": "Vorbereitung",
       "warmup": "Aufwärmen",
@@ -158,12 +191,45 @@
       "rest": "Pause"
     }
   },
+  "defaultWorkouts": {
+    "monday": {
+      "title": "Push (Moderat)",
+      "focus": "Oberkörper Drückbewegungen"
+    },
+    "tuesday": {
+      "title": "Pull (Moderat)",
+      "focus": "Oberkörper Zugbewegungen"
+    },
+    "wednesday": {
+      "title": "Lower (Moderat)",
+      "focus": "Beine und hintere Kette"
+    },
+    "thursday": {
+      "title": "HIIT Zirkel",
+      "focus": "Hochintensive Intervalle"
+    },
+    "friday": {
+      "title": "Ganzkörper Flow",
+      "focus": "Verbundübungen"
+    },
+    "saturday": {
+      "title": "Aktive Erholung",
+      "focus": "Mobilität und leichte Arbeit"
+    },
+    "sunday": {
+      "title": "Ruhe & Regeneration",
+      "focus": "Sanfte Bewegung"
+    }
+  },
   "install": {
     "title": "Habits App installieren",
     "description": "Installiere diese App auf deinem Startbildschirm für die beste Erfahrung."
   },
   "recipes": {
     "backToRecipes": "← Zurück zu Rezepten",
+    "backToRecipe": "← Zurück zum Rezept",
+    "newRecipe": "Neues Rezept",
+    "editRecipe": "Rezept bearbeiten",
     "edit": "Bearbeiten",
     "share": "Teilen",
     "prepTime": "Vorbereitung",
@@ -178,6 +244,11 @@
     "fiber": "Ballaststoffe",
     "ingredients": "Zutaten",
     "instructions": "Zubereitung",
+    "timeAndServingsAriaLabel": "Zeit und Portionen",
+    "nutritionInfoAriaLabel": "Nährwertinformationen",
+    "tagsAriaLabel": "Tags",
+    "ingredientsAriaLabel": "Zutaten",
+    "instructionsAriaLabel": "Zubereitung",
     "yourRating": "Deine Bewertung",
     "averageRating": "Durchschnitt",
     "ratings": "Bewertungen",
@@ -196,7 +267,46 @@
     "preview": "Vorschau",
     "saveTranslation": "Übersetzung speichern",
     "translating": "Übersetze...",
-    "translationPreview": "Übersetzungsvorschau"
+    "translationPreview": "Übersetzungsvorschau",
+    "translationFailed": "Übersetzung fehlgeschlagen",
+    "failedToSaveTranslation": "Übersetzung konnte nicht gespeichert werden",
+    "shared": "Geteilt"
+  },
+  "recipeDetailError": {
+    "backToRecipes": "← Zurück zu Rezepten",
+    "somethingWentWrong": "Etwas ist schiefgelaufen",
+    "couldNotLoadRecipe": "Das Rezept konnte nicht geladen werden. Bitte versuche es erneut.",
+    "tryAgain": "Erneut versuchen",
+    "viewAllRecipes": "Alle Rezepte anzeigen"
+  },
+  "recipeList": {
+    "title": "Rezepte",
+    "addRecipe": "Rezept hinzufügen",
+    "importFromPhotoOrPdf": "Aus Foto oder PDF importieren",
+    "searchRecipes": "Rezepte durchsuchen...",
+    "clearSearch": "Suche löschen",
+    "favorites": "Favoriten",
+    "mostRecent": "Neueste",
+    "alphabetical": "A-Z",
+    "highestRated": "Höchste Bewertung",
+    "activeFilters": "{count} aktiv",
+    "noRecipesYet": "Noch keine Rezepte",
+    "startBuildingCollection": "Beginne deine Sammlung gesunder Rezepte aufzubauen. Importiere aus dem Web oder erstelle eigene.",
+    "addFirstRecipe": "Füge dein erstes Rezept hinzu",
+    "noRecipesMatchFilters": "Keine Rezepte entsprechen deinen Filtern",
+    "tryAdjustingFilters": "Versuche deine Suche anzupassen oder einige Filter zu löschen, um mehr Rezepte zu sehen.",
+    "clearFilters": "Filter löschen",
+    "noSharedRecipes": "Keine geteilten Rezepte",
+    "sharedRecipesAppearHere": "Wenn jemand ein Rezept mit dir teilt, erscheint es hier.",
+    "noRecipesMatchSearch": "Keine Rezepte entsprechen deiner Suche",
+    "tryDifferentSearchTerm": "Versuche einen anderen Suchbegriff.",
+    "clearSearchButton": "Suche löschen",
+    "addToCollection": "Zur Sammlung hinzufügen",
+    "addToGroceryList": "Zur Einkaufsliste hinzufügen",
+    "addToCollectionLabel": "Zur Sammlung",
+    "addToListLabel": "Zur Liste",
+    "myRecipes": "Meine Rezepte",
+    "sharedWithMe": "Mit mir geteilt"
   },
   "sharing": {
     "shareRecipe": "Rezept teilen",
@@ -230,6 +340,7 @@
   "groceryLists": {
     "title": "Einkaufslisten",
     "createList": "Liste erstellen",
+    "create": "Erstellen",
     "newList": "Neue Liste",
     "listName": "Listenname",
     "emptyList": "Noch keine Artikel",
@@ -242,7 +353,19 @@
     "exitShopping": "Einkaufen beenden",
     "allDone": "Alles erledigt!",
     "itemsRemaining": "{count, plural, one {# Artikel übrig} other {# Artikel übrig}}",
-    "progress": "Fortschritt"
+    "progress": "Fortschritt",
+    "searchLists": "Listen durchsuchen...",
+    "all": "Alle",
+    "myLists": "Meine Listen",
+    "shared": "Geteilt",
+    "noListsFound": "Keine Listen gefunden",
+    "tryDifferentSearch": "Versuche einen anderen Suchbegriff",
+    "noPersonalLists": "Keine persönlichen Listen",
+    "noSharedLists": "Keine geteilten Listen",
+    "createToStart": "Erstelle eine Liste, um loszulegen",
+    "sharedListsAppearHere": "Mit dir geteilte Listen erscheinen hier",
+    "noGroceryListsYet": "Noch keine Einkaufslisten",
+    "createFirstList": "Erstelle deine erste Liste, um mit dem Einkaufen zu beginnen"
   },
   "errors": {
     "generic": "Ein Fehler ist aufgetreten. Bitte versuche es erneut.",
@@ -253,7 +376,26 @@
     "failedToLoad": "Laden fehlgeschlagen. Bitte versuche es erneut.",
     "failedToCreate": "Erstellen fehlgeschlagen. Bitte versuche es erneut.",
     "failedToDelete": "Löschen fehlgeschlagen. Bitte versuche es erneut.",
-    "failedToUpdate": "Aktualisieren fehlgeschlagen. Bitte versuche es erneut."
+    "failedToUpdate": "Aktualisieren fehlgeschlagen. Bitte versuche es erneut.",
+    "somethingWentWrong": "Etwas ist schiefgelaufen",
+    "couldntLoadRecipes": "Deine Rezepte konnten nicht geladen werden. Bitte versuche es erneut.",
+    "tryAgain": "Erneut versuchen",
+    "youreOffline": "Du bist offline",
+    "checkConnection": "Bitte überprüfe deine Internetverbindung und versuche es erneut.",
+    "failedToSaveRecipe": "Rezept speichern fehlgeschlagen",
+    "failedToStartOnboarding": "Onboarding starten fehlgeschlagen",
+    "noResponseBody": "Keine Antwort vom Server",
+    "failedToSendMessage": "Nachricht senden fehlgeschlagen",
+    "failedToSaveRating": "Bewertung speichern fehlgeschlagen",
+    "ttsFailed": "Sprachausgabe fehlgeschlagen",
+    "failedToLoadSession": "Sitzung laden fehlgeschlagen",
+    "failedToLoadChatHistory": "Chat-Verlauf laden fehlgeschlagen",
+    "failedToToggleItem": "Element umschalten fehlgeschlagen",
+    "failedToDeleteItem": "Element löschen fehlgeschlagen",
+    "failedToClearCheckedItems": "Abgehakte Elemente löschen fehlgeschlagen",
+    "failedToDeleteList": "Liste löschen fehlgeschlagen",
+    "uploadFailed": "Upload fehlgeschlagen",
+    "failedToSaveWorkoutCompletion": "Workout-Abschluss speichern fehlgeschlagen"
   },
   "recipeImport": {
     "importRecipe": "Rezept importieren",
@@ -278,7 +420,15 @@
     "chooseDifferentFile": "Andere Datei wählen",
     "dropFileHere": "Datei hier ablegen oder durchsuchen",
     "fileRequirements": "JPEG, PNG, WebP, GIF, HEIC oder PDF bis zu {maxSize}MB",
-    "import": "Importieren"
+    "import": "Importieren",
+    "invalidFile": "Ungültige Datei",
+    "failedToCancelExtraction": "Extraktion konnte nicht abgebrochen werden",
+    "unexpectedResponse": "Unerwartete Antwort vom Server",
+    "failedToCheckStatus": "Extraktionsstatus konnte nicht überprüft werden",
+    "extractionFailed": "Rezeptextraktion fehlgeschlagen",
+    "failedToExtractPdf": "Rezept konnte nicht aus PDF extrahiert werden",
+    "failedToExtract": "Rezept konnte nicht extrahiert werden",
+    "pageNumber": "(Seite {number})"
   },
   "groceryModal": {
     "createGroceryList": "Einkaufsliste erstellen",
@@ -321,8 +471,119 @@
     "removeStep": "Schritt entfernen",
     "removeGroup": "Gruppe entfernen",
     "removeIngredient": "Zutat entfernen",
+    "addStep": "Schritt hinzufügen",
     "dropImagesHere": "Bilder hier ablegen oder durchsuchen",
-    "imageRequirements": "JPEG, PNG, WebP, GIF bis zu 10MB"
+    "imageRequirements": "JPEG, PNG, WebP, GIF bis zu 10MB",
+    "primary": "Primär",
+    "setAsPrimary": "Als primär festlegen",
+    "remove": "Entfernen",
+    "captionOptional": "Bildunterschrift (optional)",
+    "uploading": "Wird hochgeladen...",
+    "imageCount": "{current} von {max} Bildern",
+    "atLeastOneRequired": "(mindestens 1 erforderlich)",
+    "maxImagesAllowed": "Maximal {max} Bilder erlaubt"
+  },
+  "tagInput": {
+    "addTag": "Tag hinzufügen...",
+    "yourTags": "Deine Tags",
+    "tagCount": "{current} von {max} Tags"
+  },
+  "ingredientEditor": {
+    "groupNamePlaceholder": "Gruppenname (z.B. Milchprodukte, Gewürze)",
+    "qtyPlaceholder": "Menge",
+    "unitPlaceholder": "Einheit",
+    "namePlaceholder": "Zutatenname",
+    "addIngredient": "Zutat hinzufügen",
+    "addIngredientGroup": "Zutatengruppe hinzufügen"
+  },
+  "recipeFormLabels": {
+    "basicInfo": "Grundinfos",
+    "title": "Titel",
+    "titlePlaceholder": "Rezepttitel",
+    "description": "Beschreibung",
+    "descriptionPlaceholder": "Kurze Beschreibung des Rezepts",
+    "tags": "Tags",
+    "images": "Bilder",
+    "timeAndServings": "Zeit & Portionen",
+    "prepTimeMin": "Vorbereitungszeit (Min.)",
+    "cookTimeMin": "Kochzeit (Min.)",
+    "nutritionPerServing": "Nährwerte (pro Portion)",
+    "calories": "Kalorien",
+    "proteinG": "Protein (g)",
+    "carbsG": "Kohlenhydrate (g)",
+    "fatG": "Fett (g)",
+    "steps": "Schritte",
+    "uploadingImages": "Bilder werden hochgeladen...",
+    "saveChanges": "Änderungen speichern",
+    "createRecipe": "Rezept erstellen"
+  },
+  "addToGroceryList": {
+    "addToGroceryList": "Zur Einkaufsliste hinzufügen",
+    "addedToList": "Zur Einkaufsliste hinzugefügt",
+    "itemsAdded": "{count, plural, one {# Artikel hinzugefügt} other {# Artikel hinzugefügt}}",
+    "addedToListName": "Zu \"{name}\" hinzugefügt",
+    "viewGroceryList": "Einkaufsliste anzeigen",
+    "ingredientCount": "{count, plural, one {# Zutat} other {# Zutaten}}",
+    "servings": "Portionen",
+    "servingsCount": "{count, plural, one {# Portion} other {# Portionen}}",
+    "create": "Erstellen",
+    "createNewList": "Neue Liste erstellen",
+    "orAddToExisting": "Oder zu bestehender Liste hinzufügen:",
+    "itemCount": "{count, plural, one {# Artikel} other {# Artikel}}",
+    "checkedCount": "{count} abgehakt",
+    "adding": "Hinzufügen...",
+    "addToSelectedList": "Zur ausgewählten Liste hinzufügen",
+    "createListAndAdd": "Liste erstellen und hinzufügen",
+    "failedToFetch": "Einkaufslisten konnten nicht geladen werden",
+    "failedToCreateList": "Liste konnte nicht erstellt werden",
+    "failedToGenerate": "Einkaufsliste konnte nicht erstellt werden"
+  },
+  "addToCollection": {
+    "addingRecipe": "\"{name}\" hinzufügen",
+    "collectionNamePlaceholder": "Sammlungsname",
+    "create": "Erstellen",
+    "noCollectionsYet": "Noch keine Sammlungen. Erstelle oben eine!",
+    "recipeCount": "{count, plural, one {# Rezept} other {# Rezepte}}",
+    "alreadyAdded": "Bereits hinzugefügt",
+    "addToSelected": "Zur Auswahl hinzufügen",
+    "recipeNotFound": "Rezept nicht gefunden",
+    "failedToCheckMembership": "Sammlungszugehörigkeit konnte nicht geprüft werden",
+    "failedToAdd": "Konnte nicht zur Sammlung hinzugefügt werden"
+  },
+  "shareCollection": {
+    "shareCollection": "Sammlung teilen",
+    "collectionShared": "Sammlung geteilt!",
+    "sharing": "Teilen",
+    "recipesWillBeCopied": "{count, plural, one {# Rezept wird kopiert} other {# Rezepte werden kopiert}}",
+    "showRecipes": "Rezepte anzeigen",
+    "hideRecipes": "Rezepte ausblenden",
+    "recipientEmail": "E-Mail des Empfängers",
+    "emailPlaceholder": "freund@example.com",
+    "personalMessage": "Persönliche Nachricht",
+    "optionalMessage": "Optionale Nachricht",
+    "infoText": "Der Empfänger erhält eigene Kopien dieser Sammlung und aller Rezepte. Er kann seine Kopien bearbeiten, ohne deine Originale zu beeinflussen.",
+    "sharingCollection": "Sammlung wird geteilt...",
+    "copyingRecipes": "Kopiere {count, plural, one {# Rezept} other {# Rezepte}}",
+    "sentTo": "Sammlung an {name} gesendet!",
+    "recipientReceived": "Empfänger erhielt Kopien von {count, plural, one {# Rezept} other {# Rezepten}}, die bearbeitet werden können.",
+    "failedToShare": "Sammlung konnte nicht geteilt werden"
+  },
+  "collectionModal": {
+    "createCollection": "Sammlung erstellen",
+    "editCollection": "Sammlung bearbeiten",
+    "name": "Name",
+    "namePlaceholder": "z.B. Abendessen unter der Woche",
+    "nameRequired": "Name ist erforderlich",
+    "description": "Beschreibung",
+    "optionalDescription": "Optionale Beschreibung",
+    "coverImageUrl": "Coverbild-URL",
+    "saveChanges": "Änderungen speichern",
+    "deleteCollection": "Sammlung löschen",
+    "deleteConfirmation": "Bist du sicher? Die Sammlung wird entfernt, aber nicht die Rezepte.",
+    "yesDelete": "Ja, löschen",
+    "deleting": "Löschen...",
+    "failedToSave": "Sammlung konnte nicht gespeichert werden",
+    "failedToDelete": "Sammlung konnte nicht gelöscht werden"
   },
   "collections": {
     "collections": "Sammlungen",
@@ -334,7 +595,53 @@
     "removeFromCollection": "Aus Sammlung entfernen",
     "failedToFetch": "Sammlungen konnten nicht geladen werden",
     "failedToCreate": "Sammlung konnte nicht erstellt werden",
-    "failedToRemove": "Rezept konnte nicht aus der Sammlung entfernt werden"
+    "failedToRemove": "Rezept konnte nicht aus der Sammlung entfernt werden",
+    "noRecipesInCollection": "Keine Rezepte in dieser Sammlung",
+    "addRecipesFromLibrary": "Füge Rezepte aus deiner Rezeptbibliothek hinzu",
+    "remove": "Entfernen",
+    "cancel": "Abbrechen",
+    "removeFromCollectionLabel": "{title} aus Sammlung entfernen"
+  },
+  "collectionDetail": {
+    "sharedBy": "Geteilt von {name}",
+    "recipeCount": "{count, plural, one {# Rezept} other {# Rezepte}}",
+    "share": "Teilen",
+    "addRecipe": "Rezept hinzufügen",
+    "addRecipes": "Rezepte hinzufügen",
+    "selectRecipesToAdd": "Wähle Rezepte aus, die du zu \"{name}\" hinzufügen möchtest",
+    "allRecipesAdded": "Alle deine Rezepte sind bereits in dieser Sammlung",
+    "adding": "Hinzufügen...",
+    "addCount": "{count, plural, one {# Rezept hinzufügen} other {# Rezepte hinzufügen}}",
+    "failedToFetchRecipes": "Rezepte konnten nicht geladen werden"
+  },
+  "shareGroceryList": {
+    "shareList": "Liste teilen",
+    "shareWith": "Teilen mit",
+    "searching": "Suchen...",
+    "permission": "Berechtigung",
+    "sharing": "Teilen...",
+    "alreadyShared": "Diese Liste ist bereits mit diesem Benutzer geteilt",
+    "failedToShare": "Liste konnte nicht geteilt werden",
+    "failedToRemove": "Freigabe konnte nicht entfernt werden",
+    "failedToUpdate": "Berechtigung konnte nicht aktualisiert werden",
+    "removeUserLabel": "{name} entfernen"
+  },
+  "recipeCard": {
+    "prepMinutes": "{count} Min. Vorbereitung",
+    "cookMinutes": "{count} Min. Kochen",
+    "servingsCount": "{count, plural, one {# Portion} other {# Portionen}}",
+    "viewRecipe": "Rezept anzeigen: {title}",
+    "addToCollection": "{title} zur Sammlung hinzufügen",
+    "moreCount": "+{count} weitere"
+  },
+  "groceryItem": {
+    "checkItem": "Artikel abhaken",
+    "uncheckItem": "Artikel nicht abhaken",
+    "deleteItem": "Artikel löschen"
+  },
+  "exerciseImages": {
+    "showStartPosition": "Startposition anzeigen",
+    "showEndPosition": "Endposition anzeigen"
   },
   "chat": {
     "fitStreakAI": "FitStreak AI",
@@ -350,6 +657,90 @@
     "recording": "Aufnahme...",
     "transcribing": "Transkribieren...",
     "clickToRecord": "Zum Aufnehmen klicken",
-    "clickToStopAndSend": "Zum Stoppen und Senden klicken"
+    "clickToStopAndSend": "Zum Stoppen und Senden klicken",
+    "ratingError": "Bewertung konnte nicht gespeichert werden. Bitte versuche es erneut.",
+    "ratingTooEasy": "Das Training fühlte sich zu leicht für mich an.",
+    "ratingJustRight": "Das Training war genau richtig - gute Herausforderung!",
+    "ratingTooHard": "Das Training war zu schwer für mich.",
+    "microphoneError": "Mikrofon konnte nicht aktiviert werden. Bitte überprüfe die Berechtigungen.",
+    "sessionLoadError": "Chat-Sitzung konnte nicht geladen werden. Bitte versuche es erneut.",
+    "buttonTooEasy": "Zu leicht",
+    "buttonJustRight": "Genau richtig",
+    "buttonTooHard": "Zu schwer",
+    "aiAssistantDescription": "Dein KI-gestützter Fitness- und Ernährungsassistent",
+    "canHelpWith": "Ich kann helfen mit:",
+    "helpExercise": "Übungstechnik, Form und Modifikationen",
+    "helpRecipe": "Rezeptideen und Ernährungsberatung",
+    "helpProgress": "Trainingshistorie und Fortschrittsverfolgung",
+    "helpMotivation": "Persönliche Motivation und Ermutigung",
+    "helpEquipment": "Ausrüstungs- und Trainingsempfehlungen",
+    "rememberPreferences": "Ich merke mir deine Ausrüstung, Ziele und Vorlieben zwischen den Sitzungen!",
+    "voiceEnabled": "Spracheingabe aktiviert — tippe auf das Mikrofon, um mit mir zu sprechen!",
+    "errorEncountered": "Entschuldigung, es ist ein Fehler aufgetreten. Bitte versuche es erneut.",
+    "stopSpeaking": "Wiedergabe stoppen",
+    "listenToResponse": "Antwort anhören",
+    "stopButton": "Stopp",
+    "listenButton": "Anhören"
+  },
+  "chatTools": {
+    "get_workout": "Workout abgerufen",
+    "get_all_workouts": "Alle Workouts abgerufen",
+    "update_workout": "Workout aktualisiert",
+    "save_memory": "In Erinnerung gespeichert",
+    "get_memories": "Erinnerungen abgerufen",
+    "delete_memory": "Erinnerung gelöscht",
+    "web_search": "Web durchsucht",
+    "create_feedback_issue": "Feedback aufgezeichnet",
+    "search_exercises": "Übungen durchsucht",
+    "create_exercise": "Übung erstellt",
+    "get_exercise_images": "Übungsbilder überprüft",
+    "get_workout_stats": "Trainingshistorie analysiert",
+    "search_recipes": "Rezepte durchsucht",
+    "get_recipe": "Rezept abgerufen",
+    "create_recipe": "Rezept erstellt",
+    "update_recipe": "Rezept aktualisiert"
+  },
+  "chatHistory": {
+    "title": "Chat-Verlauf",
+    "closeHistory": "Verlauf schließen",
+    "tryAgain": "Erneut versuchen",
+    "noConversations": "Noch keine Unterhaltungen",
+    "startChatting": "Beginne zu chatten, um deinen Verlauf hier zu sehen.",
+    "newChat": "Neuer Chat",
+    "messageCount": "{count, plural, one {# Nachricht} other {# Nachrichten}}",
+    "current": "Aktuell",
+    "loadMore": "Mehr laden",
+    "today": "Heute",
+    "yesterday": "Gestern",
+    "daysAgo": "{count, plural, one {vor # Tag} other {vor # Tagen}}"
+  },
+  "recipeGallery": {
+    "previousImage": "Vorheriges Bild",
+    "nextImage": "Nächstes Bild",
+    "goToImage": "Gehe zu Bild {index}"
+  },
+  "favorite": {
+    "removeFromFavorites": "Aus Favoriten entfernen",
+    "addToFavorites": "Zu Favoriten hinzufügen"
+  },
+  "starRating": {
+    "rateStars": "{count, plural, one {# Stern bewerten} other {# Sterne bewerten}}"
+  },
+  "onboarding": {
+    "welcomeTitle": "Willkommen zu deiner Fitness-Reise",
+    "welcomeDescription": "Lass uns einen personalisierten Trainingsplan für dich erstellen. Ich werde dir ein paar Fragen zu deiner Erfahrung, deinen Zielen und deiner Ausrüstung stellen, um das perfekte Programm zu entwerfen.",
+    "getStarted": "Los geht's",
+    "timeEstimate": "Das dauert etwa 5 Minuten",
+    "settingUpTitle": "Dein Programm wird erstellt",
+    "settingUpDescription": "Beantworte ein paar Fragen, um deinen personalisierten Plan zu erhalten",
+    "microphoneError": "Mikrofon konnte nicht aktiviert werden. Bitte überprüfe die Berechtigungen.",
+    "errorEncountered": "Entschuldigung, es ist ein Fehler aufgetreten. Bitte versuche es erneut.",
+    "startError": "Entschuldigung, beim Starten ist ein Problem aufgetreten. Bitte lade die Seite neu und versuche es erneut.",
+    "recording": "Aufnahme...",
+    "transcribing": "Transkribieren...",
+    "typeYourAnswer": "Gib deine Antwort ein...",
+    "releaseToSend": "Loslassen zum Senden",
+    "holdToRecord": "Halten zum Aufnehmen",
+    "send": "Senden"
   }
 }

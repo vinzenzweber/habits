@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 import { useChat } from "@/contexts/ChatContext";
 import { useFullscreen } from "@/lib/fullscreen";
@@ -98,6 +99,9 @@ export function GuidedRoutinePlayer({
   availableImages,
 }: GuidedRoutinePlayerProps) {
   const { openChat } = useChat();
+  const t = useTranslations("workout");
+  const tCommon = useTranslations("common");
+  const tErrors = useTranslations("errors");
 
   // Helper to check if an exercise has images available
   const hasImages = useCallback((exerciseName: string) => {
@@ -194,7 +198,7 @@ export function GuidedRoutinePlayer({
             body: JSON.stringify({ durationSeconds: actualDuration })
           });
           if (!res.ok) {
-            throw new Error('Failed to save workout completion');
+            throw new Error(tErrors('failedToSaveWorkoutCompletion'));
           }
           const data = await res.json();
           if (data.completionId) {
@@ -402,16 +406,16 @@ export function GuidedRoutinePlayer({
           href={`/workouts/${workout.slug}`}
           className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white transition hover:border-emerald-300 hover:text-emerald-200"
         >
-          ← Back
+          ← {tCommon("back")}
         </Link>
         <div className="text-center text-[11px] font-semibold uppercase tracking-[0.35em] text-emerald-200">
-          {workout.label} · Guided Timer
+          {workout.label} · {t("guidedTimer")}
         </div>
         {isSupported ? (
           <button
             type="button"
             onClick={toggleFullscreen}
-            aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            aria-label={isFullscreen ? t("exitFullscreen") : t("enterFullscreen")}
             className="rounded-full border border-white/20 p-2 text-white transition hover:border-emerald-300 hover:text-emerald-200"
           >
             {isFullscreen ? <CollapseIcon /> : <ExpandIcon />}
@@ -430,15 +434,15 @@ export function GuidedRoutinePlayer({
             />
           </div>
           <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-300">
-            <span>Overall progress</span>
-            <span>{formatTime(totalRemaining)} left</span>
+            <span>{t("overallProgress")}</span>
+            <span>{t("timeLeft", { time: formatTime(totalRemaining) })}</span>
           </div>
         </div>
 
         <section className="rounded-3xl border border-white/10 bg-white/5 px-5 py-6 shadow-2xl shadow-emerald-500/10 sm:px-8">
           <div className="flex items-center justify-between gap-4 text-xs font-semibold uppercase tracking-[0.25em] text-slate-200">
             <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 ${currentStyles.badge}`}>
-              {currentSegment?.category ?? "Segment"}
+              {currentSegment?.category ? t(`categories.${currentSegment.category}`) : t("segment")}
             </span>
             {currentSegment?.round ? (
               <span className="text-[11px] text-slate-300">
@@ -457,7 +461,7 @@ export function GuidedRoutinePlayer({
             )}
             <div className="flex-1 space-y-3">
               <h1 className="text-3xl font-semibold leading-tight sm:text-4xl">
-                {hasFinished ? "Workout complete" : currentSegment?.title}
+                {hasFinished ? t("workoutComplete") : currentSegment?.title}
               </h1>
               {!hasFinished && currentSegment?.detail ? (
                 <p className="text-xl text-slate-200 sm:text-2xl">
@@ -479,7 +483,7 @@ export function GuidedRoutinePlayer({
                 onClick={handleToggle}
                 className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-slate-950 transition hover:bg-emerald-300"
               >
-                {hasFinished ? "Replay" : isRunning ? "Pause" : "Resume"}
+                {hasFinished ? t("replay") : isRunning ? t("pause") : t("resume")}
               </button>
               <button
                 type="button"
@@ -487,7 +491,7 @@ export function GuidedRoutinePlayer({
                 disabled={isTrackingCompletion}
                 className="rounded-full border border-white/20 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white transition hover:border-emerald-300 hover:text-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Restart
+                {t("restart")}
               </button>
             </div>
           </div>
@@ -503,10 +507,10 @@ export function GuidedRoutinePlayer({
         <section className="space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-300">
-              Timeline
+              {t("timeline")}
             </p>
             <p className="text-xs text-slate-400">
-              Auto-started · {segments.length} steps
+              {t("autoStarted", { count: segments.length })}
             </p>
           </div>
           <div className="grid gap-4">
@@ -520,7 +524,7 @@ export function GuidedRoutinePlayer({
                     <span
                       className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] ${groupStyles.badge}`}
                     >
-                      {group.category.toUpperCase()}
+                      {t(`categories.${group.category}`).toUpperCase()}
                     </span>
                   </div>
                   <div className="grid gap-2">
@@ -591,10 +595,10 @@ export function GuidedRoutinePlayer({
   ) : (
     <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 px-6 text-center text-white">
       <p className="text-lg font-semibold">
-        No guided plan available for this day.
+        {t("noGuidedPlan")}
       </p>
       <p className="mt-2 text-sm text-slate-300">
-        Add a routine in the workout plan to start training.
+        {t("addRoutine")}
       </p>
     </div>
   );

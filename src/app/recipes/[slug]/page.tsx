@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 
 import { auth } from "@/lib/auth";
 import { getRecipeBySlug } from "@/lib/recipes";
@@ -64,6 +65,7 @@ export default async function RecipeDetailPage({
   const showMeasurementConversions = session?.user?.showMeasurementConversions ?? false;
   const t = getRecipeDetailTranslations(userLocale);
   const sharingT = getRecipeSharingTranslations(userLocale);
+  const recipesT = await getTranslations('recipes');
 
   // Fetch rating and favorite data for current version
   const [versionStats, userRating, ratingHistory, isFavorite] = await Promise.all([
@@ -119,6 +121,7 @@ export default async function RecipeDetailPage({
                   title: t.translateTitle,
                   translatingRecipe: t.translatingRecipe,
                   selectLanguage: t.selectLanguage,
+                  selectLanguagePlaceholder: t.selectLanguagePlaceholder,
                   adaptMeasurements: t.adaptMeasurements,
                   adaptMeasurementsDescription: t.adaptMeasurementsDescription,
                   preview: t.preview,
@@ -127,6 +130,16 @@ export default async function RecipeDetailPage({
                   translationPreview: t.translationPreview,
                   close: t.close,
                   cancel: t.cancel,
+                  saving: t.saving,
+                  backToOptions: t.backToOptions,
+                  titleLabel: t.titleLabel,
+                  descriptionLabel: t.descriptionLabel,
+                  ingredientsSample: t.ingredientsSample,
+                  stepsSample: t.stepsSample,
+                  andMore: t.andMore,
+                  andMoreSteps: t.andMoreSteps,
+                  translationFailed: t.translationFailed,
+                  failedToSaveTranslation: t.failedToSaveTranslation,
                 }}
               />
               <ShareRecipeSection
@@ -145,7 +158,7 @@ export default async function RecipeDetailPage({
         {/* Time & Servings Card */}
         <section
           className="rounded-3xl border border-slate-800 bg-slate-900/50 p-5 backdrop-blur sm:p-6"
-          aria-label="Time and servings"
+          aria-label={recipesT('timeAndServingsAriaLabel')}
         >
           <div className="flex flex-wrap gap-6 sm:gap-8">
             {recipeJson.prepTimeMinutes !== undefined && (
@@ -183,7 +196,7 @@ export default async function RecipeDetailPage({
         {/* Nutrition Card */}
         <section
           className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/50 backdrop-blur"
-          aria-label="Nutrition information"
+          aria-label={recipesT('nutritionInfoAriaLabel')}
         >
           <div className="border-b border-slate-800 px-5 py-4 sm:px-6">
             <h2 className="text-lg font-semibold text-white">{t.nutrition}</h2>
@@ -239,7 +252,7 @@ export default async function RecipeDetailPage({
 
         {/* Tags Section */}
         {recipe.tags.length > 0 && (
-          <section aria-label="Tags">
+          <section aria-label={recipesT('tagsAriaLabel')}>
             <div className="flex flex-wrap gap-2">
               {recipe.tags.map((tag) => (
                 <span
@@ -267,13 +280,14 @@ export default async function RecipeDetailPage({
             addComment: t.addComment,
             submitRating: t.submitRating,
             ratingSubmitted: t.ratingSubmitted,
+            ratingSectionLabel: t.ratingSectionLabel,
           }}
         />
 
         {/* Ingredients Section */}
         <section
           className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/50 backdrop-blur"
-          aria-label="Ingredients"
+          aria-label={recipesT('ingredientsAriaLabel')}
         >
           <div className="border-b border-slate-800 px-5 py-4 sm:px-6">
             <h2 className="text-lg font-semibold text-white">{t.ingredients}</h2>
@@ -315,7 +329,7 @@ export default async function RecipeDetailPage({
         {/* Instructions Section */}
         <section
           className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/50 backdrop-blur"
-          aria-label="Instructions"
+          aria-label={recipesT('instructionsAriaLabel')}
         >
           <div className="border-b border-slate-800 px-5 py-4 sm:px-6">
             <h2 className="text-lg font-semibold text-white">{t.instructions}</h2>

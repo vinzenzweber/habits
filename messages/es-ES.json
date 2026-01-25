@@ -17,7 +17,18 @@
     "dismiss": "Descartar",
     "detect": "Detectar",
     "install": "Instalar",
-    "notNow": "Ahora no"
+    "notNow": "Ahora no",
+    "menu": "Menú",
+    "remove": "Eliminar",
+    "days": {
+      "monday": "Lunes",
+      "tuesday": "Martes",
+      "wednesday": "Miércoles",
+      "thursday": "Jueves",
+      "friday": "Viernes",
+      "saturday": "Sábado",
+      "sunday": "Domingo"
+    }
   },
   "nav": {
     "home": "Inicio",
@@ -40,6 +51,7 @@
     "register": "Registrarse",
     "creatingAccount": "Creando cuenta...",
     "logout": "Cerrar sesión",
+    "loggingOut": "Cerrando sesión...",
     "invalidCredentials": "Correo o contraseña inválidos",
     "registrationFailed": "Registro fallido",
     "registrationSuccessLoginFailed": "Registro exitoso, pero inicio de sesión fallido. Por favor, intenta iniciar sesión.",
@@ -137,6 +149,7 @@
     }
   },
   "workout": {
+    "todaysWorkout": "Entrenamiento de hoy",
     "guidedTimer": "Temporizador guiado",
     "overallProgress": "Progreso general",
     "timeLeft": "{time} restante",
@@ -149,6 +162,26 @@
     "autoStarted": "Iniciado automáticamente · {count} pasos",
     "noGuidedPlan": "No hay plan guiado disponible para este día.",
     "addRoutine": "Agrega una rutina al plan de entrenamiento para comenzar.",
+    "enterFullscreen": "Pantalla completa",
+    "exitFullscreen": "Salir de pantalla completa",
+    "segment": "Segmento",
+    "back": "← Atrás",
+    "completedToday": "Completado hoy",
+    "today": "Hoy",
+    "yourWorkout": "Tu entrenamiento de {label}",
+    "playAgain": "Repetir",
+    "start": "Comenzar",
+    "workoutPlan": "Plan de entrenamiento",
+    "exercises": "{count} ejercicios",
+    "total": "total",
+    "nanoLimitReached": "Límite nano alcanzado",
+    "usedAllNano": "Has usado todos los {limit} entrenamientos nano esta semana.",
+    "completeFullWorkout": "¡Completa un entrenamiento completo para mantener tu racha!",
+    "backToHome": "Volver al inicio",
+    "streakSaver": "Salvavidas de racha",
+    "quickRoutine": "Rutina rápida",
+    "nanoWorkoutPlan": "Plan de entrenamiento nano",
+    "workoutPlanAriaLabel": "Plan de entrenamiento",
     "categories": {
       "prep": "Preparación",
       "warmup": "Calentamiento",
@@ -158,12 +191,45 @@
       "rest": "Descanso"
     }
   },
+  "defaultWorkouts": {
+    "monday": {
+      "title": "Push (Moderado)",
+      "focus": "Movimientos de empuje del tren superior"
+    },
+    "tuesday": {
+      "title": "Pull (Moderado)",
+      "focus": "Movimientos de tracción del tren superior"
+    },
+    "wednesday": {
+      "title": "Lower (Moderado)",
+      "focus": "Piernas y cadena posterior"
+    },
+    "thursday": {
+      "title": "Circuito HIIT",
+      "focus": "Intervalos de alta intensidad"
+    },
+    "friday": {
+      "title": "Full Body Flow",
+      "focus": "Movimientos compuestos"
+    },
+    "saturday": {
+      "title": "Recuperación Activa",
+      "focus": "Movilidad y trabajo ligero"
+    },
+    "sunday": {
+      "title": "Descanso y Restauración",
+      "focus": "Movimiento suave"
+    }
+  },
   "install": {
     "title": "Instalar Habits App",
     "description": "Instala esta app en tu pantalla de inicio para la mejor experiencia."
   },
   "recipes": {
     "backToRecipes": "← Volver a recetas",
+    "backToRecipe": "← Volver a la receta",
+    "newRecipe": "Nueva receta",
+    "editRecipe": "Editar receta",
     "edit": "Editar",
     "share": "Compartir",
     "prepTime": "Preparación",
@@ -178,6 +244,11 @@
     "fiber": "Fibra",
     "ingredients": "Ingredientes",
     "instructions": "Instrucciones",
+    "timeAndServingsAriaLabel": "Tiempo y porciones",
+    "nutritionInfoAriaLabel": "Información nutricional",
+    "tagsAriaLabel": "Etiquetas",
+    "ingredientsAriaLabel": "Ingredientes",
+    "instructionsAriaLabel": "Instrucciones",
     "yourRating": "Tu valoración",
     "averageRating": "Promedio",
     "ratings": "valoraciones",
@@ -196,7 +267,46 @@
     "preview": "Vista previa",
     "saveTranslation": "Guardar traducción",
     "translating": "Traduciendo...",
-    "translationPreview": "Vista previa de la traducción"
+    "translationPreview": "Vista previa de la traducción",
+    "translationFailed": "Error en la traducción",
+    "failedToSaveTranslation": "No se pudo guardar la traducción",
+    "shared": "Compartida"
+  },
+  "recipeDetailError": {
+    "backToRecipes": "← Volver a recetas",
+    "somethingWentWrong": "Algo salió mal",
+    "couldNotLoadRecipe": "No se pudo cargar esta receta. Por favor, inténtalo de nuevo.",
+    "tryAgain": "Intentar de nuevo",
+    "viewAllRecipes": "Ver todas las recetas"
+  },
+  "recipeList": {
+    "title": "Recetas",
+    "addRecipe": "Añadir receta",
+    "importFromPhotoOrPdf": "Importar desde foto o PDF",
+    "searchRecipes": "Buscar recetas...",
+    "clearSearch": "Limpiar búsqueda",
+    "favorites": "Favoritas",
+    "mostRecent": "Más recientes",
+    "alphabetical": "A-Z",
+    "highestRated": "Mejor valoradas",
+    "activeFilters": "{count} activos",
+    "noRecipesYet": "Sin recetas aún",
+    "startBuildingCollection": "Empieza a construir tu colección de recetas saludables. Importa desde la web o crea las tuyas.",
+    "addFirstRecipe": "Añade tu primera receta",
+    "noRecipesMatchFilters": "Ninguna receta coincide con tus filtros",
+    "tryAdjustingFilters": "Intenta ajustar tu búsqueda o eliminar algunos filtros para ver más recetas.",
+    "clearFilters": "Limpiar filtros",
+    "noSharedRecipes": "Sin recetas compartidas",
+    "sharedRecipesAppearHere": "Cuando alguien comparta una receta contigo, aparecerá aquí.",
+    "noRecipesMatchSearch": "Ninguna receta coincide con tu búsqueda",
+    "tryDifferentSearchTerm": "Intenta con otro término de búsqueda.",
+    "clearSearchButton": "Limpiar búsqueda",
+    "addToCollection": "Añadir a colección",
+    "addToGroceryList": "Añadir a lista de compras",
+    "addToCollectionLabel": "A colección",
+    "addToListLabel": "A lista",
+    "myRecipes": "Mis recetas",
+    "sharedWithMe": "Compartidas conmigo"
   },
   "sharing": {
     "shareRecipe": "Compartir receta",
@@ -230,6 +340,7 @@
   "groceryLists": {
     "title": "Listas de compras",
     "createList": "Crear lista",
+    "create": "Crear",
     "newList": "Nueva lista",
     "listName": "Nombre de la lista",
     "emptyList": "Sin artículos aún",
@@ -242,7 +353,19 @@
     "exitShopping": "Salir de compra",
     "allDone": "¡Todo listo!",
     "itemsRemaining": "{count, plural, one {# artículo restante} other {# artículos restantes}}",
-    "progress": "Progreso"
+    "progress": "Progreso",
+    "searchLists": "Buscar listas...",
+    "all": "Todas",
+    "myLists": "Mis listas",
+    "shared": "Compartidas",
+    "noListsFound": "No se encontraron listas",
+    "tryDifferentSearch": "Intenta con otro término de búsqueda",
+    "noPersonalLists": "Sin listas personales",
+    "noSharedLists": "Sin listas compartidas",
+    "createToStart": "Crea una lista para empezar",
+    "sharedListsAppearHere": "Las listas compartidas contigo aparecerán aquí",
+    "noGroceryListsYet": "Sin listas de compras aún",
+    "createFirstList": "Crea tu primera lista para empezar a comprar"
   },
   "errors": {
     "generic": "Se produjo un error. Por favor, inténtalo de nuevo.",
@@ -253,7 +376,26 @@
     "failedToLoad": "Error al cargar. Por favor, inténtalo de nuevo.",
     "failedToCreate": "Error al crear. Por favor, inténtalo de nuevo.",
     "failedToDelete": "Error al eliminar. Por favor, inténtalo de nuevo.",
-    "failedToUpdate": "Error al actualizar. Por favor, inténtalo de nuevo."
+    "failedToUpdate": "Error al actualizar. Por favor, inténtalo de nuevo.",
+    "somethingWentWrong": "Algo salió mal",
+    "couldntLoadRecipes": "No pudimos cargar tus recetas. Por favor, inténtalo de nuevo.",
+    "tryAgain": "Intentar de nuevo",
+    "youreOffline": "Estás sin conexión",
+    "checkConnection": "Por favor, verifica tu conexión a internet e inténtalo de nuevo.",
+    "failedToSaveRecipe": "Error al guardar receta",
+    "failedToStartOnboarding": "Error al iniciar la incorporación",
+    "noResponseBody": "Sin respuesta del servidor",
+    "failedToSendMessage": "Error al enviar mensaje",
+    "failedToSaveRating": "Error al guardar valoración",
+    "ttsFailed": "Error en la síntesis de voz",
+    "failedToLoadSession": "Error al cargar sesión",
+    "failedToLoadChatHistory": "Error al cargar historial de chat",
+    "failedToToggleItem": "Error al cambiar elemento",
+    "failedToDeleteItem": "Error al eliminar elemento",
+    "failedToClearCheckedItems": "Error al limpiar elementos marcados",
+    "failedToDeleteList": "Error al eliminar lista",
+    "uploadFailed": "Error al subir archivo",
+    "failedToSaveWorkoutCompletion": "Error al guardar finalización del entrenamiento"
   },
   "recipeImport": {
     "importRecipe": "Importar receta",
@@ -278,7 +420,15 @@
     "chooseDifferentFile": "Elegir otro archivo",
     "dropFileHere": "Suelta el archivo aquí o navega",
     "fileRequirements": "JPEG, PNG, WebP, GIF, HEIC o PDF hasta {maxSize}MB",
-    "import": "Importar"
+    "import": "Importar",
+    "invalidFile": "Archivo inválido",
+    "failedToCancelExtraction": "Error al cancelar la extracción",
+    "unexpectedResponse": "Respuesta inesperada del servidor",
+    "failedToCheckStatus": "Error al verificar el estado de extracción",
+    "extractionFailed": "Error en la extracción de receta",
+    "failedToExtractPdf": "Error al extraer receta del PDF",
+    "failedToExtract": "Error al extraer la receta",
+    "pageNumber": "(página {number})"
   },
   "groceryModal": {
     "createGroceryList": "Crear lista de compras",
@@ -321,8 +471,101 @@
     "removeStep": "Eliminar paso",
     "removeGroup": "Eliminar grupo",
     "removeIngredient": "Eliminar ingrediente",
+    "addStep": "Añadir paso",
     "dropImagesHere": "Suelta las imágenes aquí o navega",
-    "imageRequirements": "JPEG, PNG, WebP, GIF hasta 10MB"
+    "imageRequirements": "JPEG, PNG, WebP, GIF hasta 10MB",
+    "primary": "Principal",
+    "setAsPrimary": "Establecer como principal",
+    "remove": "Eliminar",
+    "captionOptional": "Título (opcional)",
+    "uploading": "Subiendo...",
+    "imageCount": "{current} de {max} imágenes",
+    "atLeastOneRequired": "(al menos 1 requerida)",
+    "maxImagesAllowed": "Máximo {max} imágenes permitidas"
+  },
+  "tagInput": {
+    "addTag": "Añadir etiqueta...",
+    "yourTags": "Tus etiquetas",
+    "tagCount": "{current} de {max} etiquetas"
+  },
+  "ingredientEditor": {
+    "groupNamePlaceholder": "Nombre del grupo (ej. Lácteos, Especias)",
+    "qtyPlaceholder": "Cant.",
+    "unitPlaceholder": "Unidad",
+    "namePlaceholder": "Nombre del ingrediente",
+    "addIngredient": "Añadir ingrediente",
+    "addIngredientGroup": "Añadir grupo de ingredientes"
+  },
+  "recipeFormLabels": {
+    "basicInfo": "Información básica",
+    "title": "Título",
+    "titlePlaceholder": "Título de la receta",
+    "description": "Descripción",
+    "descriptionPlaceholder": "Breve descripción de la receta",
+    "tags": "Etiquetas",
+    "images": "Imágenes",
+    "timeAndServings": "Tiempo y porciones",
+    "prepTimeMin": "Preparación (min)",
+    "cookTimeMin": "Cocción (min)",
+    "nutritionPerServing": "Nutrición (por porción)",
+    "calories": "Calorías",
+    "proteinG": "Proteína (g)",
+    "carbsG": "Carbohidratos (g)",
+    "fatG": "Grasa (g)",
+    "steps": "Pasos",
+    "uploadingImages": "Subiendo imágenes...",
+    "saveChanges": "Guardar cambios",
+    "createRecipe": "Crear receta"
+  },
+  "addToGroceryList": {
+    "addToGroceryList": "Añadir a la lista de compras",
+    "addedToList": "Añadido a la lista de compras",
+    "itemsAdded": "{count, plural, one {# artículo añadido} other {# artículos añadidos}}",
+    "addedToListName": "Añadido a \"{name}\"",
+    "viewGroceryList": "Ver lista de compras",
+    "ingredientCount": "{count, plural, one {# ingrediente} other {# ingredientes}}",
+    "servings": "Porciones",
+    "servingsCount": "{count, plural, one {# porción} other {# porciones}}",
+    "create": "Crear",
+    "createNewList": "Crear nueva lista",
+    "orAddToExisting": "O añadir a lista existente:",
+    "itemCount": "{count, plural, one {# artículo} other {# artículos}}",
+    "checkedCount": "{count} marcados",
+    "adding": "Añadiendo...",
+    "addToSelectedList": "Añadir a la lista seleccionada",
+    "createListAndAdd": "Crear lista y añadir",
+    "failedToFetch": "Error al cargar las listas de compras",
+    "failedToCreateList": "Error al crear la lista",
+    "failedToGenerate": "Error al generar la lista de compras"
+  },
+  "addToCollection": {
+    "addingRecipe": "Añadiendo \"{name}\"",
+    "collectionNamePlaceholder": "Nombre de la colección",
+    "create": "Crear",
+    "noCollectionsYet": "No hay colecciones aún. ¡Crea una arriba!",
+    "recipeCount": "{count, plural, one {# receta} other {# recetas}}",
+    "alreadyAdded": "Ya añadida",
+    "addToSelected": "Añadir a seleccionadas",
+    "recipeNotFound": "Receta no encontrada",
+    "failedToCheckMembership": "Error al verificar la pertenencia a colecciones",
+    "failedToAdd": "Error al añadir a la colección"
+  },
+  "collectionModal": {
+    "createCollection": "Crear colección",
+    "editCollection": "Editar colección",
+    "name": "Nombre",
+    "namePlaceholder": "Ej. Cenas rápidas",
+    "nameRequired": "El nombre es obligatorio",
+    "description": "Descripción",
+    "optionalDescription": "Descripción opcional",
+    "coverImageUrl": "URL de imagen de portada",
+    "saveChanges": "Guardar cambios",
+    "deleteCollection": "Eliminar colección",
+    "deleteConfirmation": "¿Estás seguro? Se eliminará la colección pero no las recetas.",
+    "yesDelete": "Sí, eliminar",
+    "deleting": "Eliminando...",
+    "failedToSave": "Error al guardar la colección",
+    "failedToDelete": "Error al eliminar la colección"
   },
   "collections": {
     "collections": "Colecciones",
@@ -334,7 +577,53 @@
     "removeFromCollection": "Eliminar de colección",
     "failedToFetch": "Error al cargar colecciones",
     "failedToCreate": "Error al crear colección",
-    "failedToRemove": "Error al eliminar receta de la colección"
+    "failedToRemove": "Error al eliminar receta de la colección",
+    "noRecipesInCollection": "No hay recetas en esta colección",
+    "addRecipesFromLibrary": "Añade recetas desde tu biblioteca de recetas",
+    "remove": "Eliminar",
+    "cancel": "Cancelar",
+    "removeFromCollectionLabel": "Eliminar {title} de la colección"
+  },
+  "collectionDetail": {
+    "sharedBy": "Compartida por {name}",
+    "recipeCount": "{count, plural, one {# receta} other {# recetas}}",
+    "share": "Compartir",
+    "addRecipe": "Añadir receta",
+    "addRecipes": "Añadir recetas",
+    "selectRecipesToAdd": "Selecciona recetas para añadir a \"{name}\"",
+    "allRecipesAdded": "Todas tus recetas ya están en esta colección",
+    "adding": "Añadiendo...",
+    "addCount": "{count, plural, one {Añadir # receta} other {Añadir # recetas}}",
+    "failedToFetchRecipes": "No se pudieron cargar las recetas"
+  },
+  "shareGroceryList": {
+    "shareList": "Compartir lista",
+    "shareWith": "Compartir con",
+    "searching": "Buscando...",
+    "permission": "Permiso",
+    "sharing": "Compartiendo...",
+    "alreadyShared": "Esta lista ya está compartida con este usuario",
+    "failedToShare": "Error al compartir la lista",
+    "failedToRemove": "Error al eliminar el acceso",
+    "failedToUpdate": "Error al actualizar el permiso",
+    "removeUserLabel": "Eliminar a {name}"
+  },
+  "recipeCard": {
+    "prepMinutes": "{count}m prep",
+    "cookMinutes": "{count}m cocción",
+    "servingsCount": "{count, plural, one {# porción} other {# porciones}}",
+    "viewRecipe": "Ver receta: {title}",
+    "addToCollection": "Añadir {title} a colección",
+    "moreCount": "+{count} más"
+  },
+  "groceryItem": {
+    "checkItem": "Marcar artículo",
+    "uncheckItem": "Desmarcar artículo",
+    "deleteItem": "Eliminar artículo"
+  },
+  "exerciseImages": {
+    "showStartPosition": "Mostrar posición inicial",
+    "showEndPosition": "Mostrar posición final"
   },
   "chat": {
     "fitStreakAI": "FitStreak AI",
@@ -350,6 +639,108 @@
     "recording": "Grabando...",
     "transcribing": "Transcribiendo...",
     "clickToRecord": "Clic para grabar",
-    "clickToStopAndSend": "Clic para detener y enviar"
+    "clickToStopAndSend": "Clic para detener y enviar",
+    "ratingError": "No se pudo guardar tu calificación. Por favor, inténtalo de nuevo.",
+    "ratingTooEasy": "Ese entrenamiento me pareció demasiado fácil.",
+    "ratingJustRight": "Ese entrenamiento estuvo perfecto - ¡buen desafío!",
+    "ratingTooHard": "Ese entrenamiento fue demasiado difícil para mí.",
+    "microphoneError": "No se pudo acceder al micrófono. Por favor, revisa los permisos.",
+    "sessionLoadError": "Error al cargar la sesión de chat. Por favor, inténtalo de nuevo.",
+    "buttonTooEasy": "Muy fácil",
+    "buttonJustRight": "Perfecto",
+    "buttonTooHard": "Muy difícil",
+    "aiAssistantDescription": "Tu asistente de fitness y nutrición impulsado por IA",
+    "canHelpWith": "Puedo ayudarte con:",
+    "helpExercise": "Técnica de ejercicios, forma y modificaciones",
+    "helpRecipe": "Ideas de recetas y consejos de nutrición",
+    "helpProgress": "Historial de entrenamientos y seguimiento de progreso",
+    "helpMotivation": "Motivación personalizada y ánimo",
+    "helpEquipment": "Recomendaciones de equipamiento y entrenamiento",
+    "rememberPreferences": "¡Recuerdo tu equipamiento, objetivos y preferencias entre sesiones!",
+    "voiceEnabled": "Voz habilitada — toca el micrófono para hablar conmigo!",
+    "errorEncountered": "Lo siento, encontré un error. Por favor, inténtalo de nuevo.",
+    "stopSpeaking": "Detener audio",
+    "listenToResponse": "Escuchar respuesta",
+    "stopButton": "Detener",
+    "listenButton": "Escuchar"
+  },
+  "chatTools": {
+    "get_workout": "Entrenamiento obtenido",
+    "get_all_workouts": "Todos los entrenamientos obtenidos",
+    "update_workout": "Entrenamiento actualizado",
+    "save_memory": "Guardado en memoria",
+    "get_memories": "Memorias recuperadas",
+    "delete_memory": "Memoria eliminada",
+    "web_search": "Búsqueda web realizada",
+    "create_feedback_issue": "Comentario registrado",
+    "search_exercises": "Ejercicios buscados",
+    "create_exercise": "Ejercicio creado",
+    "get_exercise_images": "Imágenes de ejercicios verificadas",
+    "get_workout_stats": "Historial de entrenamiento analizado",
+    "search_recipes": "Recetas buscadas",
+    "get_recipe": "Receta obtenida",
+    "create_recipe": "Receta creada",
+    "update_recipe": "Receta actualizada"
+  },
+  "shareCollection": {
+    "shareCollection": "Compartir colección",
+    "collectionShared": "¡Colección compartida!",
+    "sharing": "Compartir",
+    "recipesWillBeCopied": "{count, plural, one {Se copiará # receta} other {Se copiarán # recetas}}",
+    "showRecipes": "Mostrar recetas",
+    "hideRecipes": "Ocultar recetas",
+    "recipientEmail": "Correo del destinatario",
+    "emailPlaceholder": "email@ejemplo.com",
+    "personalMessage": "Mensaje personal",
+    "optionalMessage": "Añadir mensaje opcional...",
+    "infoText": "El destinatario recibirá sus propias copias de la colección y todas las recetas, que podrá editar de forma independiente.",
+    "sharingCollection": "Compartiendo colección...",
+    "copyingRecipes": "Copiando {count, plural, one {# receta} other {# recetas}}...",
+    "sentTo": "¡Enviado a {name}!",
+    "recipientReceived": "{count, plural, one {Ha recibido # receta en su colección} other {Ha recibido # recetas en su colección}}",
+    "failedToShare": "Error al compartir la colección"
+  },
+  "chatHistory": {
+    "title": "Historial de chat",
+    "closeHistory": "Cerrar historial",
+    "tryAgain": "Intentar de nuevo",
+    "noConversations": "Sin conversaciones aún",
+    "startChatting": "Comienza a chatear para ver tu historial aquí.",
+    "newChat": "Nuevo chat",
+    "messageCount": "{count, plural, one {# mensaje} other {# mensajes}}",
+    "current": "Actual",
+    "loadMore": "Cargar más",
+    "today": "Hoy",
+    "yesterday": "Ayer",
+    "daysAgo": "{count, plural, one {hace # día} other {hace # días}}"
+  },
+  "recipeGallery": {
+    "previousImage": "Imagen anterior",
+    "nextImage": "Siguiente imagen",
+    "goToImage": "Ir a imagen {index}"
+  },
+  "favorite": {
+    "removeFromFavorites": "Quitar de favoritos",
+    "addToFavorites": "Añadir a favoritos"
+  },
+  "starRating": {
+    "rateStars": "{count, plural, one {Calificar # estrella} other {Calificar # estrellas}}"
+  },
+  "onboarding": {
+    "welcomeTitle": "Bienvenido a tu viaje fitness",
+    "welcomeDescription": "Vamos a crear un plan de entrenamiento personalizado para ti. Te haré algunas preguntas sobre tu experiencia, objetivos y equipo para diseñar el programa perfecto.",
+    "getStarted": "Comenzar",
+    "timeEstimate": "Esto toma unos 5 minutos",
+    "settingUpTitle": "Configurando tu programa",
+    "settingUpDescription": "Responde algunas preguntas para obtener tu plan personalizado",
+    "microphoneError": "No se pudo acceder al micrófono. Por favor, revisa los permisos.",
+    "errorEncountered": "Lo siento, encontré un error. Por favor, inténtalo de nuevo.",
+    "startError": "Lo siento, tuve problemas al iniciar. Por favor, actualiza la página e inténtalo de nuevo.",
+    "recording": "Grabando...",
+    "transcribing": "Transcribiendo...",
+    "typeYourAnswer": "Escribe tu respuesta...",
+    "releaseToSend": "Suelta para enviar",
+    "holdToRecord": "Mantén presionado para grabar",
+    "send": "Enviar"
   }
 }

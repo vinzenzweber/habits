@@ -64,7 +64,7 @@ describe('RecipeImageUpload', () => {
   describe('rendering', () => {
     it('renders drop zone', () => {
       render(<RecipeImageUpload images={[]} onChange={() => {}} />);
-      expect(screen.getByText(/drop images here/i)).toBeInTheDocument();
+      expect(screen.getByText(/dropImagesHere/i)).toBeInTheDocument();
     });
 
     it('renders existing images', () => {
@@ -75,17 +75,18 @@ describe('RecipeImageUpload', () => {
 
     it('shows primary badge on primary image', () => {
       render(<RecipeImageUpload images={mockImages} onChange={() => {}} />);
-      expect(screen.getByText('Primary')).toBeInTheDocument();
+      expect(screen.getByText('primary')).toBeInTheDocument();
     });
 
     it('renders image count correctly', () => {
       render(<RecipeImageUpload images={mockImages} onChange={() => {}} maxImages={10} />);
-      expect(screen.getByText('2 of 10 images')).toBeInTheDocument();
+      // Translation mock returns key with params: "imageCount count:2 max:10"
+      expect(screen.getByText(/imageCount/)).toBeInTheDocument();
     });
 
     it('shows required message when no images', () => {
       render(<RecipeImageUpload images={[]} onChange={() => {}} />);
-      expect(screen.getByText(/at least 1 required/i)).toBeInTheDocument();
+      expect(screen.getByText(/atLeastOneRequired/i)).toBeInTheDocument();
     });
 
     it('hides drop zone when maxImages reached', () => {
@@ -95,12 +96,12 @@ describe('RecipeImageUpload', () => {
         { url: '/img3' },
       ];
       render(<RecipeImageUpload images={images} onChange={() => {}} maxImages={3} />);
-      expect(screen.queryByText(/drop images here/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/dropImagesHere/i)).not.toBeInTheDocument();
     });
 
     it('renders caption inputs for each image', () => {
       render(<RecipeImageUpload images={mockImages} onChange={() => {}} />);
-      const captionInputs = screen.getAllByPlaceholderText('Caption (optional)');
+      const captionInputs = screen.getAllByPlaceholderText('captionOptional');
       expect(captionInputs).toHaveLength(2);
     });
   });
@@ -145,7 +146,8 @@ describe('RecipeImageUpload', () => {
       await user.upload(input, [file1, file2]);
 
       await waitFor(() => {
-        expect(screen.getByText(/Maximum 2 images allowed/i)).toBeInTheDocument();
+        // Mock translation returns key with params: "maxImagesAllowed max:2"
+        expect(screen.getByText(/maxImagesAllowed/i)).toBeInTheDocument();
       });
     });
   });
@@ -263,7 +265,7 @@ describe('RecipeImageUpload', () => {
       render(<RecipeImageUpload images={[]} onChange={() => {}} />);
 
       // Get the drop zone div that has the onDragOver handler
-      const dropZone = screen.getByText(/drop images here/i).closest('div[class*="border-dashed"]');
+      const dropZone = screen.getByText(/dropImagesHere/i).closest('div[class*="border-dashed"]');
       fireEvent.dragOver(dropZone!);
 
       expect(dropZone).toHaveClass('border-emerald-500');
@@ -272,7 +274,7 @@ describe('RecipeImageUpload', () => {
     it('removes drag over state on dragLeave', () => {
       render(<RecipeImageUpload images={[]} onChange={() => {}} />);
 
-      const dropZone = screen.getByText(/drop images here/i).closest('div[class*="border-dashed"]');
+      const dropZone = screen.getByText(/dropImagesHere/i).closest('div[class*="border-dashed"]');
       fireEvent.dragOver(dropZone!);
       expect(dropZone).toHaveClass('border-emerald-500');
 
@@ -289,7 +291,7 @@ describe('RecipeImageUpload', () => {
 
       // The delete buttons are always in the DOM but hidden with opacity-0 via group-hover
       // We can still click them directly
-      const deleteButtons = screen.getAllByTitle('Remove');
+      const deleteButtons = screen.getAllByTitle('remove');
       await user.click(deleteButtons[0]);
 
       // First image removed, second one remains (but not yet promoted to primary since
@@ -305,7 +307,7 @@ describe('RecipeImageUpload', () => {
       render(<RecipeImageUpload images={mockImages} onChange={onChange} />);
 
       // Find and click delete button for primary image
-      const deleteButtons = screen.getAllByTitle('Remove');
+      const deleteButtons = screen.getAllByTitle('remove');
       await user.click(deleteButtons[0]);
 
       expect(onChange).toHaveBeenCalledWith([
@@ -319,7 +321,7 @@ describe('RecipeImageUpload', () => {
       render(<RecipeImageUpload images={mockImages} onChange={onChange} />);
 
       // Find and click set primary button for second image
-      const primaryButtons = screen.getAllByTitle('Set as primary');
+      const primaryButtons = screen.getAllByTitle('setAsPrimary');
       await user.click(primaryButtons[0]); // There's only one (first image is already primary)
 
       expect(onChange).toHaveBeenCalledWith([
@@ -332,7 +334,7 @@ describe('RecipeImageUpload', () => {
       const onChange = vi.fn();
       render(<RecipeImageUpload images={mockImages} onChange={onChange} />);
 
-      const captionInputs = screen.getAllByPlaceholderText('Caption (optional)');
+      const captionInputs = screen.getAllByPlaceholderText('captionOptional');
       fireEvent.change(captionInputs[0], { target: { value: 'New caption' } });
 
       expect(onChange).toHaveBeenCalled();
@@ -345,7 +347,7 @@ describe('RecipeImageUpload', () => {
       const onChange = vi.fn();
       render(<RecipeImageUpload images={mockImages} onChange={onChange} />);
 
-      const captionInputs = screen.getAllByPlaceholderText('Caption (optional)');
+      const captionInputs = screen.getAllByPlaceholderText('captionOptional');
       await user.clear(captionInputs[0]);
 
       const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
@@ -362,7 +364,7 @@ describe('RecipeImageUpload', () => {
 
     it('disables caption inputs when disabled', () => {
       render(<RecipeImageUpload images={mockImages} onChange={() => {}} disabled />);
-      const captionInputs = screen.getAllByPlaceholderText('Caption (optional)');
+      const captionInputs = screen.getAllByPlaceholderText('captionOptional');
       captionInputs.forEach((input) => {
         expect(input).toBeDisabled();
       });
@@ -371,7 +373,7 @@ describe('RecipeImageUpload', () => {
     it('shows disabled styling on drop zone', () => {
       render(<RecipeImageUpload images={[]} onChange={() => {}} disabled />);
       // The disabled class is applied to the border-dashed container
-      const dropZone = screen.getByText(/drop images here/i).closest('div[class*="border-dashed"]');
+      const dropZone = screen.getByText(/dropImagesHere/i).closest('div[class*="border-dashed"]');
       expect(dropZone).toHaveClass('opacity-50');
     });
   });

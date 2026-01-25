@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 import { RecipeSummary } from "@/lib/recipe-types";
 import { StarRating } from "./StarRating";
@@ -26,6 +27,7 @@ export function RecipeCard({
   showAddToCollection,
   onAddToCollection,
 }: RecipeCardProps) {
+  const t = useTranslations("recipeCard");
   const [imageError, setImageError] = useState(false);
 
   const linkHref = href ?? `/recipes/${recipe.slug}`;
@@ -38,16 +40,16 @@ export function RecipeCard({
   const timeDisplay = (() => {
     const parts: string[] = [];
     if (recipe.prepTimeMinutes) {
-      parts.push(`${recipe.prepTimeMinutes}m prep`);
+      parts.push(t("prepMinutes", { count: recipe.prepTimeMinutes }));
     }
     if (recipe.cookTimeMinutes) {
-      parts.push(`${recipe.cookTimeMinutes}m cook`);
+      parts.push(t("cookMinutes", { count: recipe.cookTimeMinutes }));
     }
     return parts.join(" • ");
   })();
 
   // Servings display with proper singular/plural
-  const servingsDisplay = `${recipe.servings} ${recipe.servings === 1 ? "serving" : "servings"}`;
+  const servingsDisplay = t("servingsCount", { count: recipe.servings });
 
   // Limit tags to 3
   const visibleTags = recipe.tags.slice(0, 3);
@@ -57,7 +59,7 @@ export function RecipeCard({
     <Link
       href={linkHref}
       className="block overflow-hidden rounded-xl border border-slate-800 bg-slate-900/50 transition-colors hover:border-slate-700"
-      aria-label={`View recipe: ${recipe.title}`}
+      aria-label={t("viewRecipe", { title: recipe.title })}
     >
       {/* Image section */}
       <div className="relative aspect-video w-full bg-slate-800">
@@ -93,7 +95,7 @@ export function RecipeCard({
               onAddToCollection();
             }}
             className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-slate-900/80 text-slate-300 backdrop-blur transition hover:bg-slate-800 hover:text-emerald-400"
-            aria-label={`Add ${recipe.title} to collection`}
+            aria-label={t("addToCollection", { title: recipe.title })}
           >
             <svg
               className="h-4 w-4"
@@ -144,7 +146,7 @@ export function RecipeCard({
             })}
             {extraTagCount > 0 && (
               <span className="inline-flex items-center rounded-full bg-slate-500/10 px-2 py-0.5 text-xs text-slate-400 lg:px-1.5">
-                +{extraTagCount} more
+                {t("moreCount", { count: extraTagCount })}
               </span>
             )}
           </div>

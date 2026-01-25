@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { GroceryListItem, GroceryListPermission } from "@/lib/grocery-types";
 import { formatQuantity, formatRelativeTime } from "@/lib/grocery-utils";
 
@@ -23,6 +24,7 @@ export function GroceryItem({
   onToggle,
   onDelete,
 }: GroceryItemProps) {
+  const t = useTranslations("groceryItem");
   const [isToggling, setIsToggling] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [optimisticChecked, setOptimisticChecked] = useState(item.checked);
@@ -75,7 +77,7 @@ export function GroceryItem({
             ? "border-emerald-500 bg-emerald-500 text-slate-950"
             : "border-slate-600 hover:border-slate-500"
         } ${!canEdit ? "cursor-not-allowed opacity-50" : ""}`}
-        aria-label={optimisticChecked ? "Uncheck item" : "Check item"}
+        aria-label={optimisticChecked ? t("uncheckItem") : t("checkItem")}
       >
         {optimisticChecked && (
           <svg
@@ -127,7 +129,7 @@ export function GroceryItem({
           onClick={handleDelete}
           disabled={isDeleting}
           className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-slate-500 opacity-0 transition hover:bg-red-500/20 hover:text-red-400 focus:opacity-100 group-hover:opacity-100"
-          aria-label="Delete item"
+          aria-label={t("deleteItem")}
         >
           <svg
             className="h-4 w-4"

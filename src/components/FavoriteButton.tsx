@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useFavorite } from '@/hooks/useFavorite';
 
 interface FavoriteButtonProps {
@@ -19,6 +20,7 @@ export function FavoriteButton({
   size = 'md',
   className = '',
 }: FavoriteButtonProps) {
+  const t = useTranslations('favorite');
   const { isFavorite, isToggling, toggle } = useFavorite(
     recipeSlug,
     initialIsFavorite
@@ -46,7 +48,7 @@ export function FavoriteButton({
       }}
       disabled={isToggling}
       className={`flex items-center justify-center rounded-full bg-slate-900/80 backdrop-blur transition hover:bg-slate-800 ${sizeClasses[size]} ${className} ${isToggling ? 'opacity-50' : ''}`}
-      aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+      aria-label={isFavorite ? t('removeFromFavorites') : t('addToFavorites')}
       aria-pressed={isFavorite}
     >
       {isFavorite ? (

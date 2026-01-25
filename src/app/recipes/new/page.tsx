@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 
 import { auth } from '@/lib/auth';
 import { getUserTags } from '@/lib/recipes';
@@ -17,6 +18,8 @@ export default async function NewRecipePage({
   if (!session?.user) {
     redirect('/login');
   }
+
+  const t = await getTranslations('recipes');
 
   // Get user's locale preference (with fallback to 'en-US')
   const userLocale = session.user.locale ?? 'en-US';
@@ -40,13 +43,13 @@ export default async function NewRecipePage({
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Back to Recipes
+            {t('backToRecipes')}
           </Link>
         </header>
 
         {/* Title */}
         <h1 className="text-2xl font-semibold text-white sm:text-3xl">
-          New Recipe
+          {t('newRecipe')}
         </h1>
 
         {/* Form */}

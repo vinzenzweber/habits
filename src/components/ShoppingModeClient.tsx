@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   GroceryListWithItems,
   GroceryListItem,
@@ -27,6 +28,8 @@ interface ShoppingModeClientProps {
  */
 export function ShoppingModeClient({ initialList }: ShoppingModeClientProps) {
   const router = useRouter();
+  const t = useTranslations("groceryLists");
+  const tCommon = useTranslations("common");
   const [list, setList] = useState(initialList);
   const [isTogglingItem, setIsTogglingItem] = useState<number | null>(null);
   const lastUpdated = useRef(initialList.updatedAt);
@@ -172,7 +175,7 @@ export function ShoppingModeClient({ initialList }: ShoppingModeClientProps) {
         <button
           onClick={handleExit}
           className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-800 hover:text-white"
-          aria-label="Exit shopping mode"
+          aria-label={t("exitShopping")}
         >
           <svg
             className="h-6 w-6"
@@ -238,9 +241,9 @@ export function ShoppingModeClient({ initialList }: ShoppingModeClientProps) {
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
             <div className="mb-4 text-6xl">🛒</div>
-            <p className="text-lg font-medium text-white">List is empty</p>
+            <p className="text-lg font-medium text-white">{t("emptyList")}</p>
             <p className="mt-1 text-sm text-slate-400">
-              Add items before shopping
+              {t("addItemsToStart")}
             </p>
           </div>
         )}
@@ -250,12 +253,12 @@ export function ShoppingModeClient({ initialList }: ShoppingModeClientProps) {
       {progressPercent === 100 && totalItems > 0 && (
         <div className="border-t border-slate-800 bg-emerald-500/10 p-4 text-center">
           <div className="text-2xl">🎉</div>
-          <p className="mt-1 font-medium text-emerald-400">Shopping complete!</p>
+          <p className="mt-1 font-medium text-emerald-400">{t("allDone")}</p>
           <button
             onClick={handleExit}
             className="mt-3 rounded-xl bg-emerald-500 px-6 py-2 font-medium text-slate-950 transition hover:bg-emerald-400"
           >
-            Done
+            {tCommon("done")}
           </button>
         </div>
       )}

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 
 import { getWorkoutBySlug, getTodayCompletions, getTodaySlug } from "@/lib/workoutPlan";
 import { getExercisesWithCompleteImages, normalizeExerciseName } from "@/lib/exercise-library";
@@ -73,6 +74,7 @@ export default async function WorkoutDetailPage({ params }: WorkoutPageProps) {
     notFound();
   }
 
+  const t = await getTranslations("workout");
   const completions = await getTodayCompletions();
   const todaySlug = getTodaySlug();
   const isToday = slug === todaySlug;
@@ -100,14 +102,14 @@ export default async function WorkoutDetailPage({ params }: WorkoutPageProps) {
               href="/"
               className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white transition hover:border-emerald-300 hover:text-emerald-200"
             >
-              ← Back
+              {t("back")}
             </Link>
             {isCompleted && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-300">
                 <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
-                Completed today
+                {t("completedToday")}
               </span>
             )}
           </div>
@@ -115,7 +117,7 @@ export default async function WorkoutDetailPage({ params }: WorkoutPageProps) {
             <div className="space-y-2">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">
-                  {isToday ? "Today · " : ""}Your {workout.label} Workout
+                  {isToday ? `${t("today")} · ` : ""}{t("yourWorkout", { label: workout.label })}
                 </p>
                 <h1 className="mt-2 text-3xl font-semibold text-white sm:text-4xl">
                   {workout.title}
@@ -129,7 +131,7 @@ export default async function WorkoutDetailPage({ params }: WorkoutPageProps) {
               href={`/workouts/${workout.slug}/play`}
               className={`${CTA_CLASSES} bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/30 hover:bg-emerald-300`}
             >
-              {isCompleted ? "Play Again" : "Start"}
+              {isCompleted ? t("playAgain") : t("start")}
             </Link>
           </div>
           <p className="text-sm text-slate-300 sm:text-base">
@@ -139,12 +141,12 @@ export default async function WorkoutDetailPage({ params }: WorkoutPageProps) {
 
         <section
           className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/50 backdrop-blur"
-          aria-label="Workout plan"
+          aria-label={t("workoutPlanAriaLabel")}
         >
           <div className="border-b border-slate-800 px-5 py-4 sm:px-6">
-            <h2 className="text-lg font-semibold text-white">Workout plan</h2>
+            <h2 className="text-lg font-semibold text-white">{t("workoutPlan")}</h2>
             <p className="mt-1 text-sm text-slate-300">
-              {workout.segments.length} exercises · {formatDuration(workout.totalSeconds)} total
+              {t("exercises", { count: workout.segments.length })} · {formatDuration(workout.totalSeconds)} {t("total")}
             </p>
           </div>
           <div className="divide-y divide-slate-800">

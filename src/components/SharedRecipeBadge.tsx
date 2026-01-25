@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 interface SharedRecipeBadgeProps {
   variant: 'from' | 'shared';
   ownerName?: string;
@@ -36,6 +38,8 @@ const UserIcon = () => (
  * @param className - Additional CSS classes
  */
 export function SharedRecipeBadge({ variant, ownerName, className = '' }: SharedRecipeBadgeProps) {
+  const t = useTranslations('recipes');
+
   if (variant === 'from') {
     return (
       <span
@@ -53,7 +57,7 @@ export function SharedRecipeBadge({ variant, ownerName, className = '' }: Shared
       className={`inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs text-emerald-400 ${className}`}
     >
       <ShareIcon />
-      <span>Shared</span>
+      <span>{t('shared')}</span>
     </span>
   );
 }

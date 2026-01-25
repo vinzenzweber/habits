@@ -35,25 +35,25 @@ interface ChatModalProps {
   pageContext?: PageContext;
 }
 
-// Display names for completed tool calls (past tense)
-const TOOL_DISPLAY_NAMES: Record<string, string> = {
-  get_workout: "Fetched workout",
-  get_all_workouts: "Fetched all workouts",
-  update_workout: "Updated workout",
-  save_memory: "Saved to memory",
-  get_memories: "Retrieved memories",
-  delete_memory: "Deleted memory",
-  web_search: "Searched the web",
-  create_feedback_issue: "Recorded feedback",
-  search_exercises: "Searched exercises",
-  create_exercise: "Created exercise",
-  get_exercise_images: "Checked exercise images",
-  get_workout_stats: "Analyzed workout history",
-  search_recipes: "Searched recipes",
-  get_recipe: "Fetched recipe",
-  create_recipe: "Created recipe",
-  update_recipe: "Updated recipe"
-};
+// Tool name keys for translation
+const TOOL_NAMES = [
+  'get_workout',
+  'get_all_workouts',
+  'update_workout',
+  'save_memory',
+  'get_memories',
+  'delete_memory',
+  'web_search',
+  'create_feedback_issue',
+  'search_exercises',
+  'create_exercise',
+  'get_exercise_images',
+  'get_workout_stats',
+  'search_recipes',
+  'get_recipe',
+  'create_recipe',
+  'update_recipe'
+] as const;
 
 export function ChatModal({
   isOpen,
@@ -66,6 +66,20 @@ export function ChatModal({
 }: ChatModalProps) {
   const router = useRouter();
   const t = useTranslations('chat');
+  const tCommon = useTranslations('common');
+  const tTools = useTranslations('chatTools');
+  const tErrors = useTranslations('errors');
+
+  // Get translated tool display name
+  const getToolDisplayName = (toolName: string): string => {
+    const key = toolName as typeof TOOL_NAMES[number];
+    try {
+      return tTools(key);
+    } catch {
+      return toolName; // Fallback to raw tool name if not found
+    }
+  };
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [sessionId, setSessionId] = useState<number | null>(null);
@@ -231,12 +245,12 @@ export function ChatModal({
           body: JSON.stringify({ difficulty_rating: rating })
         });
         if (!response.ok) {
-          throw new Error('Failed to save rating');
+          throw new Error(tErrors('failedToSaveRating'));
         }
       } catch (error) {
         console.error('Failed to save rating:', error);
         // Provide user feedback and allow retry
-        alert('Could not save your rating. Please try again.');
+        alert(t('ratingError'));
         setRatingSubmitted(false);
         setShowRatingButtons(true);
         return;
@@ -244,10 +258,10 @@ export function ChatModal({
     }
 
     // Send rating as chat message
-    const ratingText = {
-      too_easy: "That workout felt too easy for me.",
-      just_right: "That workout was just right - good challenge!",
-      too_hard: "That workout was too hard for me."
+    const ratingText: Record<string, string> = {
+      too_easy: t('ratingTooEasy'),
+      just_right: t('ratingJustRight'),
+      too_hard: t('ratingTooHard')
     };
 
     handleSend(ratingText[rating]);
@@ -312,13 +326,13 @@ export function ChatModal({
       });
 
       if (!response.ok) {
-        throw new Error('Failed to send message');
+        throw new Error(tErrors('failedToSendMessage'));
       }
 
       // Handle streaming response
       const reader = response.body?.getReader() || null;
       if (!reader) {
-        throw new Error('No response body');
+        throw new Error(tErrors('noResponseBody'));
       }
       streamReaderRef.current = reader;
 
@@ -384,7 +398,7 @@ export function ChatModal({
       }
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.'
+        content: t('errorEncountered')
       }]);
       setStreamingContent('');
       setToolInProgress(null);
@@ -422,13 +436,13 @@ export function ChatModal({
       });
 
       if (!response.ok) {
-        throw new Error('Failed to send message');
+        throw new Error(tErrors('failedToSendMessage'));
       }
 
       // Handle streaming response
       const reader = response.body?.getReader() || null;
       if (!reader) {
-        throw new Error('No response body');
+        throw new Error(tErrors('noResponseBody'));
       }
       streamReaderRef.current = reader;
 
@@ -499,7 +513,7 @@ export function ChatModal({
       }
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.'
+        content: t('errorEncountered')
       }]);
       setStreamingContent('');
       setToolInProgress(null);
@@ -596,7 +610,7 @@ export function ChatModal({
       setIsRecording(true);
     } catch (error) {
       console.error('Failed to start recording:', error);
-      alert('Could not access microphone. Please check permissions.');
+      alert(t('microphoneError'));
     }
   }, []);
 
@@ -644,7 +658,7 @@ export function ChatModal({
       });
 
       if (!response.ok) {
-        throw new Error('TTS failed');
+        throw new Error(tErrors('ttsFailed'));
       }
 
       const audioBlob = await response.blob();
@@ -681,7 +695,7 @@ export function ChatModal({
     try {
       const response = await fetch(`/api/chat/sessions/${sessionId}`);
       if (!response.ok) {
-        throw new Error('Failed to load session');
+        throw new Error(tErrors('failedToLoadSession'));
       }
       const data = await response.json();
 
@@ -695,7 +709,7 @@ export function ChatModal({
       setStreamingContent('');
     } catch (error) {
       console.error('Error loading session:', error);
-      alert('Failed to load chat session. Please try again.');
+      alert(t('sessionLoadError'));
     } finally {
       setLoadingSession(false);
     }
@@ -753,7 +767,7 @@ export function ChatModal({
             <button
               onClick={onClose}
               className="text-slate-400 hover:text-white text-2xl leading-none"
-              aria-label="Close"
+              aria-label={tCommon('close')}
             >
               ✕
             </button>
@@ -763,20 +777,20 @@ export function ChatModal({
         <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {messages.length === 0 && !streamingContent && (
             <div className="text-center text-slate-400 py-8">
-              <p className="mb-2">Your AI-powered fitness and nutrition assistant</p>
-              <p className="text-sm">I can help with:</p>
+              <p className="mb-2">{t('aiAssistantDescription')}</p>
+              <p className="text-sm">{t('canHelpWith')}</p>
               <ul className="text-sm mt-2 space-y-1 text-left max-w-xs mx-auto">
-                <li>• Exercise technique, form, and modifications</li>
-                <li>• Recipe ideas and nutrition advice</li>
-                <li>• Workout history and progress tracking</li>
-                <li>• Personalized motivation and encouragement</li>
-                <li>• Equipment and training recommendations</li>
+                <li>• {t('helpExercise')}</li>
+                <li>• {t('helpRecipe')}</li>
+                <li>• {t('helpProgress')}</li>
+                <li>• {t('helpMotivation')}</li>
+                <li>• {t('helpEquipment')}</li>
               </ul>
               <p className="text-xs mt-4 text-slate-500">
-                I remember your equipment, goals, and preferences between sessions!
+                {t('rememberPreferences')}
               </p>
               <p className="text-xs mt-2 text-slate-500">
-                🎤 Voice enabled — tap the mic to talk to me!
+                🎤 {t('voiceEnabled')}
               </p>
             </div>
           )}
@@ -787,7 +801,7 @@ export function ChatModal({
               {msg.role === 'assistant' && msg.toolCalls && msg.toolCalls.length > 0 && (
                 <div className="mb-2 flex flex-wrap gap-1">
                   {msg.toolCalls.map((tool, idx) => {
-                    const displayName = TOOL_DISPLAY_NAMES[tool.function.name] || tool.function.name;
+                    const displayName = getToolDisplayName(tool.function.name);
                     return (
                       <span
                         key={idx}
@@ -816,15 +830,15 @@ export function ChatModal({
                     <button
                       onClick={() => speakMessage(msg.content, i)}
                       className="mt-2 text-xs text-slate-400 hover:text-white flex items-center gap-1 transition"
-                      title={speakingIndex === i && isSpeaking ? "Stop speaking" : "Listen to response"}
+                      title={speakingIndex === i && isSpeaking ? t('stopSpeaking') : t('listenToResponse')}
                     >
                       {speakingIndex === i && isSpeaking ? (
                         <>
-                          <span className="text-emerald-400">◼</span> Stop
+                          <span className="text-emerald-400">◼</span> {t('stopButton')}
                         </>
                       ) : (
                         <>
-                          <span>🔊</span> Listen
+                          <span>🔊</span> {t('listenButton')}
                         </>
                       )}
                     </button>
@@ -882,19 +896,19 @@ export function ChatModal({
                 onClick={() => handleRatingClick('too_easy')}
                 className="px-4 py-2 bg-sky-600 hover:bg-sky-700 rounded-lg text-sm font-medium transition"
               >
-                Too Easy
+                {t('buttonTooEasy')}
               </button>
               <button
                 onClick={() => handleRatingClick('just_right')}
                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-medium transition"
               >
-                Just Right
+                {t('buttonJustRight')}
               </button>
               <button
                 onClick={() => handleRatingClick('too_hard')}
                 className="px-4 py-2 bg-amber-600 hover:bg-amber-700 rounded-lg text-sm font-medium transition"
               >
-                Too Hard
+                {t('buttonTooHard')}
               </button>
             </div>
           )}

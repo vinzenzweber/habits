@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { redirect, notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 
 import { auth } from '@/lib/auth';
 import { getRecipeBySlug, getUserTags } from '@/lib/recipes';
@@ -18,6 +19,7 @@ export default async function EditRecipePage({ params }: PageProps) {
     redirect('/login');
   }
 
+  const t = await getTranslations('recipes');
   const { slug } = await params;
   const recipe = await getRecipeBySlug(slug);
 
@@ -40,13 +42,13 @@ export default async function EditRecipePage({ params }: PageProps) {
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Back to Recipe
+            {t('backToRecipe')}
           </Link>
         </header>
 
         {/* Title */}
         <h1 className="text-2xl font-semibold text-white sm:text-3xl">
-          Edit Recipe
+          {t('editRecipe')}
         </h1>
 
         {/* Form */}

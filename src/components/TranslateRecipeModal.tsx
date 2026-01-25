@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import type { RecipeJson } from "@/lib/recipe-types";
 
 // Supported translation locales (copied from recipe-tools to avoid server import)
@@ -22,6 +23,7 @@ interface TranslateRecipeModalProps {
     title: string;
     translatingRecipe: string;
     selectLanguage: string;
+    selectLanguagePlaceholder: string;
     adaptMeasurements: string;
     adaptMeasurementsDescription: string;
     preview: string;
@@ -30,6 +32,16 @@ interface TranslateRecipeModalProps {
     translationPreview: string;
     close: string;
     cancel: string;
+    saving: string;
+    backToOptions: string;
+    titleLabel: string;
+    descriptionLabel: string;
+    ingredientsSample: string;
+    stepsSample: string;
+    andMore: string;
+    andMoreSteps: string;
+    translationFailed: string;
+    failedToSaveTranslation: string;
   };
 }
 
@@ -56,6 +68,7 @@ export function TranslateRecipeModal({
   onSuccess,
   translations: t,
 }: TranslateRecipeModalProps) {
+  const tCommon = useTranslations('common');
   const [targetLocale, setTargetLocale] = useState<TranslationLocale | "">("");
   const [adaptMeasurements, setAdaptMeasurements] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -115,13 +128,13 @@ export function TranslateRecipeModal({
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Translation failed");
+        throw new Error(data.error || t.translationFailed);
       }
 
       const { translatedRecipe } = await response.json();
       setPreviewData(translatedRecipe);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : tCommon("error"));
     } finally {
       setIsLoading(false);
     }
@@ -147,14 +160,14 @@ export function TranslateRecipeModal({
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to save translation");
+        throw new Error(data.error || t.failedToSaveTranslation);
       }
 
       const { translatedRecipe } = await response.json();
       onSuccess?.(translatedRecipe.slug);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : tCommon("error"));
     } finally {
       setIsSaving(false);
     }
@@ -189,7 +202,7 @@ export function TranslateRecipeModal({
           <button
             onClick={onClose}
             className="text-2xl leading-none text-slate-400 hover:text-white"
-            aria-label="Close"
+            aria-label={tCommon('close')}
           >
             &times;
           </button>
@@ -225,7 +238,7 @@ export function TranslateRecipeModal({
                   onChange={(e) => setTargetLocale(e.target.value as TranslationLocale)}
                   className="w-full rounded-lg border border-slate-600 bg-slate-800 px-4 py-3 text-white focus:border-emerald-500 focus:outline-none"
                 >
-                  <option value="">-- Select language --</option>
+                  <option value="">{t.selectLanguagePlaceholder}</option>
                   {availableLocales.map((locale) => (
                     <option key={locale} value={locale}>
                       {LOCALE_NAMES[locale] || locale}
@@ -263,20 +276,20 @@ export function TranslateRecipeModal({
 
               {/* Title preview */}
               <div className="rounded-lg bg-slate-800 p-3">
-                <p className="text-xs uppercase tracking-wider text-slate-400">Title</p>
+                <p className="text-xs uppercase tracking-wider text-slate-400">{t.titleLabel}</p>
                 <p className="text-lg font-medium text-white">{previewData.title}</p>
               </div>
 
               {/* Description preview */}
               <div className="rounded-lg bg-slate-800 p-3">
-                <p className="text-xs uppercase tracking-wider text-slate-400">Description</p>
+                <p className="text-xs uppercase tracking-wider text-slate-400">{t.descriptionLabel}</p>
                 <p className="text-slate-300">{previewData.description}</p>
               </div>
 
               {/* Sample ingredients */}
               <div className="rounded-lg bg-slate-800 p-3">
                 <p className="text-xs uppercase tracking-wider text-slate-400">
-                  Ingredients (sample)
+                  {t.ingredientsSample}
                 </p>
                 {previewData.ingredientGroups.slice(0, 1).map((group, idx) => (
                   <div key={idx} className="mt-2">
@@ -289,7 +302,7 @@ export function TranslateRecipeModal({
                       ))}
                       {group.ingredients.length > 3 && (
                         <li className="text-sm italic text-slate-500">
-                          ... and {group.ingredients.length - 3} more
+                          {t.andMore.replace('{count}', String(group.ingredients.length - 3))}
                         </li>
                       )}
                     </ul>
@@ -300,7 +313,7 @@ export function TranslateRecipeModal({
               {/* Sample steps */}
               <div className="rounded-lg bg-slate-800 p-3">
                 <p className="text-xs uppercase tracking-wider text-slate-400">
-                  Steps (sample)
+                  {t.stepsSample}
                 </p>
                 <ol className="mt-2 space-y-2">
                   {previewData.steps.slice(0, 2).map((step) => (
@@ -311,7 +324,7 @@ export function TranslateRecipeModal({
                   ))}
                   {previewData.steps.length > 2 && (
                     <li className="text-sm italic text-slate-500">
-                      ... and {previewData.steps.length - 2} more steps
+                      {t.andMoreSteps.replace('{count}', String(previewData.steps.length - 2))}
                     </li>
                   )}
                 </ol>
@@ -385,7 +398,7 @@ export function TranslateRecipeModal({
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                       />
                     </svg>
-                    Saving...
+                    {t.saving}
                   </span>
                 ) : (
                   t.saveTranslation
@@ -395,7 +408,7 @@ export function TranslateRecipeModal({
                 onClick={() => setPreviewData(null)}
                 className="mt-2 w-full py-2 text-slate-400 transition hover:text-white"
               >
-                Back to options
+                {t.backToOptions}
               </button>
             </>
           )}

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 import { Collection, CollectionWithRecipes } from "@/lib/collection-types";
 import { RecipeSummary } from "@/lib/recipe-types";
@@ -24,6 +25,8 @@ export function CollectionDetailClient({
   sharedBy,
 }: CollectionDetailClientProps) {
   const router = useRouter();
+  const t = useTranslations("collectionDetail");
+  const tCommon = useTranslations("common");
   const [collection, setCollection] =
     useState<CollectionWithRecipes>(initialCollection);
   const [recipes, setRecipes] = useState<RecipeSummary[]>(
@@ -96,13 +99,13 @@ export function CollectionDetailClient({
             {/* Shared by badge */}
             {sharedBy && (
               <p className="text-sm text-emerald-400">
-                Shared by {sharedBy.name}
+                {t("sharedBy", { name: sharedBy.name })}
               </p>
             )}
 
             {/* Recipe count */}
             <p className="text-sm text-slate-400">
-              {recipes.length} {recipes.length === 1 ? "recipe" : "recipes"}
+              {t("recipeCount", { count: recipes.length })}
             </p>
           </div>
 
@@ -112,13 +115,13 @@ export function CollectionDetailClient({
               onClick={() => setShowEditModal(true)}
               className="inline-flex items-center justify-center rounded-full bg-slate-800 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700"
             >
-              Edit
+              {tCommon("edit")}
             </button>
             <button
               onClick={() => setShowShareModal(true)}
               className="inline-flex items-center justify-center rounded-full bg-slate-800 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700"
             >
-              Share
+              {t("share")}
             </button>
           </div>
         </div>
@@ -145,7 +148,7 @@ export function CollectionDetailClient({
               d="M12 4v16m8-8H4"
             />
           </svg>
-          Add Recipe
+          {t("addRecipe")}
         </button>
       </div>
 
@@ -214,6 +217,8 @@ function AddRecipeToCollectionModal({
   existingRecipeSlugs: string[];
   onSuccess: () => void;
 }) {
+  const t = useTranslations("collectionDetail");
+  const tCommon = useTranslations("common");
   const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -227,7 +232,7 @@ function AddRecipeToCollectionModal({
       setError(null);
       try {
         const response = await fetch("/api/recipes");
-        if (!response.ok) throw new Error("Failed to fetch recipes");
+        if (!response.ok) throw new Error(t("failedToFetchRecipes"));
         const data = await response.json();
         // Filter out recipes already in collection
         const available = data.recipes.filter(
@@ -235,7 +240,7 @@ function AddRecipeToCollectionModal({
         );
         setRecipes(available);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "An error occurred");
+        setError(err instanceof Error ? err.message : tCommon("error"));
       } finally {
         setIsLoading(false);
       }
@@ -324,7 +329,7 @@ function AddRecipeToCollectionModal({
         onClose();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : tCommon("error"));
     } finally {
       setIsSaving(false);
     }
@@ -353,11 +358,11 @@ function AddRecipeToCollectionModal({
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-700 p-4">
-          <h2 id="add-recipes-title" className="text-lg font-semibold">Add Recipes</h2>
+          <h2 id="add-recipes-title" className="text-lg font-semibold">{t("addRecipes")}</h2>
           <button
             onClick={onClose}
             className="text-2xl leading-none text-slate-400 hover:text-white"
-            aria-label="Close"
+            aria-label={tCommon("close")}
           >
             &times;
           </button>
@@ -366,7 +371,7 @@ function AddRecipeToCollectionModal({
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4">
           <p className="mb-4 text-sm text-slate-400">
-            Select recipes to add to &quot;{collectionName}&quot;
+            {t("selectRecipesToAdd", { name: collectionName })}
           </p>
 
           {error && (
@@ -381,7 +386,7 @@ function AddRecipeToCollectionModal({
             </div>
           ) : recipes.length === 0 ? (
             <p className="py-8 text-center text-sm text-slate-500">
-              All your recipes are already in this collection
+              {t("allRecipesAdded")}
             </p>
           ) : (
             <div className="space-y-2">
@@ -455,16 +460,16 @@ function AddRecipeToCollectionModal({
             className="w-full rounded-xl bg-emerald-500 py-3 font-medium text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSaving
-              ? "Adding..."
+              ? t("adding")
               : selectedSlugs.size > 0
-                ? `Add ${selectedSlugs.size} Recipe${selectedSlugs.size !== 1 ? "s" : ""}`
-                : "Done"}
+                ? t("addCount", { count: selectedSlugs.size })
+                : tCommon("done")}
           </button>
           <button
             onClick={onClose}
             className="mt-2 w-full py-2 text-slate-400 transition hover:text-white"
           >
-            Cancel
+            {tCommon("cancel")}
           </button>
         </div>
       </div>

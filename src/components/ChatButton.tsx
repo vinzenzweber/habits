@@ -1,10 +1,12 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useChat } from '@/contexts/ChatContext';
 import { ChatModal } from './ChatModal';
 
 export function ChatButton() {
+  const t = useTranslations('chat');
   const pathname = usePathname();
   const {
     isOpen,
@@ -31,7 +33,7 @@ export function ChatButton() {
         className={`fixed bottom-20 right-6 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full w-14 h-14 shadow-lg flex items-center justify-center z-50 transition ${
           isOpen ? 'md:hidden' : ''
         }`}
-        aria-label="FitStreak AI"
+        aria-label={t('fitStreakAI')}
       >
         <span className="text-2xl">💬</span>
       </button>

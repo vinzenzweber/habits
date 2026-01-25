@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { CollectionSummary } from "@/lib/collection-types";
 
 interface AddToCollectionModalProps {
@@ -27,6 +28,10 @@ export function AddToCollectionModal({
   recipeName,
   onSuccess,
 }: AddToCollectionModalProps) {
+  const t = useTranslations("addToCollection");
+  const tCommon = useTranslations("common");
+  const tCollections = useTranslations("collections");
+
   const [collections, setCollections] = useState<CollectionState[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -51,13 +56,13 @@ export function AddToCollectionModal({
       ]);
 
       if (!collectionsRes.ok) {
-        throw new Error("Failed to fetch collections");
+        throw new Error(tCollections("failedToFetch"));
       }
       if (!recipeRes.ok) {
-        throw new Error("Recipe not found");
+        throw new Error(t("recipeNotFound"));
       }
       if (!membershipRes.ok) {
-        throw new Error("Failed to check collection membership");
+        throw new Error(t("failedToCheckMembership"));
       }
 
       const collectionsData = await collectionsRes.json();
@@ -82,7 +87,7 @@ export function AddToCollectionModal({
 
       setCollections(collectionsWithState);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : tCommon("error"));
     } finally {
       setIsLoading(false);
     }
@@ -137,7 +142,7 @@ export function AddToCollectionModal({
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to create collection");
+        throw new Error(data.error || tCollections("failedToCreate"));
       }
 
       const { collection } = await response.json();
@@ -157,7 +162,7 @@ export function AddToCollectionModal({
       setShowCreateForm(false);
       setNewCollectionName("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : tCommon("error"));
     }
   };
 
@@ -189,7 +194,7 @@ export function AddToCollectionModal({
           // Ignore "already in collection" errors
           if (!data.error?.includes("already")) {
             throw new Error(
-              data.error || `Failed to add to ${collection.name}`
+              data.error || t("failedToAdd")
             );
           }
         }
@@ -198,7 +203,7 @@ export function AddToCollectionModal({
       onSuccess?.();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : tCommon("error"));
     } finally {
       setIsSaving(false);
     }
@@ -231,11 +236,11 @@ export function AddToCollectionModal({
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-700 p-4">
-          <h2 id="add-to-collection-title" className="text-lg font-semibold">Add to Collection</h2>
+          <h2 id="add-to-collection-title" className="text-lg font-semibold">{tCollections("addToCollection")}</h2>
           <button
             onClick={onClose}
             className="text-2xl leading-none text-slate-400 hover:text-white"
-            aria-label="Close"
+            aria-label={tCommon("close")}
           >
             &times;
           </button>
@@ -245,7 +250,7 @@ export function AddToCollectionModal({
         <div className="flex-1 overflow-y-auto p-4">
           {/* Recipe name */}
           <p className="mb-4 text-sm text-slate-400">
-            Adding &quot;{recipeName}&quot;
+            {t("addingRecipe", { name: recipeName })}
           </p>
 
           {/* Error message */}
@@ -268,7 +273,7 @@ export function AddToCollectionModal({
                     type="text"
                     value={newCollectionName}
                     onChange={(e) => setNewCollectionName(e.target.value)}
-                    placeholder="Collection name"
+                    placeholder={t("collectionNamePlaceholder")}
                     maxLength={100}
                     className="mb-2 w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-white placeholder-slate-400 focus:border-emerald-500 focus:outline-none"
                     autoFocus
@@ -279,7 +284,7 @@ export function AddToCollectionModal({
                       disabled={!newCollectionName.trim()}
                       className="flex-1 rounded-lg bg-emerald-500 py-2 text-sm font-medium text-slate-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      Create
+                      {t("create")}
                     </button>
                     <button
                       onClick={() => {
@@ -288,7 +293,7 @@ export function AddToCollectionModal({
                       }}
                       className="flex-1 rounded-lg bg-slate-700 py-2 text-sm font-medium text-white hover:bg-slate-600"
                     >
-                      Cancel
+                      {tCommon("cancel")}
                     </button>
                   </div>
                 </div>
@@ -297,14 +302,14 @@ export function AddToCollectionModal({
                   onClick={() => setShowCreateForm(true)}
                   className="mb-4 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-700 py-3 text-sm text-slate-400 transition hover:border-slate-600 hover:text-white"
                 >
-                  <span>+</span> Create New Collection
+                  <span>+</span> {tCollections("createNewCollection")}
                 </button>
               )}
 
               {/* Collection list */}
               {collections.length === 0 ? (
                 <p className="py-4 text-center text-sm text-slate-500">
-                  No collections yet. Create one above!
+                  {t("noCollectionsYet")}
                 </p>
               ) : (
                 collections.map((collection) => (
@@ -347,9 +352,8 @@ export function AddToCollectionModal({
                         {collection.name}
                       </p>
                       <p className="text-xs text-slate-400">
-                        {collection.recipeCount}{" "}
-                        {collection.recipeCount === 1 ? "recipe" : "recipes"}
-                        {collection.wasAlreadyAdded && " • Already added"}
+                        {t("recipeCount", { count: collection.recipeCount })}
+                        {collection.wasAlreadyAdded && ` • ${t("alreadyAdded")}`}
                       </p>
                     </div>
                   </button>
@@ -366,13 +370,13 @@ export function AddToCollectionModal({
             disabled={isSaving || !hasChanges}
             className="w-full rounded-xl bg-emerald-500 py-3 font-medium text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isSaving ? "Saving..." : hasChanges ? "Add to Selected" : "Done"}
+            {isSaving ? tCommon("saving") : hasChanges ? t("addToSelected") : tCommon("done")}
           </button>
           <button
             onClick={onClose}
             className="mt-2 w-full py-2 text-slate-400 transition hover:text-white"
           >
-            Cancel
+            {tCommon("cancel")}
           </button>
         </div>
       </div>

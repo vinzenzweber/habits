@@ -202,7 +202,7 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
     // Validate file
     const validation = validateImportFile(file);
     if (!validation.valid) {
-      setError(validation.error || 'Invalid file');
+      setError(validation.error || t('invalidFile'));
       return;
     }
 
@@ -238,7 +238,7 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
     // Validate file
     const validation = validateImportFile(file);
     if (!validation.valid) {
-      setError(validation.error || 'Invalid file');
+      setError(validation.error || t('invalidFile'));
       return;
     }
 
@@ -306,7 +306,7 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
       const { data } = await parseResponseJson<{ error?: string }>(response);
 
       if (!response.ok) {
-        setError(data?.error || 'Failed to cancel extraction');
+        setError(data?.error || t('failedToCancelExtraction'));
         setIsCancelling(false);
         return;
       }
@@ -317,7 +317,7 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
       setIsCancelling(false);
       handleReset();
     } catch {
-      setError('Failed to cancel extraction');
+      setError(t('failedToCancelExtraction'));
       setIsCancelling(false);
     }
   }, [pollingJobId, handleReset, parseResponseJson]);
@@ -341,7 +341,7 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
         }>(response);
 
         if (!response.ok) {
-          setError(data?.error || 'Failed to check extraction status');
+          setError(data?.error || t('failedToCheckStatus'));
           setJobStatus('failed');
           setIsExtracting(false);
           setIsUploading(false);
@@ -349,7 +349,7 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
         }
 
         if (!data) {
-          setError('Unexpected response from server');
+          setError(t('unexpectedResponse'));
           setJobStatus('failed');
           setIsExtracting(false);
           setIsUploading(false);
@@ -380,7 +380,7 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
             });
           }
         } else if (data.status === 'failed') {
-          setError(data.error || 'Recipe extraction failed');
+          setError(data.error || t('extractionFailed'));
           setIsExtracting(false);
           setIsUploading(false);
         } else if (data.status === 'cancelled') {
@@ -436,11 +436,11 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
         );
 
         if (!response.ok) {
-          throw new Error(data?.error || 'Failed to extract recipe from PDF');
+          throw new Error(data?.error || t('failedToExtractPdf'));
         }
 
         if (!data || typeof data.jobId !== 'number') {
-          throw new Error('Unexpected response from server');
+          throw new Error(t('unexpectedResponse'));
         }
 
         // API returns 202 with jobId for async processing
@@ -467,11 +467,11 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
         );
 
         if (!response.ok) {
-          throw new Error(data?.error || 'Failed to extract recipe');
+          throw new Error(data?.error || t('failedToExtract'));
         }
 
         if (!data?.slug) {
-          throw new Error('Unexpected response from server');
+          throw new Error(t('unexpectedResponse'));
         }
 
         // Notify parent with the extracted recipe slug
@@ -479,7 +479,7 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
       }
     } catch (err) {
       console.error('Extraction error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to extract recipe');
+      setError(err instanceof Error ? err.message : t('failedToExtract'));
       // Reset loading states on error
       setIsUploading(false);
       setIsExtracting(false);
@@ -530,7 +530,7 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
           <button
             onClick={onClose}
             className="text-slate-400 hover:text-white text-2xl leading-none"
-            aria-label="Close"
+            aria-label={tCommon('close')}
           >
             &times;
           </button>
@@ -573,7 +573,7 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
                   >
                     <span className="text-white">{recipe.title}</span>
                     {recipe.pageNumber > 0 && (
-                      <span className="text-slate-400 text-sm ml-2">(page {recipe.pageNumber})</span>
+                      <span className="text-slate-400 text-sm ml-2">{t('pageNumber', { number: recipe.pageNumber })}</span>
                     )}
                   </button>
                 ))}

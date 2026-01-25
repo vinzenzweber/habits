@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { RecipeSharingTranslations } from '@/lib/translations/recipe-sharing';
 import { MySharedRecipe, SharePermission } from '@/lib/recipe-sharing-types';
 
@@ -35,6 +36,7 @@ export function ManageSharesModal({
   recipeSlug,
   translations: t,
 }: ManageSharesModalProps) {
+  const tCommon = useTranslations('common');
   const [shares, setShares] = useState<MySharedRecipe[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,14 +62,14 @@ export function ManageSharesModal({
         const data = await res.json();
 
         if (!res.ok) {
-          setError(data.error || 'Failed to load shares');
+          setError(data.error || t.failedToLoadShares);
           return;
         }
 
         setShares(data.shares);
       } catch (err) {
         console.error('Error fetching shares:', err);
-        setError('Failed to load shares');
+        setError(t.failedToLoadShares);
       } finally {
         setIsLoading(false);
       }
@@ -88,7 +90,7 @@ export function ManageSharesModal({
 
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error || 'Failed to update permission');
+        setError(data.error || t.failedToUpdatePermission);
         return;
       }
 
@@ -100,7 +102,7 @@ export function ManageSharesModal({
       );
     } catch (err) {
       console.error('Error updating permission:', err);
-      setError('Failed to update permission');
+      setError(t.failedToUpdatePermission);
     } finally {
       setUpdatingShareId(null);
     }
@@ -116,7 +118,7 @@ export function ManageSharesModal({
 
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error || 'Failed to remove share');
+        setError(data.error || t.failedToRemoveShare);
         return;
       }
 
@@ -125,7 +127,7 @@ export function ManageSharesModal({
       setConfirmRemoveId(null);
     } catch (err) {
       console.error('Error removing share:', err);
-      setError('Failed to remove share');
+      setError(t.failedToRemoveShare);
     } finally {
       setUpdatingShareId(null);
     }
@@ -155,7 +157,7 @@ export function ManageSharesModal({
           <button
             onClick={onClose}
             className="text-slate-400 hover:text-white p-1 rounded transition"
-            aria-label="Close"
+            aria-label={tCommon('close')}
           >
             <CloseIcon />
           </button>
@@ -216,13 +218,13 @@ export function ManageSharesModal({
                           disabled={updatingShareId === share.shareId}
                           className="rounded bg-red-500 px-2 py-1 text-xs font-medium text-white hover:bg-red-400 disabled:opacity-50"
                         >
-                          {updatingShareId === share.shareId ? '...' : 'Remove'}
+                          {updatingShareId === share.shareId ? '...' : tCommon('delete')}
                         </button>
                         <button
                           onClick={() => setConfirmRemoveId(null)}
                           className="rounded bg-slate-600 px-2 py-1 text-xs font-medium text-white hover:bg-slate-500"
                         >
-                          Cancel
+                          {tCommon('cancel')}
                         </button>
                       </div>
                     ) : (

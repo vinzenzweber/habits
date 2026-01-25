@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { GroceryListSummary } from "@/lib/grocery-types";
 import { GroceryListCard } from "./GroceryListCard";
 import { CreateListModal } from "./CreateListModal";
@@ -18,6 +19,7 @@ type FilterTab = "all" | "my" | "shared";
  */
 export function GroceryListClient({ initialLists }: GroceryListClientProps) {
   const router = useRouter();
+  const t = useTranslations("groceryLists");
   const [lists, setLists] = useState(initialLists);
   const [filter, setFilter] = useState<FilterTab>("all");
   const [search, setSearch] = useState("");
@@ -78,7 +80,7 @@ export function GroceryListClient({ initialLists }: GroceryListClientProps) {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search lists..."
+            placeholder={t("searchLists")}
             className="w-full rounded-xl border border-slate-800 bg-slate-900/50 py-3 pl-10 pr-4 text-sm text-slate-100 placeholder-slate-500 transition focus:border-emerald-500 focus:outline-none"
           />
           <svg
@@ -106,7 +108,7 @@ export function GroceryListClient({ initialLists }: GroceryListClientProps) {
                 : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            All ({lists.length})
+            {t("all")} ({lists.length})
           </button>
           <button
             onClick={() => setFilter("my")}
@@ -116,7 +118,7 @@ export function GroceryListClient({ initialLists }: GroceryListClientProps) {
                 : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            My Lists ({myListsCount})
+            {t("myLists")} ({myListsCount})
           </button>
           {sharedListsCount > 0 && (
             <button
@@ -127,7 +129,7 @@ export function GroceryListClient({ initialLists }: GroceryListClientProps) {
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              Shared ({sharedListsCount})
+              {t("shared")} ({sharedListsCount})
             </button>
           )}
         </div>
@@ -145,33 +147,33 @@ export function GroceryListClient({ initialLists }: GroceryListClientProps) {
           <div className="mb-4 text-5xl">🛒</div>
           {search ? (
             <>
-              <p className="text-lg font-medium text-white">No lists found</p>
+              <p className="text-lg font-medium text-white">{t("noListsFound")}</p>
               <p className="mt-1 text-sm text-slate-400">
-                Try a different search term
+                {t("tryDifferentSearch")}
               </p>
             </>
           ) : filter !== "all" ? (
             <>
               <p className="text-lg font-medium text-white">
-                No {filter === "my" ? "personal" : "shared"} lists
+                {filter === "my" ? t("noPersonalLists") : t("noSharedLists")}
               </p>
               <p className="mt-1 text-sm text-slate-400">
                 {filter === "my"
-                  ? "Create a list to get started"
-                  : "Lists shared with you will appear here"}
+                  ? t("createToStart")
+                  : t("sharedListsAppearHere")}
               </p>
             </>
           ) : (
             <>
-              <p className="text-lg font-medium text-white">No grocery lists yet</p>
+              <p className="text-lg font-medium text-white">{t("noGroceryListsYet")}</p>
               <p className="mt-1 text-sm text-slate-400">
-                Create your first list to start shopping
+                {t("createFirstList")}
               </p>
               <button
                 onClick={() => setIsCreateModalOpen(true)}
                 className="mt-4 rounded-xl bg-emerald-500 px-6 py-2 font-medium text-slate-950 transition hover:bg-emerald-400"
               >
-                Create List
+                {t("createList")}
               </button>
             </>
           )}

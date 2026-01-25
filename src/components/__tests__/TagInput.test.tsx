@@ -17,7 +17,8 @@ describe('TagInput', () => {
 
     it('renders tag count correctly', () => {
       render(<TagInput tags={['healthy', 'quick']} onChange={() => {}} maxTags={10} />);
-      expect(screen.getByText('2 of 10 tags')).toBeInTheDocument();
+      // Mock translation returns key with params: "tagCount current:2 max:10"
+      expect(screen.getByText('tagCount current:2 max:10')).toBeInTheDocument();
     });
 
     it('renders placeholder when no tags', () => {
