@@ -54,13 +54,13 @@ describe('IngredientGroupEditor', () => {
     it('renders add ingredient button for each group', () => {
       render(<IngredientGroupEditor groups={createMockGroups()} onChange={() => {}} />);
 
-      const addButtons = screen.getAllByText('+ Add ingredient');
+      const addButtons = screen.getAllByText('+ addIngredient');
       expect(addButtons).toHaveLength(2);
     });
 
     it('renders add group button', () => {
       render(<IngredientGroupEditor groups={createMockGroups()} onChange={() => {}} />);
-      expect(screen.getByText('+ Add ingredient group')).toBeInTheDocument();
+      expect(screen.getByText('+ addIngredientGroup')).toBeInTheDocument();
     });
   });
 
@@ -70,7 +70,7 @@ describe('IngredientGroupEditor', () => {
       const onChange = vi.fn();
       render(<IngredientGroupEditor groups={createMockGroups()} onChange={onChange} />);
 
-      await user.click(screen.getByText('+ Add ingredient group'));
+      await user.click(screen.getByText('+ addIngredientGroup'));
 
       expect(onChange).toHaveBeenCalledWith([
         ...createMockGroups(),
@@ -86,7 +86,7 @@ describe('IngredientGroupEditor', () => {
       render(<IngredientGroupEditor groups={createMockGroups()} onChange={onChange} />);
 
       // Find remove group buttons (trash icon buttons)
-      const removeButtons = screen.getAllByTitle('Remove group');
+      const removeButtons = screen.getAllByTitle('removeGroup');
       await user.click(removeButtons[0]);
 
       expect(onChange).toHaveBeenCalledWith([createMockGroups()[1]]);
@@ -100,7 +100,7 @@ describe('IngredientGroupEditor', () => {
         />
       );
 
-      expect(screen.queryByTitle('Remove group')).not.toBeInTheDocument();
+      expect(screen.queryByTitle('removeGroup')).not.toBeInTheDocument();
     });
   });
 
@@ -124,7 +124,7 @@ describe('IngredientGroupEditor', () => {
       const onChange = vi.fn();
       render(<IngredientGroupEditor groups={createMockGroups()} onChange={onChange} />);
 
-      const addButtons = screen.getAllByText('+ Add ingredient');
+      const addButtons = screen.getAllByText('+ addIngredient');
       await user.click(addButtons[0]);
 
       const expectedGroups = [...createMockGroups()];
@@ -147,7 +147,7 @@ describe('IngredientGroupEditor', () => {
       render(<IngredientGroupEditor groups={createMockGroups()} onChange={onChange} />);
 
       // Find remove ingredient buttons (X icons within ingredient rows)
-      const removeIngredientButtons = screen.getAllByTitle('Remove ingredient');
+      const removeIngredientButtons = screen.getAllByTitle('removeIngredient');
       await user.click(removeIngredientButtons[0]);
 
       const expectedGroups = [...createMockGroups()];
@@ -177,7 +177,7 @@ describe('IngredientGroupEditor', () => {
       );
 
       // Remove the first ingredient from Group 1
-      const removeIngredientButtons = screen.getAllByTitle('Remove ingredient');
+      const removeIngredientButtons = screen.getAllByTitle('removeIngredient');
       await user.click(removeIngredientButtons[0]);
 
       // Verify onChange was called with Group 1 having only the second ingredient
@@ -202,7 +202,7 @@ describe('IngredientGroupEditor', () => {
       );
 
       // The "Multiple" group should have remove buttons, "Single" should not
-      const removeButtons = screen.getAllByTitle('Remove ingredient');
+      const removeButtons = screen.getAllByTitle('removeIngredient');
       expect(removeButtons).toHaveLength(2); // Only for the 2 ingredients in Multiple group
     });
   });

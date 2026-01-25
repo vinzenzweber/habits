@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 export default function RecipesError({
   error: _error,
   reset,
@@ -7,6 +9,8 @@ export default function RecipesError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const t = useTranslations("errors");
+
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto flex max-w-3xl flex-col gap-8 px-5 pb-24 pt-12 sm:px-8">
@@ -22,16 +26,16 @@ export default function RecipesError({
           <div className="mx-auto flex max-w-sm flex-col items-center gap-4">
             <span className="text-5xl">⚠️</span>
             <h2 className="text-xl font-semibold text-white">
-              Something went wrong
+              {t("somethingWentWrong")}
             </h2>
             <p className="text-slate-400">
-              We couldn&apos;t load your recipes. Please try again.
+              {t("couldntLoadRecipes")}
             </p>
             <button
               onClick={reset}
               className="mt-2 inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-medium text-slate-950 transition hover:bg-emerald-400"
             >
-              Try again
+              {t("tryAgain")}
             </button>
           </div>
         </section>

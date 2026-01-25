@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { GROCERY_CATEGORIES, GroceryCategory } from "@/lib/grocery-types";
 import { CATEGORY_CONFIG } from "@/lib/grocery-utils";
 
@@ -33,6 +34,8 @@ export function AddItemModal({
   onClose,
   onSuccess,
 }: AddItemModalProps) {
+  const t = useTranslations("groceryModal");
+  const tCommon = useTranslations("common");
   const [ingredientName, setIngredientName] = useState("");
   const [quantity, setQuantity] = useState("");
   const [unit, setUnit] = useState("");
@@ -64,7 +67,7 @@ export function AddItemModal({
 
   const handleAdd = useCallback(async () => {
     if (!ingredientName.trim()) {
-      setError("Please enter an item name");
+      setError(t("pleaseEnterItemName"));
       return;
     }
 
@@ -100,7 +103,7 @@ export function AddItemModal({
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Failed to add item");
+        setError(data.error || t("failedToAddItem"));
         return;
       }
 
@@ -115,11 +118,11 @@ export function AddItemModal({
       inputRef.current?.focus();
     } catch (err) {
       console.error("Error adding item:", err);
-      setError("Failed to add item");
+      setError(t("failedToAddItem"));
     } finally {
       setIsAdding(false);
     }
-  }, [ingredientName, quantity, unit, category, listId, onSuccess]);
+  }, [ingredientName, quantity, unit, category, listId, onSuccess, t]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -151,11 +154,11 @@ export function AddItemModal({
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-700 p-4">
-          <h2 className="text-lg font-semibold">Add Item</h2>
+          <h2 className="text-lg font-semibold">{t("addItem")}</h2>
           <button
             onClick={onClose}
             className="rounded p-1 text-slate-400 transition hover:text-white"
-            aria-label="Close"
+            aria-label={tCommon("close")}
           >
             <CloseIcon />
           </button>
@@ -177,7 +180,7 @@ export function AddItemModal({
                 htmlFor="item-name"
                 className="mb-2 block text-sm font-medium text-slate-300"
               >
-                Item Name *
+                {t("itemName")} *
               </label>
               <input
                 ref={inputRef}
@@ -186,7 +189,7 @@ export function AddItemModal({
                 value={ingredientName}
                 onChange={(e) => setIngredientName(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="e.g., Tomatoes"
+                placeholder={t("itemPlaceholder")}
                 className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 transition focus:border-emerald-500 focus:outline-none"
                 disabled={isAdding}
               />
@@ -199,7 +202,7 @@ export function AddItemModal({
                   htmlFor="item-quantity"
                   className="mb-2 block text-sm font-medium text-slate-300"
                 >
-                  Quantity
+                  {t("quantity")}
                 </label>
                 <input
                   id="item-quantity"
@@ -207,7 +210,7 @@ export function AddItemModal({
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="e.g., 2"
+                  placeholder={t("quantityPlaceholder")}
                   min="0"
                   step="any"
                   className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 transition focus:border-emerald-500 focus:outline-none"
@@ -219,7 +222,7 @@ export function AddItemModal({
                   htmlFor="item-unit"
                   className="mb-2 block text-sm font-medium text-slate-300"
                 >
-                  Unit
+                  {t("unit")}
                 </label>
                 <input
                   id="item-unit"
@@ -227,7 +230,7 @@ export function AddItemModal({
                   value={unit}
                   onChange={(e) => setUnit(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="e.g., lbs, kg, pieces"
+                  placeholder={t("unitPlaceholder")}
                   className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 transition focus:border-emerald-500 focus:outline-none"
                   disabled={isAdding}
                 />
@@ -240,7 +243,7 @@ export function AddItemModal({
                 htmlFor="item-category"
                 className="mb-2 block text-sm font-medium text-slate-300"
               >
-                Category
+                {t("category")}
               </label>
               <select
                 id="item-category"
@@ -251,7 +254,7 @@ export function AddItemModal({
                 className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-slate-100 transition focus:border-emerald-500 focus:outline-none"
                 disabled={isAdding}
               >
-                <option value="">No category</option>
+                <option value="">{t("noCategory")}</option>
                 {GROCERY_CATEGORIES.map((cat) => (
                   <option key={cat} value={cat}>
                     {CATEGORY_CONFIG[cat].icon} {CATEGORY_CONFIG[cat].label}
@@ -267,14 +270,14 @@ export function AddItemModal({
                 disabled={isAdding || !ingredientName.trim()}
                 className="w-full rounded-xl bg-emerald-500 py-3 font-medium text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isAdding ? "Adding..." : "Add Item"}
+                {isAdding ? t("adding") : t("addItem")}
               </button>
               <button
                 onClick={onClose}
                 disabled={isAdding}
                 className="py-2 text-slate-400 transition hover:text-white disabled:opacity-50"
               >
-                Done
+                {tCommon("done")}
               </button>
             </div>
           </div>

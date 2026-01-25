@@ -1,5 +1,6 @@
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 
 interface Message {
   role: string;
@@ -11,6 +12,8 @@ interface OnboardingChatProps {
 }
 
 export function OnboardingChat({ onComplete }: OnboardingChatProps) {
+  const t = useTranslations('onboarding');
+  const tErrors = useTranslations('errors');
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [sessionId, setSessionId] = useState<number | null>(null);
@@ -137,7 +140,7 @@ export function OnboardingChat({ onComplete }: OnboardingChatProps) {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to start onboarding');
+        throw new Error(tErrors('failedToStartOnboarding'));
       }
 
       await handleStream(response);
@@ -145,7 +148,7 @@ export function OnboardingChat({ onComplete }: OnboardingChatProps) {
       console.error('Onboarding start error:', error);
       setMessages([{
         role: 'assistant',
-        content: 'Sorry, I had trouble starting. Please refresh the page and try again.'
+        content: t('startError')
       }]);
     } finally {
       setLoading(false);
@@ -155,7 +158,7 @@ export function OnboardingChat({ onComplete }: OnboardingChatProps) {
   // Handle streaming response
   const handleStream = async (response: Response) => {
     const reader = response.body?.getReader();
-    if (!reader) throw new Error('No response body');
+    if (!reader) throw new Error(tErrors('noResponseBody'));
     streamReaderRef.current = reader;
 
     const decoder = new TextDecoder();
@@ -232,7 +235,7 @@ export function OnboardingChat({ onComplete }: OnboardingChatProps) {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to send message');
+        throw new Error(tErrors('failedToSendMessage'));
       }
 
       await handleStream(response);
@@ -240,7 +243,7 @@ export function OnboardingChat({ onComplete }: OnboardingChatProps) {
       console.error('Chat error:', error);
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.'
+        content: t('errorEncountered')
       }]);
       setStreamingContent('');
       setToolInProgress(null);
@@ -318,7 +321,7 @@ export function OnboardingChat({ onComplete }: OnboardingChatProps) {
       setIsRecording(true);
     } catch (error) {
       console.error('Failed to start recording:', error);
-      alert('Could not access microphone. Please check permissions.');
+      alert(t('microphoneError'));
     }
   }, []);
 
@@ -369,19 +372,18 @@ export function OnboardingChat({ onComplete }: OnboardingChatProps) {
       <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
         <div className="max-w-lg text-center">
           <div className="text-6xl mb-6">🏋️</div>
-          <h1 className="text-3xl font-bold mb-4">Welcome to Your Fitness Journey</h1>
+          <h1 className="text-3xl font-bold mb-4">{t('welcomeTitle')}</h1>
           <p className="text-slate-300 mb-8 text-lg">
-            Let&apos;s create a personalized workout plan just for you. I&apos;ll ask a few questions
-            about your experience, goals, and equipment to design the perfect program.
+            {t('welcomeDescription')}
           </p>
           <button
             onClick={startOnboarding}
             className="px-8 py-4 bg-emerald-500 hover:bg-emerald-600 rounded-full text-lg font-semibold transition shadow-lg shadow-emerald-500/30"
           >
-            Get Started
+            {t('getStarted')}
           </button>
           <p className="text-sm text-slate-500 mt-6">
-            This takes about 5 minutes
+            {t('timeEstimate')}
           </p>
         </div>
       </div>
@@ -399,8 +401,8 @@ export function OnboardingChat({ onComplete }: OnboardingChatProps) {
       {/* Header */}
       <header className="border-b border-slate-800 px-4 py-4 flex-shrink-0">
         <div className="max-w-2xl mx-auto">
-          <h1 className="text-lg font-semibold">Setting Up Your Program</h1>
-          <p className="text-sm text-slate-400">Answer a few questions to get your personalized plan</p>
+          <h1 className="text-lg font-semibold">{t('settingUpTitle')}</h1>
+          <p className="text-sm text-slate-400">{t('settingUpDescription')}</p>
         </div>
       </header>
 
@@ -478,7 +480,7 @@ export function OnboardingChat({ onComplete }: OnboardingChatProps) {
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             disabled={loading || isRecording || isTranscribing}
-            placeholder={isRecording ? "Recording..." : isTranscribing ? "Transcribing..." : "Type your answer..."}
+            placeholder={isRecording ? t('recording') : isTranscribing ? t('transcribing') : t('typeYourAnswer')}
             rows={1}
             className="flex-1 p-3 rounded-xl bg-slate-800 text-white border border-slate-700 focus:border-emerald-500 outline-none disabled:opacity-50 resize-none overflow-hidden"
             style={{ minHeight: '48px', maxHeight: '150px' }}
@@ -498,7 +500,7 @@ export function OnboardingChat({ onComplete }: OnboardingChatProps) {
                   ? 'bg-slate-700 cursor-wait'
                   : 'bg-slate-700 hover:bg-slate-600 active:bg-red-600'
             } disabled:opacity-50`}
-            title={isRecording ? "Release to send" : isTranscribing ? "Transcribing..." : "Hold to record"}
+            title={isRecording ? t('releaseToSend') : isTranscribing ? t('transcribing') : t('holdToRecord')}
           >
             {isTranscribing ? (
               <span className="text-xl">⏳</span>
@@ -513,7 +515,7 @@ export function OnboardingChat({ onComplete }: OnboardingChatProps) {
             disabled={loading || !input.trim() || isRecording || isTranscribing}
             className="px-4 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 disabled:cursor-not-allowed rounded-xl text-white font-medium transition"
           >
-            Send
+            {t('send')}
           </button>
         </div>
       </div>

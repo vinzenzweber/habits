@@ -193,7 +193,7 @@ test.describe('Grocery Lists', () => {
       await expect(page.getByText(/1\/2/)).toBeVisible()
     })
 
-    test('can exit shopping mode', async ({ authenticatedPage: page }) => {
+    test('can exit shopping', async ({ authenticatedPage: page }) => {
       // Create a list
       await page.goto('/grocery-lists')
       await page.getByRole('button', { name: /create/i }).first().click()
@@ -207,7 +207,7 @@ test.describe('Grocery Lists', () => {
       await expect(page).toHaveURL(/\/grocery-lists\/\d+\/shop/)
 
       // Click exit button
-      await page.getByRole('button', { name: /exit shopping mode/i }).click()
+      await page.getByRole('button', { name: /exit shopping/i }).click()
 
       // Should be back on detail page
       await expect(page).toHaveURL(/\/grocery-lists\/\d+$/)

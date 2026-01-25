@@ -17,6 +17,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { validateImageFile, resizeImage, generateImageId } from '@/lib/image-utils';
 import type { RecipeImage } from '@/lib/recipe-types';
 
@@ -42,6 +43,8 @@ export function RecipeImageUpload({
   disabled = false,
   onUploadingChange,
 }: RecipeImageUploadProps) {
+  const t = useTranslations('recipeForm');
+  const tErrors = useTranslations('errors');
   const [uploading, setUploading] = useState<UploadingImage[]>([]);
 
   // Notify parent when upload state changes
@@ -69,7 +72,7 @@ export function RecipeImageUpload({
     // This is acceptable behavior - the UI updates to reflect available slots after failures.
     const totalCount = images.length + uploading.length + fileArray.length;
     if (totalCount > maxImages) {
-      setError(`Maximum ${maxImages} images allowed`);
+      setError(t('maxImagesAllowed', { max: maxImages }));
       return;
     }
 
@@ -117,7 +120,7 @@ export function RecipeImageUpload({
 
         if (!response.ok) {
           const data = await response.json();
-          throw new Error(data.error || 'Upload failed');
+          throw new Error(data.error || tErrors('uploadFailed'));
         }
 
         const data = await response.json();
@@ -238,10 +241,10 @@ export function RecipeImageUpload({
               />
             </svg>
             <p className="text-sm">
-              Drop images here or <span className="text-emerald-400">browse</span>
+              {t('dropImagesHere')}
             </p>
             <p className="text-xs mt-2 text-slate-500">
-              JPEG, PNG, WebP, GIF up to 10MB
+              {t('imageRequirements')}
             </p>
           </div>
         </div>
@@ -273,7 +276,7 @@ export function RecipeImageUpload({
               {/* Primary badge */}
               {image.isPrimary && (
                 <div className="absolute top-2 left-2 bg-emerald-500 text-slate-950 text-xs font-medium px-2 py-1 rounded">
-                  Primary
+                  {t('primary')}
                 </div>
               )}
 
@@ -285,7 +288,7 @@ export function RecipeImageUpload({
                     onClick={() => handleSetPrimary(index)}
                     disabled={disabled}
                     className="p-2 bg-slate-700 rounded-lg hover:bg-slate-600 transition"
-                    title="Set as primary"
+                    title={t('setAsPrimary')}
                   >
                     <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
@@ -297,7 +300,7 @@ export function RecipeImageUpload({
                   onClick={() => handleRemove(index)}
                   disabled={disabled}
                   className="p-2 bg-red-600 rounded-lg hover:bg-red-500 transition"
-                  title="Remove"
+                  title={t('remove')}
                 >
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -308,7 +311,7 @@ export function RecipeImageUpload({
               {/* Caption input */}
               <input
                 type="text"
-                placeholder="Caption (optional)"
+                placeholder={t('captionOptional')}
                 value={image.caption || ''}
                 onChange={(e) => handleCaptionChange(index, e.target.value)}
                 disabled={disabled}
@@ -323,7 +326,7 @@ export function RecipeImageUpload({
               <div className="aspect-square rounded-lg overflow-hidden bg-slate-800">
                 <Image
                   src={upload.preview}
-                  alt="Uploading..."
+                  alt={t('uploading')}
                   fill
                   className="object-cover opacity-50"
                   unoptimized
@@ -345,8 +348,8 @@ export function RecipeImageUpload({
 
       {/* Image count */}
       <p className="text-xs text-slate-500">
-        {images.length} of {maxImages} images
-        {images.length === 0 && ' (at least 1 required)'}
+        {t('imageCount', { current: images.length, max: maxImages })}
+        {images.length === 0 && ` ${t('atLeastOneRequired')}`}
       </p>
     </div>
   );

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 
 import { auth } from "@/lib/auth";
 import { query } from "@/lib/db";
@@ -85,6 +86,7 @@ export default async function SharedRecipeDetailPage({
   const showMeasurementConversions = session.user.showMeasurementConversions ?? false;
   const t = getRecipeDetailTranslations(userLocale);
   const sharingT = getRecipeSharingTranslations(userLocale);
+  const recipesT = await getTranslations('recipes');
 
   const { recipe, owner, permission, forkInfo } = sharedRecipe;
   const { recipeJson } = recipe;
@@ -161,7 +163,7 @@ export default async function SharedRecipeDetailPage({
         {/* Time & Servings Card */}
         <section
           className="rounded-3xl border border-slate-800 bg-slate-900/50 p-5 backdrop-blur sm:p-6"
-          aria-label="Time and servings"
+          aria-label={recipesT('timeAndServingsAriaLabel')}
         >
           <div className="flex flex-wrap gap-6 sm:gap-8">
             {recipeJson.prepTimeMinutes !== undefined && (
@@ -199,7 +201,7 @@ export default async function SharedRecipeDetailPage({
         {/* Nutrition Card */}
         <section
           className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/50 backdrop-blur"
-          aria-label="Nutrition information"
+          aria-label={recipesT('nutritionInfoAriaLabel')}
         >
           <div className="border-b border-slate-800 px-5 py-4 sm:px-6">
             <h2 className="text-lg font-semibold text-white">{t.nutrition}</h2>
@@ -255,7 +257,7 @@ export default async function SharedRecipeDetailPage({
 
         {/* Tags Section */}
         {recipe.tags.length > 0 && (
-          <section aria-label="Tags">
+          <section aria-label={recipesT('tagsAriaLabel')}>
             <div className="flex flex-wrap gap-2">
               {recipe.tags.map((tag) => (
                 <span
@@ -272,7 +274,7 @@ export default async function SharedRecipeDetailPage({
         {/* Ingredients Section */}
         <section
           className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/50 backdrop-blur"
-          aria-label="Ingredients"
+          aria-label={recipesT('ingredientsAriaLabel')}
         >
           <div className="border-b border-slate-800 px-5 py-4 sm:px-6">
             <h2 className="text-lg font-semibold text-white">{t.ingredients}</h2>
@@ -314,7 +316,7 @@ export default async function SharedRecipeDetailPage({
         {/* Instructions Section */}
         <section
           className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/50 backdrop-blur"
-          aria-label="Instructions"
+          aria-label={recipesT('instructionsAriaLabel')}
         >
           <div className="border-b border-slate-800 px-5 py-4 sm:px-6">
             <h2 className="text-lg font-semibold text-white">{t.instructions}</h2>

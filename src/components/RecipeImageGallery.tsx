@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState, useCallback, useMemo } from "react";
+import { useTranslations } from "next-intl";
 
 import { RecipeImage } from "@/lib/recipe-types";
 
@@ -16,6 +17,8 @@ interface RecipeImageGalleryProps {
  * Primary image is always displayed first.
  */
 export function RecipeImageGallery({ images, title }: RecipeImageGalleryProps) {
+  const t = useTranslations("recipeGallery");
+
   // Sort images so primary image is first
   const sortedImages = useMemo(() => {
     return [...images].sort((a, b) => {
@@ -102,7 +105,7 @@ export function RecipeImageGallery({ images, title }: RecipeImageGalleryProps) {
             <button
               onClick={goToPrev}
               className="absolute left-3 top-1/2 hidden -translate-y-1/2 rounded-full bg-slate-950/70 p-2 text-white transition hover:bg-slate-950/90 sm:block"
-              aria-label="Previous image"
+              aria-label={t("previousImage")}
             >
               <svg
                 className="h-5 w-5"
@@ -121,7 +124,7 @@ export function RecipeImageGallery({ images, title }: RecipeImageGalleryProps) {
             <button
               onClick={goToNext}
               className="absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-full bg-slate-950/70 p-2 text-white transition hover:bg-slate-950/90 sm:block"
-              aria-label="Next image"
+              aria-label={t("nextImage")}
             >
               <svg
                 className="h-5 w-5"
@@ -160,7 +163,7 @@ export function RecipeImageGallery({ images, title }: RecipeImageGalleryProps) {
                   ? "bg-emerald-400"
                   : "bg-slate-600 hover:bg-slate-500"
               }`}
-              aria-label={`Go to image ${index + 1}`}
+              aria-label={t("goToImage", { index: index + 1 })}
             />
           ))}
         </div>

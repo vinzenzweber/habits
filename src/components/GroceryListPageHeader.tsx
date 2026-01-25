@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { CreateListModal } from "./CreateListModal";
 
 /**
@@ -10,6 +11,7 @@ import { CreateListModal } from "./CreateListModal";
  */
 export function GroceryListPageHeader() {
   const router = useRouter();
+  const t = useTranslations("groceryLists");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const handleCreateSuccess = (id: number) => {
@@ -20,7 +22,7 @@ export function GroceryListPageHeader() {
   return (
     <>
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Grocery Lists</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
         <button
           onClick={() => setIsCreateModalOpen(true)}
           className="flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 font-medium text-slate-950 transition hover:bg-emerald-400"
@@ -38,7 +40,7 @@ export function GroceryListPageHeader() {
               d="M12 4v16m8-8H4"
             />
           </svg>
-          <span className="hidden sm:inline">Create</span>
+          <span className="hidden sm:inline">{t("create")}</span>
         </button>
       </div>
 

@@ -27,6 +27,7 @@ export function UserSettingsForm({
 }: UserSettingsFormProps) {
   const router = useRouter();
   const t = useTranslations('settings');
+  const tErrors = useTranslations('errors');
   const [timezone, setTimezone] = useState(initialPreferences.timezone);
   const [locale, setLocale] = useState(initialPreferences.locale);
   const [unitSystem, setUnitSystem] = useState<UnitSystem>(initialPreferences.unitSystem);
@@ -61,7 +62,7 @@ export function UserSettingsForm({
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || 'Failed to save preferences');
+        setError(data.error || tErrors('saveError'));
         return;
       }
 
@@ -69,7 +70,7 @@ export function UserSettingsForm({
       // Refresh to update server components with new session data
       router.refresh();
     } catch {
-      setError('An error occurred. Please try again.');
+      setError(tErrors('generic'));
     } finally {
       setSaving(false);
     }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { AddToCollectionModal } from "./AddToCollectionModal";
 import { AddToGroceryListModal } from "./AddToGroceryListModal";
 import { TranslateRecipeModal } from "./TranslateRecipeModal";
@@ -21,6 +22,7 @@ interface RecipeActionButtonsProps {
     title: string;
     translatingRecipe: string;
     selectLanguage: string;
+    selectLanguagePlaceholder: string;
     adaptMeasurements: string;
     adaptMeasurementsDescription: string;
     preview: string;
@@ -29,6 +31,16 @@ interface RecipeActionButtonsProps {
     translationPreview: string;
     close: string;
     cancel: string;
+    saving: string;
+    backToOptions: string;
+    titleLabel: string;
+    descriptionLabel: string;
+    ingredientsSample: string;
+    stepsSample: string;
+    andMore: string;
+    andMoreSteps: string;
+    translationFailed: string;
+    failedToSaveTranslation: string;
   };
 }
 
@@ -48,6 +60,7 @@ export function RecipeActionButtons({
   translateLabel,
   translateTranslations,
 }: RecipeActionButtonsProps) {
+  const t = useTranslations("recipeList");
   const [showAddToCollectionModal, setShowAddToCollectionModal] =
     useState(false);
   const [showAddToGroceryListModal, setShowAddToGroceryListModal] =
@@ -72,7 +85,7 @@ export function RecipeActionButtons({
         <button
           onClick={() => setShowAddToCollectionModal(true)}
           className="inline-flex items-center justify-center gap-1.5 rounded-full bg-slate-800 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700"
-          title="Add to collection"
+          title={t("addToCollection")}
         >
           <svg
             className="h-4 w-4"
@@ -87,12 +100,12 @@ export function RecipeActionButtons({
               d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
             />
           </svg>
-          <span className="hidden sm:inline">Add to Collection</span>
+          <span className="hidden sm:inline">{t("addToCollectionLabel")}</span>
         </button>
         <button
           onClick={() => setShowAddToGroceryListModal(true)}
           className="inline-flex items-center justify-center gap-1.5 rounded-full bg-slate-800 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700"
-          title="Add to grocery list"
+          title={t("addToGroceryList")}
         >
           <svg
             className="h-4 w-4"
@@ -107,7 +120,7 @@ export function RecipeActionButtons({
               d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
             />
           </svg>
-          <span className="hidden sm:inline">Add to List</span>
+          <span className="hidden sm:inline">{t("addToListLabel")}</span>
         </button>
         <button
           onClick={() => setShowTranslateModal(true)}

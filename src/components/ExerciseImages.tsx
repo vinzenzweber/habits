@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 
 interface ExerciseImagesProps {
   exerciseName: string;
@@ -48,6 +49,7 @@ export function ExerciseImages({
   size = 'md',
   hasImages = true // Default to true for backward compatibility
 }: ExerciseImagesProps) {
+  const t = useTranslations('exerciseImages');
   const [activeIndex, setActiveIndex] = useState<1 | 2>(1);
   const [loadError, setLoadError] = useState<Record<number, boolean>>({});
   const [isLoading, setIsLoading] = useState<Record<number, boolean>>({ 1: true, 2: true });
@@ -125,7 +127,7 @@ export function ExerciseImages({
                     ? 'bg-slate-600 cursor-not-allowed'
                     : 'bg-white/50 hover:bg-white/80'
               }`}
-              aria-label={`Show ${idx === 1 ? 'start' : 'end'} position`}
+              aria-label={idx === 1 ? t('showStartPosition') : t('showEndPosition')}
             />
           ))}
         </div>

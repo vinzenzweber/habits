@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 
 import { auth } from "@/lib/auth";
 import { getCollection, getReceivedCollections } from "@/lib/collection-db";
@@ -48,6 +49,7 @@ export default async function CollectionDetailPage({
     redirect("/login");
   }
 
+  const t = await getTranslations('recipes');
   const { id } = await params;
   const collectionId = parseInt(id, 10);
 
@@ -79,7 +81,7 @@ export default async function CollectionDetailPage({
               href="/recipes"
               className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400 transition hover:text-white"
             >
-              Back to Recipes
+              {t('backToRecipes')}
             </Link>
           </div>
         </header>

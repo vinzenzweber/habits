@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import type { PredefinedTag, TagCategory, TagCategoryInfo } from '@/lib/predefined-tags';
 
 interface TagInputProps {
@@ -30,10 +31,12 @@ export function TagInput({
   suggestions = [],
   predefinedTags = [],
   categories = {},
-  placeholder = 'Add tag...',
+  placeholder,
   maxTags = 10,
   disabled = false,
 }: TagInputProps) {
+  const t = useTranslations('tagInput');
+  const defaultPlaceholder = placeholder ?? t('addTag');
   const [input, setInput] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -106,7 +109,7 @@ export function TagInput({
       result.push({
         type: 'custom-header',
         id: 'header-custom',
-        label: 'Your tags',
+        label: t('yourTags'),
       });
       for (const tag of customSuggestions) {
         result.push({
@@ -118,7 +121,7 @@ export function TagInput({
     }
 
     return result;
-  }, [suggestions, predefinedTags, categories, input, tags]);
+  }, [suggestions, predefinedTags, categories, input, tags, t]);
 
   // Get only selectable items (not headers) for keyboard navigation
   const selectableItems = useMemo(
@@ -243,7 +246,7 @@ export function TagInput({
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             onFocus={() => setShowSuggestions(true)}
-            placeholder={tags.length === 0 ? placeholder : ''}
+            placeholder={tags.length === 0 ? defaultPlaceholder : ''}
             disabled={disabled}
             className="flex-1 min-w-[100px] bg-transparent outline-none text-sm disabled:cursor-not-allowed"
           />
@@ -300,7 +303,7 @@ export function TagInput({
 
       {/* Count */}
       <p className="text-xs text-slate-500 mt-1">
-        {tags.length} of {maxTags} tags
+        {t('tagCount', { current: tags.length, max: maxTags })}
       </p>
     </div>
   );

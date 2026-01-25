@@ -26,6 +26,7 @@ export type RecipeDetailTranslations = {
   addComment: string;
   submitRating: string;
   ratingSubmitted: string;
+  ratingSectionLabel: string;
   ratingHistory: string;
   version: string;
   noRatings: string;
@@ -34,6 +35,7 @@ export type RecipeDetailTranslations = {
   translateTitle: string;
   translatingRecipe: string;
   selectLanguage: string;
+  selectLanguagePlaceholder: string;
   adaptMeasurements: string;
   adaptMeasurementsDescription: string;
   preview: string;
@@ -42,6 +44,16 @@ export type RecipeDetailTranslations = {
   translationPreview: string;
   close: string;
   cancel: string;
+  saving: string;
+  backToOptions: string;
+  titleLabel: string;
+  descriptionLabel: string;
+  ingredientsSample: string;
+  stepsSample: string;
+  andMore: string;
+  andMoreSteps: string;
+  translationFailed: string;
+  failedToSaveTranslation: string;
 };
 
 const translations: Record<string, RecipeDetailTranslations> = {
@@ -67,6 +79,7 @@ const translations: Record<string, RecipeDetailTranslations> = {
     addComment: 'Add a comment (optional)',
     submitRating: 'Submit rating',
     ratingSubmitted: 'Rating submitted!',
+    ratingSectionLabel: 'Rating',
     ratingHistory: 'Rating History',
     version: 'Version',
     noRatings: 'No ratings yet',
@@ -74,6 +87,7 @@ const translations: Record<string, RecipeDetailTranslations> = {
     translateTitle: 'Translate Recipe',
     translatingRecipe: 'Translating',
     selectLanguage: 'Select target language',
+    selectLanguagePlaceholder: '-- Select language --',
     adaptMeasurements: 'Convert measurements',
     adaptMeasurementsDescription: 'Automatically convert between metric and imperial units',
     preview: 'Preview Translation',
@@ -82,6 +96,16 @@ const translations: Record<string, RecipeDetailTranslations> = {
     translationPreview: 'Translation Preview',
     close: 'Close',
     cancel: 'Cancel',
+    saving: 'Saving...',
+    backToOptions: 'Back to options',
+    titleLabel: 'Title',
+    descriptionLabel: 'Description',
+    ingredientsSample: 'Ingredients (sample)',
+    stepsSample: 'Steps (sample)',
+    andMore: '... and {count} more',
+    andMoreSteps: '... and {count} more steps',
+    translationFailed: 'Translation failed',
+    failedToSaveTranslation: 'Failed to save translation',
   },
   'de-DE': {
     backToRecipes: '← Zurück zu Rezepten',
@@ -105,6 +129,7 @@ const translations: Record<string, RecipeDetailTranslations> = {
     addComment: 'Kommentar hinzufügen (optional)',
     submitRating: 'Bewertung abgeben',
     ratingSubmitted: 'Bewertung gespeichert!',
+    ratingSectionLabel: 'Bewertung',
     ratingHistory: 'Bewertungsverlauf',
     version: 'Version',
     noRatings: 'Noch keine Bewertungen',
@@ -112,6 +137,7 @@ const translations: Record<string, RecipeDetailTranslations> = {
     translateTitle: 'Rezept übersetzen',
     translatingRecipe: 'Übersetze',
     selectLanguage: 'Zielsprache auswählen',
+    selectLanguagePlaceholder: '-- Sprache wählen --',
     adaptMeasurements: 'Maßeinheiten umrechnen',
     adaptMeasurementsDescription: 'Automatisch zwischen metrischen und imperialen Einheiten umrechnen',
     preview: 'Vorschau',
@@ -120,6 +146,16 @@ const translations: Record<string, RecipeDetailTranslations> = {
     translationPreview: 'Übersetzungsvorschau',
     close: 'Schließen',
     cancel: 'Abbrechen',
+    saving: 'Speichern...',
+    backToOptions: 'Zurück zu Optionen',
+    titleLabel: 'Titel',
+    descriptionLabel: 'Beschreibung',
+    ingredientsSample: 'Zutaten (Beispiel)',
+    stepsSample: 'Schritte (Beispiel)',
+    andMore: '... und {count} weitere',
+    andMoreSteps: '... und {count} weitere Schritte',
+    translationFailed: 'Übersetzung fehlgeschlagen',
+    failedToSaveTranslation: 'Übersetzung konnte nicht gespeichert werden',
   },
   'fr-FR': {
     backToRecipes: '← Retour aux recettes',
@@ -143,6 +179,7 @@ const translations: Record<string, RecipeDetailTranslations> = {
     addComment: 'Ajouter un commentaire (optionnel)',
     submitRating: 'Soumettre la note',
     ratingSubmitted: 'Note enregistrée !',
+    ratingSectionLabel: 'Évaluation',
     ratingHistory: 'Historique des notes',
     version: 'Version',
     noRatings: 'Pas encore de notes',
@@ -150,6 +187,7 @@ const translations: Record<string, RecipeDetailTranslations> = {
     translateTitle: 'Traduire la recette',
     translatingRecipe: 'Traduction de',
     selectLanguage: 'Choisir la langue cible',
+    selectLanguagePlaceholder: '-- Choisir la langue --',
     adaptMeasurements: 'Convertir les mesures',
     adaptMeasurementsDescription: 'Convertir automatiquement entre unités métriques et impériales',
     preview: 'Aperçu',
@@ -158,6 +196,16 @@ const translations: Record<string, RecipeDetailTranslations> = {
     translationPreview: 'Aperçu de la traduction',
     close: 'Fermer',
     cancel: 'Annuler',
+    saving: 'Enregistrement...',
+    backToOptions: 'Retour aux options',
+    titleLabel: 'Titre',
+    descriptionLabel: 'Description',
+    ingredientsSample: 'Ingrédients (échantillon)',
+    stepsSample: 'Étapes (échantillon)',
+    andMore: '... et {count} de plus',
+    andMoreSteps: '... et {count} étapes de plus',
+    translationFailed: 'Échec de la traduction',
+    failedToSaveTranslation: 'Impossible d\'enregistrer la traduction',
   },
   'es-ES': {
     backToRecipes: '← Volver a recetas',
@@ -181,6 +229,7 @@ const translations: Record<string, RecipeDetailTranslations> = {
     addComment: 'Añadir comentario (opcional)',
     submitRating: 'Enviar valoración',
     ratingSubmitted: '¡Valoración enviada!',
+    ratingSectionLabel: 'Valoración',
     ratingHistory: 'Historial de valoraciones',
     version: 'Versión',
     noRatings: 'Sin valoraciones aún',
@@ -188,6 +237,7 @@ const translations: Record<string, RecipeDetailTranslations> = {
     translateTitle: 'Traducir receta',
     translatingRecipe: 'Traduciendo',
     selectLanguage: 'Seleccionar idioma destino',
+    selectLanguagePlaceholder: '-- Seleccionar idioma --',
     adaptMeasurements: 'Convertir medidas',
     adaptMeasurementsDescription: 'Convertir automáticamente entre unidades métricas e imperiales',
     preview: 'Vista previa',
@@ -196,6 +246,16 @@ const translations: Record<string, RecipeDetailTranslations> = {
     translationPreview: 'Vista previa de la traducción',
     close: 'Cerrar',
     cancel: 'Cancelar',
+    saving: 'Guardando...',
+    backToOptions: 'Volver a opciones',
+    titleLabel: 'Título',
+    descriptionLabel: 'Descripción',
+    ingredientsSample: 'Ingredientes (muestra)',
+    stepsSample: 'Pasos (muestra)',
+    andMore: '... y {count} más',
+    andMoreSteps: '... y {count} pasos más',
+    translationFailed: 'Error en la traducción',
+    failedToSaveTranslation: 'No se pudo guardar la traducción',
   },
   'it-IT': {
     backToRecipes: '← Torna alle ricette',
@@ -219,6 +279,7 @@ const translations: Record<string, RecipeDetailTranslations> = {
     addComment: 'Aggiungi un commento (opzionale)',
     submitRating: 'Invia valutazione',
     ratingSubmitted: 'Valutazione inviata!',
+    ratingSectionLabel: 'Valutazione',
     ratingHistory: 'Cronologia valutazioni',
     version: 'Versione',
     noRatings: 'Nessuna valutazione ancora',
@@ -226,6 +287,7 @@ const translations: Record<string, RecipeDetailTranslations> = {
     translateTitle: 'Traduci ricetta',
     translatingRecipe: 'Traduzione di',
     selectLanguage: 'Seleziona lingua di destinazione',
+    selectLanguagePlaceholder: '-- Seleziona lingua --',
     adaptMeasurements: 'Converti misure',
     adaptMeasurementsDescription: 'Converti automaticamente tra unità metriche e imperiali',
     preview: 'Anteprima',
@@ -234,6 +296,16 @@ const translations: Record<string, RecipeDetailTranslations> = {
     translationPreview: 'Anteprima traduzione',
     close: 'Chiudi',
     cancel: 'Annulla',
+    saving: 'Salvataggio...',
+    backToOptions: 'Torna alle opzioni',
+    titleLabel: 'Titolo',
+    descriptionLabel: 'Descrizione',
+    ingredientsSample: 'Ingredienti (esempio)',
+    stepsSample: 'Passaggi (esempio)',
+    andMore: '... e altri {count}',
+    andMoreSteps: '... e altri {count} passaggi',
+    translationFailed: 'Traduzione fallita',
+    failedToSaveTranslation: 'Impossibile salvare la traduzione',
   },
   'nl-NL': {
     backToRecipes: '← Terug naar recepten',
@@ -257,6 +329,7 @@ const translations: Record<string, RecipeDetailTranslations> = {
     addComment: 'Voeg een opmerking toe (optioneel)',
     submitRating: 'Beoordeling indienen',
     ratingSubmitted: 'Beoordeling opgeslagen!',
+    ratingSectionLabel: 'Beoordeling',
     ratingHistory: 'Beoordelingsgeschiedenis',
     version: 'Versie',
     noRatings: 'Nog geen beoordelingen',
@@ -264,6 +337,7 @@ const translations: Record<string, RecipeDetailTranslations> = {
     translateTitle: 'Recept vertalen',
     translatingRecipe: 'Vertaling van',
     selectLanguage: 'Selecteer doeltaal',
+    selectLanguagePlaceholder: '-- Selecteer taal --',
     adaptMeasurements: 'Maateenheden converteren',
     adaptMeasurementsDescription: 'Automatisch converteren tussen metrische en imperiale eenheden',
     preview: 'Voorbeeld',
@@ -272,6 +346,16 @@ const translations: Record<string, RecipeDetailTranslations> = {
     translationPreview: 'Vertaalvoorbeeld',
     close: 'Sluiten',
     cancel: 'Annuleren',
+    saving: 'Opslaan...',
+    backToOptions: 'Terug naar opties',
+    titleLabel: 'Titel',
+    descriptionLabel: 'Beschrijving',
+    ingredientsSample: 'Ingrediënten (voorbeeld)',
+    stepsSample: 'Stappen (voorbeeld)',
+    andMore: '... en nog {count}',
+    andMoreSteps: '... en nog {count} stappen',
+    translationFailed: 'Vertaling mislukt',
+    failedToSaveTranslation: 'Vertaling kon niet worden opgeslagen',
   },
   'pt-BR': {
     backToRecipes: '← Voltar para receitas',
@@ -295,6 +379,7 @@ const translations: Record<string, RecipeDetailTranslations> = {
     addComment: 'Adicionar comentário (opcional)',
     submitRating: 'Enviar avaliação',
     ratingSubmitted: 'Avaliação enviada!',
+    ratingSectionLabel: 'Avaliação',
     ratingHistory: 'Histórico de avaliações',
     version: 'Versão',
     noRatings: 'Sem avaliações ainda',
@@ -302,6 +387,7 @@ const translations: Record<string, RecipeDetailTranslations> = {
     translateTitle: 'Traduzir receita',
     translatingRecipe: 'Traduzindo',
     selectLanguage: 'Selecionar idioma de destino',
+    selectLanguagePlaceholder: '-- Selecionar idioma --',
     adaptMeasurements: 'Converter medidas',
     adaptMeasurementsDescription: 'Converter automaticamente entre unidades métricas e imperiais',
     preview: 'Visualizar',
@@ -310,6 +396,16 @@ const translations: Record<string, RecipeDetailTranslations> = {
     translationPreview: 'Prévia da tradução',
     close: 'Fechar',
     cancel: 'Cancelar',
+    saving: 'Salvando...',
+    backToOptions: 'Voltar às opções',
+    titleLabel: 'Título',
+    descriptionLabel: 'Descrição',
+    ingredientsSample: 'Ingredientes (amostra)',
+    stepsSample: 'Passos (amostra)',
+    andMore: '... e mais {count}',
+    andMoreSteps: '... e mais {count} passos',
+    translationFailed: 'Falha na tradução',
+    failedToSaveTranslation: 'Não foi possível salvar a tradução',
   },
   'ja-JP': {
     backToRecipes: '← レシピ一覧に戻る',
@@ -333,6 +429,7 @@ const translations: Record<string, RecipeDetailTranslations> = {
     addComment: 'コメントを追加（任意）',
     submitRating: '評価を送信',
     ratingSubmitted: '評価が送信されました！',
+    ratingSectionLabel: '評価',
     ratingHistory: '評価履歴',
     version: 'バージョン',
     noRatings: 'まだ評価がありません',
@@ -340,6 +437,7 @@ const translations: Record<string, RecipeDetailTranslations> = {
     translateTitle: 'レシピを翻訳',
     translatingRecipe: '翻訳中',
     selectLanguage: '翻訳先言語を選択',
+    selectLanguagePlaceholder: '-- 言語を選択 --',
     adaptMeasurements: '計量単位を変換',
     adaptMeasurementsDescription: 'メートル法とヤードポンド法の単位を自動変換',
     preview: 'プレビュー',
@@ -348,6 +446,16 @@ const translations: Record<string, RecipeDetailTranslations> = {
     translationPreview: '翻訳プレビュー',
     close: '閉じる',
     cancel: 'キャンセル',
+    saving: '保存中...',
+    backToOptions: 'オプションに戻る',
+    titleLabel: 'タイトル',
+    descriptionLabel: '説明',
+    ingredientsSample: '材料（サンプル）',
+    stepsSample: '手順（サンプル）',
+    andMore: '... 他{count}件',
+    andMoreSteps: '... 他{count}ステップ',
+    translationFailed: '翻訳に失敗しました',
+    failedToSaveTranslation: '翻訳を保存できませんでした',
   },
   'zh-CN': {
     backToRecipes: '← 返回食谱列表',
@@ -371,6 +479,7 @@ const translations: Record<string, RecipeDetailTranslations> = {
     addComment: '添加评论（可选）',
     submitRating: '提交评分',
     ratingSubmitted: '评分已提交！',
+    ratingSectionLabel: '评分',
     ratingHistory: '评分历史',
     version: '版本',
     noRatings: '暂无评分',
@@ -378,6 +487,7 @@ const translations: Record<string, RecipeDetailTranslations> = {
     translateTitle: '翻译食谱',
     translatingRecipe: '正在翻译',
     selectLanguage: '选择目标语言',
+    selectLanguagePlaceholder: '-- 选择语言 --',
     adaptMeasurements: '转换计量单位',
     adaptMeasurementsDescription: '自动在公制和英制单位之间转换',
     preview: '预览',
@@ -386,6 +496,16 @@ const translations: Record<string, RecipeDetailTranslations> = {
     translationPreview: '翻译预览',
     close: '关闭',
     cancel: '取消',
+    saving: '保存中...',
+    backToOptions: '返回选项',
+    titleLabel: '标题',
+    descriptionLabel: '描述',
+    ingredientsSample: '食材（示例）',
+    stepsSample: '步骤（示例）',
+    andMore: '... 还有{count}项',
+    andMoreSteps: '... 还有{count}个步骤',
+    translationFailed: '翻译失败',
+    failedToSaveTranslation: '无法保存翻译',
   },
 };
 

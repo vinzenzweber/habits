@@ -35,6 +35,7 @@ export type RecipeSharingTranslations = {
 
   // Fork
   fork: string;
+  forking: string;
   forkRecipe: string;
   viewMyCopy: string;
   forkSuccess: string;
@@ -46,6 +47,10 @@ export type RecipeSharingTranslations = {
   // Errors
   alreadyShared: string;
   shareError: string;
+  failedToLoadShares: string;
+  failedToUpdatePermission: string;
+  failedToRemoveShare: string;
+  failedToFork: string;
 };
 
 const translations: Record<string, RecipeSharingTranslations> = {
@@ -71,6 +76,7 @@ const translations: Record<string, RecipeSharingTranslations> = {
     sharedLabel: 'Shared',
     fromLabel: 'From',
     fork: 'Fork',
+    forking: 'Forking...',
     forkRecipe: 'Fork Recipe',
     viewMyCopy: 'View My Copy',
     forkSuccess: 'Recipe forked successfully!',
@@ -78,6 +84,10 @@ const translations: Record<string, RecipeSharingTranslations> = {
     sharedWithMe: 'Shared with me',
     alreadyShared: 'Recipe already shared with this user',
     shareError: 'Failed to share recipe',
+    failedToLoadShares: 'Failed to load shares',
+    failedToUpdatePermission: 'Failed to update permission',
+    failedToRemoveShare: 'Failed to remove share',
+    failedToFork: 'Failed to fork recipe',
   },
   'de-DE': {
     shareRecipe: 'Rezept teilen',
@@ -101,6 +111,7 @@ const translations: Record<string, RecipeSharingTranslations> = {
     sharedLabel: 'Geteilt',
     fromLabel: 'Von',
     fork: 'Kopieren',
+    forking: 'Wird kopiert...',
     forkRecipe: 'Rezept kopieren',
     viewMyCopy: 'Meine Kopie ansehen',
     forkSuccess: 'Rezept erfolgreich kopiert!',
@@ -108,6 +119,10 @@ const translations: Record<string, RecipeSharingTranslations> = {
     sharedWithMe: 'Mit mir geteilt',
     alreadyShared: 'Rezept bereits mit diesem Benutzer geteilt',
     shareError: 'Rezept konnte nicht geteilt werden',
+    failedToLoadShares: 'Freigaben konnten nicht geladen werden',
+    failedToUpdatePermission: 'Berechtigung konnte nicht aktualisiert werden',
+    failedToRemoveShare: 'Freigabe konnte nicht entfernt werden',
+    failedToFork: 'Rezept konnte nicht kopiert werden',
   },
   'fr-FR': {
     shareRecipe: 'Partager la recette',
@@ -131,6 +146,7 @@ const translations: Record<string, RecipeSharingTranslations> = {
     sharedLabel: 'Partagé',
     fromLabel: 'De',
     fork: 'Copier',
+    forking: 'Copie en cours...',
     forkRecipe: 'Copier la recette',
     viewMyCopy: 'Voir ma copie',
     forkSuccess: 'Recette copiée avec succès !',
@@ -138,6 +154,10 @@ const translations: Record<string, RecipeSharingTranslations> = {
     sharedWithMe: 'Partagées avec moi',
     alreadyShared: 'Recette déjà partagée avec cet utilisateur',
     shareError: 'Échec du partage de la recette',
+    failedToLoadShares: 'Échec du chargement des partages',
+    failedToUpdatePermission: 'Échec de la mise à jour des permissions',
+    failedToRemoveShare: 'Échec de la suppression du partage',
+    failedToFork: 'Échec de la copie de la recette',
   },
   'es-ES': {
     shareRecipe: 'Compartir receta',
@@ -161,6 +181,7 @@ const translations: Record<string, RecipeSharingTranslations> = {
     sharedLabel: 'Compartido',
     fromLabel: 'De',
     fork: 'Copiar',
+    forking: 'Copiando...',
     forkRecipe: 'Copiar receta',
     viewMyCopy: 'Ver mi copia',
     forkSuccess: '¡Receta copiada con éxito!',
@@ -168,6 +189,10 @@ const translations: Record<string, RecipeSharingTranslations> = {
     sharedWithMe: 'Compartidas conmigo',
     alreadyShared: 'Receta ya compartida con este usuario',
     shareError: 'Error al compartir la receta',
+    failedToLoadShares: 'Error al cargar los compartidos',
+    failedToUpdatePermission: 'Error al actualizar el permiso',
+    failedToRemoveShare: 'Error al eliminar el acceso compartido',
+    failedToFork: 'Error al copiar la receta',
   },
   'it-IT': {
     shareRecipe: 'Condividi ricetta',
@@ -191,6 +216,7 @@ const translations: Record<string, RecipeSharingTranslations> = {
     sharedLabel: 'Condiviso',
     fromLabel: 'Da',
     fork: 'Copia',
+    forking: 'Copiando...',
     forkRecipe: 'Copia ricetta',
     viewMyCopy: 'Vedi la mia copia',
     forkSuccess: 'Ricetta copiata con successo!',
@@ -198,6 +224,10 @@ const translations: Record<string, RecipeSharingTranslations> = {
     sharedWithMe: 'Condivise con me',
     alreadyShared: 'Ricetta già condivisa con questo utente',
     shareError: 'Impossibile condividere la ricetta',
+    failedToLoadShares: 'Impossibile caricare le condivisioni',
+    failedToUpdatePermission: 'Impossibile aggiornare il permesso',
+    failedToRemoveShare: 'Impossibile rimuovere la condivisione',
+    failedToFork: 'Impossibile copiare la ricetta',
   },
   'nl-NL': {
     shareRecipe: 'Recept delen',
@@ -221,6 +251,7 @@ const translations: Record<string, RecipeSharingTranslations> = {
     sharedLabel: 'Gedeeld',
     fromLabel: 'Van',
     fork: 'Kopiëren',
+    forking: 'Kopiëren...',
     forkRecipe: 'Recept kopiëren',
     viewMyCopy: 'Mijn kopie bekijken',
     forkSuccess: 'Recept succesvol gekopieerd!',
@@ -228,6 +259,10 @@ const translations: Record<string, RecipeSharingTranslations> = {
     sharedWithMe: 'Met mij gedeeld',
     alreadyShared: 'Recept al gedeeld met deze gebruiker',
     shareError: 'Kan recept niet delen',
+    failedToLoadShares: 'Kan gedeelde recepten niet laden',
+    failedToUpdatePermission: 'Kan toestemming niet bijwerken',
+    failedToRemoveShare: 'Kan delen niet verwijderen',
+    failedToFork: 'Kan recept niet kopiëren',
   },
   'pt-BR': {
     shareRecipe: 'Compartilhar receita',
@@ -251,6 +286,7 @@ const translations: Record<string, RecipeSharingTranslations> = {
     sharedLabel: 'Compartilhado',
     fromLabel: 'De',
     fork: 'Copiar',
+    forking: 'Copiando...',
     forkRecipe: 'Copiar receita',
     viewMyCopy: 'Ver minha cópia',
     forkSuccess: 'Receita copiada com sucesso!',
@@ -258,6 +294,10 @@ const translations: Record<string, RecipeSharingTranslations> = {
     sharedWithMe: 'Compartilhadas comigo',
     alreadyShared: 'Receita já compartilhada com este usuário',
     shareError: 'Falha ao compartilhar receita',
+    failedToLoadShares: 'Falha ao carregar compartilhamentos',
+    failedToUpdatePermission: 'Falha ao atualizar permissão',
+    failedToRemoveShare: 'Falha ao remover compartilhamento',
+    failedToFork: 'Falha ao copiar receita',
   },
   'ja-JP': {
     shareRecipe: 'レシピを共有',
@@ -281,6 +321,7 @@ const translations: Record<string, RecipeSharingTranslations> = {
     sharedLabel: '共有済み',
     fromLabel: '送信者',
     fork: 'コピー',
+    forking: 'コピー中...',
     forkRecipe: 'レシピをコピー',
     viewMyCopy: '自分のコピーを見る',
     forkSuccess: 'レシピが正常にコピーされました！',
@@ -288,6 +329,10 @@ const translations: Record<string, RecipeSharingTranslations> = {
     sharedWithMe: '共有されたレシピ',
     alreadyShared: 'このユーザーとは既に共有されています',
     shareError: 'レシピの共有に失敗しました',
+    failedToLoadShares: '共有の読み込みに失敗しました',
+    failedToUpdatePermission: '権限の更新に失敗しました',
+    failedToRemoveShare: '共有の削除に失敗しました',
+    failedToFork: 'レシピのコピーに失敗しました',
   },
   'zh-CN': {
     shareRecipe: '分享食谱',
@@ -311,6 +356,7 @@ const translations: Record<string, RecipeSharingTranslations> = {
     sharedLabel: '已分享',
     fromLabel: '来自',
     fork: '复制',
+    forking: '正在复制...',
     forkRecipe: '复制食谱',
     viewMyCopy: '查看我的副本',
     forkSuccess: '食谱复制成功！',
@@ -318,6 +364,10 @@ const translations: Record<string, RecipeSharingTranslations> = {
     sharedWithMe: '分享给我的',
     alreadyShared: '食谱已分享给此用户',
     shareError: '分享食谱失败',
+    failedToLoadShares: '加载分享列表失败',
+    failedToUpdatePermission: '更新权限失败',
+    failedToRemoveShare: '删除分享失败',
+    failedToFork: '复制食谱失败',
   },
 };
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 
 import { Collection, CollectionWithRecipes } from "@/lib/collection-types";
 
@@ -23,6 +24,9 @@ export function CreateCollectionModal({
   onDelete,
   editingCollection,
 }: CreateCollectionModalProps) {
+  const t = useTranslations("collectionModal");
+  const tCommon = useTranslations("common");
+
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [coverImageUrl, setCoverImageUrl] = useState("");
@@ -67,7 +71,7 @@ export function CreateCollectionModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      setError("Name is required");
+      setError(t("nameRequired"));
       return;
     }
 
@@ -93,13 +97,13 @@ export function CreateCollectionModal({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to save collection");
+        throw new Error(data.error || t("failedToSave"));
       }
 
       onSave(data.collection);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : tCommon("error"));
     } finally {
       setIsSubmitting(false);
     }
@@ -118,14 +122,14 @@ export function CreateCollectionModal({
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to delete collection");
+        throw new Error(data.error || t("failedToDelete"));
       }
 
       onClose();
       // Notify parent to refresh the collections list
       onDelete?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : tCommon("error"));
     } finally {
       setIsDeleting(false);
       setShowDeleteConfirm(false);
@@ -156,12 +160,12 @@ export function CreateCollectionModal({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-700 p-4">
           <h2 id="create-collection-title" className="text-lg font-semibold">
-            {isEditMode ? "Edit Collection" : "Create Collection"}
+            {isEditMode ? t("editCollection") : t("createCollection")}
           </h2>
           <button
             onClick={onClose}
             className="text-2xl leading-none text-slate-400 hover:text-white"
-            aria-label="Close"
+            aria-label={tCommon("close")}
           >
             &times;
           </button>
@@ -183,7 +187,7 @@ export function CreateCollectionModal({
                 htmlFor="collection-name"
                 className="mb-1 block text-sm font-medium text-slate-300"
               >
-                Name <span className="text-red-400">*</span>
+                {t("name")} <span className="text-red-400">*</span>
               </label>
               <input
                 id="collection-name"
@@ -191,7 +195,7 @@ export function CreateCollectionModal({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 maxLength={100}
-                placeholder="e.g., Weeknight Dinners"
+                placeholder={t("namePlaceholder")}
                 className="w-full rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
                 autoFocus
               />
@@ -206,14 +210,14 @@ export function CreateCollectionModal({
                 htmlFor="collection-description"
                 className="mb-1 block text-sm font-medium text-slate-300"
               >
-                Description
+                {t("description")}
               </label>
               <textarea
                 id="collection-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
-                placeholder="Optional description"
+                placeholder={t("optionalDescription")}
                 className="w-full resize-none rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
               />
             </div>
@@ -224,7 +228,7 @@ export function CreateCollectionModal({
                 htmlFor="collection-cover"
                 className="mb-1 block text-sm font-medium text-slate-300"
               >
-                Cover Image URL
+                {t("coverImageUrl")}
               </label>
               <input
                 id="collection-cover"
@@ -245,10 +249,10 @@ export function CreateCollectionModal({
               className="w-full rounded-xl bg-emerald-500 py-3 font-medium text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isSubmitting
-                ? "Saving..."
+                ? tCommon("saving")
                 : isEditMode
-                  ? "Save Changes"
-                  : "Create Collection"}
+                  ? t("saveChanges")
+                  : t("createCollection")}
             </button>
 
             {isEditMode && !showDeleteConfirm && (
@@ -257,15 +261,14 @@ export function CreateCollectionModal({
                 onClick={() => setShowDeleteConfirm(true)}
                 className="w-full rounded-xl bg-slate-800 py-3 font-medium text-red-400 transition hover:bg-slate-700"
               >
-                Delete Collection
+                {t("deleteCollection")}
               </button>
             )}
 
             {isEditMode && showDeleteConfirm && (
               <div className="rounded-xl border border-red-500/50 bg-red-500/10 p-3">
                 <p className="mb-3 text-sm text-red-200">
-                  Are you sure? This will remove the collection but not the
-                  recipes.
+                  {t("deleteConfirmation")}
                 </p>
                 <div className="flex gap-2">
                   <button
@@ -274,14 +277,14 @@ export function CreateCollectionModal({
                     disabled={isDeleting}
                     className="flex-1 rounded-lg bg-red-500 py-2 text-sm font-medium text-white transition hover:bg-red-400 disabled:opacity-50"
                   >
-                    {isDeleting ? "Deleting..." : "Yes, Delete"}
+                    {isDeleting ? t("deleting") : t("yesDelete")}
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowDeleteConfirm(false)}
                     className="flex-1 rounded-lg bg-slate-700 py-2 text-sm font-medium text-white transition hover:bg-slate-600"
                   >
-                    Cancel
+                    {tCommon("cancel")}
                   </button>
                 </div>
               </div>
@@ -292,7 +295,7 @@ export function CreateCollectionModal({
               onClick={onClose}
               className="py-2 text-slate-400 transition hover:text-white"
             >
-              Cancel
+              {tCommon("cancel")}
             </button>
           </div>
         </form>

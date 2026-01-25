@@ -16,6 +16,7 @@ type ProtectionType = "shield" | "restDay" | null;
  */
 export function ShieldBanner({ currentStreak }: ShieldBannerProps) {
   const t = useTranslations('shieldBanner');
+  const tCommon = useTranslations('common');
   const [protectionType, setProtectionType] = useState<ProtectionType>(null);
   const [dismissed, setDismissed] = useState(false);
   const hasChecked = useRef(false);
@@ -74,7 +75,7 @@ export function ShieldBanner({ currentStreak }: ShieldBannerProps) {
         <button
           onClick={() => setDismissed(true)}
           className="shrink-0 rounded-lg p-1 text-slate-500 transition-colors hover:bg-slate-800 hover:text-slate-300"
-          aria-label="Dismiss"
+          aria-label={tCommon('dismiss')}
         >
           <svg
             className="h-5 w-5"

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { GroceryListPermission, GroceryListShareInfo } from "@/lib/grocery-types";
 
 interface ShareGroceryListModalProps {
@@ -58,6 +59,10 @@ export function ShareGroceryListModal({
   onClose,
   onSharesChange,
 }: ShareGroceryListModalProps) {
+  const t = useTranslations("shareGroceryList");
+  const tSharing = useTranslations("sharing");
+  const tCommon = useTranslations("common");
+
   const [email, setEmail] = useState("");
   const [foundUser, setFoundUser] = useState<FoundUser | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -152,9 +157,9 @@ export function ShareGroceryListModal({
 
       if (!res.ok) {
         if (data.error === "List already shared with this user") {
-          setError("This list is already shared with this user");
+          setError(t("alreadyShared"));
         } else {
-          setError(data.error || "Failed to share list");
+          setError(data.error || t("failedToShare"));
         }
         return;
       }
@@ -178,11 +183,11 @@ export function ShareGroceryListModal({
       onSharesChange();
     } catch (err) {
       console.error("Error sharing list:", err);
-      setError("Failed to share list");
+      setError(t("failedToShare"));
     } finally {
       setIsSharing(false);
     }
-  }, [foundUser, listId, permission, shares, onSharesChange]);
+  }, [foundUser, listId, permission, shares, onSharesChange, t]);
 
   const handleRemoveShare = useCallback(
     async (shareId: number) => {
@@ -194,7 +199,7 @@ export function ShareGroceryListModal({
 
         if (!res.ok) {
           const data = await res.json();
-          setError(data.error || "Failed to remove share");
+          setError(data.error || t("failedToRemove"));
           return;
         }
 
@@ -203,10 +208,10 @@ export function ShareGroceryListModal({
         onSharesChange();
       } catch (err) {
         console.error("Error removing share:", err);
-        setError("Failed to remove share");
+        setError(t("failedToRemove"));
       }
     },
-    [listId, shares, onSharesChange]
+    [listId, shares, onSharesChange, t]
   );
 
   const handleUpdatePermission = useCallback(
@@ -220,7 +225,7 @@ export function ShareGroceryListModal({
 
         if (!res.ok) {
           const data = await res.json();
-          setError(data.error || "Failed to update permission");
+          setError(data.error || t("failedToUpdate"));
           return;
         }
 
@@ -233,10 +238,10 @@ export function ShareGroceryListModal({
         onSharesChange();
       } catch (err) {
         console.error("Error updating permission:", err);
-        setError("Failed to update permission");
+        setError(t("failedToUpdate"));
       }
     },
-    [listId, shares, onSharesChange]
+    [listId, shares, onSharesChange, t]
   );
 
   if (!isOpen) return null;
@@ -260,13 +265,13 @@ export function ShareGroceryListModal({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-700 p-4">
           <div>
-            <h2 className="text-lg font-semibold">Share List</h2>
+            <h2 className="text-lg font-semibold">{t("shareList")}</h2>
             <p className="text-sm text-slate-400">{listName}</p>
           </div>
           <button
             onClick={onClose}
             className="rounded p-1 text-slate-400 transition hover:text-white"
-            aria-label="Close"
+            aria-label={tCommon("close")}
           >
             <CloseIcon />
           </button>
@@ -288,14 +293,14 @@ export function ShareGroceryListModal({
                 htmlFor="share-email"
                 className="mb-2 block text-sm font-medium text-slate-300"
               >
-                Share with
+                {t("shareWith")}
               </label>
               <input
                 id="share-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter email address"
+                placeholder={tSharing("searchByEmail")}
                 className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 transition focus:border-emerald-500 focus:outline-none"
                 disabled={isSharing}
               />
@@ -305,14 +310,14 @@ export function ShareGroceryListModal({
             {isSearching && (
               <div className="flex items-center gap-2 text-sm text-slate-400">
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-500 border-t-transparent" />
-                <span>Searching...</span>
+                <span>{t("searching")}</span>
               </div>
             )}
 
             {/* Self-share warning */}
             {isSelf && (
               <div className="rounded-lg bg-amber-500/20 p-3 text-sm text-amber-200">
-                You cannot share a list with yourself
+                {tSharing("cannotShareWithSelf")}
               </div>
             )}
 
@@ -323,7 +328,7 @@ export function ShareGroceryListModal({
               !isSelf &&
               /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && (
                 <div className="rounded-lg bg-slate-800 p-4 text-center text-sm text-slate-400">
-                  No user found with this email
+                  {tSharing("userNotFound")}
                 </div>
               )}
 
@@ -350,7 +355,7 @@ export function ShareGroceryListModal({
             {foundUser && (
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-300">
-                  Permission
+                  {t("permission")}
                 </label>
                 <div className="flex gap-3">
                   <button
@@ -363,7 +368,7 @@ export function ShareGroceryListModal({
                     }`}
                     disabled={isSharing}
                   >
-                    Can View
+                    {tSharing("canView")}
                   </button>
                   <button
                     type="button"
@@ -375,7 +380,7 @@ export function ShareGroceryListModal({
                     }`}
                     disabled={isSharing}
                   >
-                    Can Edit
+                    {tSharing("canEdit")}
                   </button>
                 </div>
               </div>
@@ -388,7 +393,7 @@ export function ShareGroceryListModal({
                 disabled={isSharing}
                 className="w-full rounded-xl bg-emerald-500 py-3 font-medium text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isSharing ? "Sharing..." : "Share List"}
+                {isSharing ? t("sharing") : t("shareList")}
               </button>
             )}
 
@@ -396,7 +401,7 @@ export function ShareGroceryListModal({
             {shares.length > 0 && (
               <div className="mt-6">
                 <h3 className="mb-3 text-sm font-medium text-slate-300">
-                  Shared with
+                  {tSharing("sharedWith")}
                 </h3>
                 <div className="space-y-2">
                   {shares.map((share) => (
@@ -427,13 +432,13 @@ export function ShareGroceryListModal({
                         }
                         className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-300"
                       >
-                        <option value="view">View</option>
-                        <option value="edit">Edit</option>
+                        <option value="view">{tCommon("view")}</option>
+                        <option value="edit">{tCommon("edit")}</option>
                       </select>
                       <button
                         onClick={() => handleRemoveShare(share.shareId)}
                         className="rounded-lg p-1 text-slate-500 transition hover:bg-red-500/20 hover:text-red-400"
-                        aria-label={`Remove ${share.userName}`}
+                        aria-label={t('removeUserLabel', { name: share.userName })}
                       >
                         <svg
                           className="h-4 w-4"

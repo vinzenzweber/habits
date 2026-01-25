@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { RecipeSharingTranslations } from '@/lib/translations/recipe-sharing';
 
 interface ShareRecipeModalProps {
@@ -42,6 +43,8 @@ export function ShareRecipeModal({
   translations: t,
   onShareSuccess,
 }: ShareRecipeModalProps) {
+  const tCommon = useTranslations('common');
+  const tSharing = useTranslations('shareGroceryList');
   const [email, setEmail] = useState('');
   const [foundUser, setFoundUser] = useState<FoundUser | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -179,7 +182,7 @@ export function ShareRecipeModal({
           <button
             onClick={onClose}
             className="text-slate-400 hover:text-white p-1 rounded transition"
-            aria-label="Close"
+            aria-label={tCommon('close')}
           >
             <CloseIcon />
           </button>
@@ -233,7 +236,7 @@ export function ShareRecipeModal({
               {isSearching && (
                 <div className="flex items-center gap-2 text-sm text-slate-400">
                   <div className="h-4 w-4 border-2 border-slate-500 border-t-transparent rounded-full animate-spin" />
-                  <span>Searching...</span>
+                  <span>{tSharing('searching')}</span>
                 </div>
               )}
 
@@ -274,7 +277,7 @@ export function ShareRecipeModal({
               {foundUser && (
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-2">
-                    Permission
+                    {tSharing('permission')}
                   </label>
                   <div className="flex gap-3">
                     <button
@@ -332,7 +335,7 @@ export function ShareRecipeModal({
                   disabled={!foundUser || isSharing}
                   className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isSharing ? 'Sharing...' : t.shareButton}
+                  {isSharing ? tSharing('sharing') : t.shareButton}
                 </button>
                 <button
                   onClick={onClose}

@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   validateImportFile,
   resizeImage,
@@ -84,6 +85,8 @@ const ACCEPTED_FILE_TYPES = 'image/jpeg,image/png,image/webp,image/gif,image/hei
 
 export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeImportModalProps) {
   const router = useRouter();
+  const t = useTranslations('recipeImport');
+  const tCommon = useTranslations('common');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [fileType, setFileType] = useState<ImportFileType | null>(null);
@@ -199,7 +202,7 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
     // Validate file
     const validation = validateImportFile(file);
     if (!validation.valid) {
-      setError(validation.error || 'Invalid file');
+      setError(validation.error || t('invalidFile'));
       return;
     }
 
@@ -235,7 +238,7 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
     // Validate file
     const validation = validateImportFile(file);
     if (!validation.valid) {
-      setError(validation.error || 'Invalid file');
+      setError(validation.error || t('invalidFile'));
       return;
     }
 
@@ -303,7 +306,7 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
       const { data } = await parseResponseJson<{ error?: string }>(response);
 
       if (!response.ok) {
-        setError(data?.error || 'Failed to cancel extraction');
+        setError(data?.error || t('failedToCancelExtraction'));
         setIsCancelling(false);
         return;
       }
@@ -314,7 +317,7 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
       setIsCancelling(false);
       handleReset();
     } catch {
-      setError('Failed to cancel extraction');
+      setError(t('failedToCancelExtraction'));
       setIsCancelling(false);
     }
   }, [pollingJobId, handleReset, parseResponseJson]);
@@ -338,7 +341,7 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
         }>(response);
 
         if (!response.ok) {
-          setError(data?.error || 'Failed to check extraction status');
+          setError(data?.error || t('failedToCheckStatus'));
           setJobStatus('failed');
           setIsExtracting(false);
           setIsUploading(false);
@@ -346,7 +349,7 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
         }
 
         if (!data) {
-          setError('Unexpected response from server');
+          setError(t('unexpectedResponse'));
           setJobStatus('failed');
           setIsExtracting(false);
           setIsUploading(false);
@@ -364,7 +367,7 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
           setIsExtracting(false);
           setIsUploading(false);
           if (data.recipes.length === 0) {
-            setError('No recipes were found in this PDF. Please try a different file.');
+            setError(t('noRecipesFound'));
           } else if (data.recipes.length === 1) {
             // Single recipe - navigate directly
             onImageCaptured({ type: 'extracted', slug: data.recipes[0].slug });
@@ -377,7 +380,7 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
             });
           }
         } else if (data.status === 'failed') {
-          setError(data.error || 'Recipe extraction failed');
+          setError(data.error || t('extractionFailed'));
           setIsExtracting(false);
           setIsUploading(false);
         } else if (data.status === 'cancelled') {
@@ -433,11 +436,11 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
         );
 
         if (!response.ok) {
-          throw new Error(data?.error || 'Failed to extract recipe from PDF');
+          throw new Error(data?.error || t('failedToExtractPdf'));
         }
 
         if (!data || typeof data.jobId !== 'number') {
-          throw new Error('Unexpected response from server');
+          throw new Error(t('unexpectedResponse'));
         }
 
         // API returns 202 with jobId for async processing
@@ -464,11 +467,11 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
         );
 
         if (!response.ok) {
-          throw new Error(data?.error || 'Failed to extract recipe');
+          throw new Error(data?.error || t('failedToExtract'));
         }
 
         if (!data?.slug) {
-          throw new Error('Unexpected response from server');
+          throw new Error(t('unexpectedResponse'));
         }
 
         // Notify parent with the extracted recipe slug
@@ -476,7 +479,7 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
       }
     } catch (err) {
       console.error('Extraction error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to extract recipe');
+      setError(err instanceof Error ? err.message : t('failedToExtract'));
       // Reset loading states on error
       setIsUploading(false);
       setIsExtracting(false);
@@ -522,12 +525,12 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-700">
           <h2 className="text-lg font-semibold">
-            {showImportResults ? 'Import Complete' : hasPreview ? 'Review File' : 'Import Recipe'}
+            {showImportResults ? t('importComplete') : hasPreview ? t('reviewFile') : t('importRecipe')}
           </h2>
           <button
             onClick={onClose}
             className="text-slate-400 hover:text-white text-2xl leading-none"
-            aria-label="Close"
+            aria-label={tCommon('close')}
           >
             &times;
           </button>
@@ -547,16 +550,16 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
             <div className="space-y-4">
               <div className="text-center">
                 <CheckIcon />
-                <h3 className="text-lg font-semibold mt-2">Import Complete</h3>
+                <h3 className="text-lg font-semibold mt-2">{t('importComplete')}</h3>
               </div>
 
               <div className="bg-slate-800 rounded-lg p-4 space-y-2">
                 <p className="text-emerald-400">
-                  ✓ {importResults.recipes.length} recipe{importResults.recipes.length !== 1 ? 's' : ''} imported
+                  ✓ {t('recipeExtracted', { count: importResults.recipes.length })}
                 </p>
                 {importResults.skippedPages.length > 0 && (
                   <p className="text-slate-400 text-sm">
-                    {importResults.skippedPages.length} page{importResults.skippedPages.length !== 1 ? 's' : ''} skipped (no recipe detected)
+                    {t('pagesSkipped', { count: importResults.skippedPages.length })}
                   </p>
                 )}
               </div>
@@ -570,7 +573,7 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
                   >
                     <span className="text-white">{recipe.title}</span>
                     {recipe.pageNumber > 0 && (
-                      <span className="text-slate-400 text-sm ml-2">(page {recipe.pageNumber})</span>
+                      <span className="text-slate-400 text-sm ml-2">{t('pageNumber', { number: recipe.pageNumber })}</span>
                     )}
                   </button>
                 ))}
@@ -580,7 +583,7 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
                 onClick={onClose}
                 className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-medium transition"
               >
-                Done
+                {tCommon('done')}
               </button>
             </div>
           ) : hasPreview ? (
@@ -594,14 +597,14 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
                     <PdfIcon />
                     <p className="font-medium text-white text-center break-all">{selectedFile?.name}</p>
                     <p className="text-sm text-slate-400 mt-1">
-                      Click Import to extract recipes
+                      {t('clickImport')}
                     </p>
                   </div>
                 ) : (
                   // Image preview
                   <Image
                     src={previewUrl!}
-                    alt="Recipe preview"
+                    alt={t('recipePreview')}
                     fill
                     className="object-contain"
                     unoptimized
@@ -617,16 +620,16 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
                         <>
                           <p className="text-sm text-white mb-2">
                             {extractionProgress.totalPages > 0
-                              ? `Processing page ${extractionProgress.currentPage} of ${extractionProgress.totalPages}...`
+                              ? t('processingPage', { current: extractionProgress.currentPage, total: extractionProgress.totalPages })
                               : jobStatus === 'pending'
-                                ? 'Starting extraction...'
-                                : 'Analyzing PDF...'}
+                                ? t('startingExtraction')
+                                : t('analyzingPdf')}
                           </p>
 
                           {extractionProgress.totalPages > 0 && (
                             <>
                               <p className="text-xs text-slate-300 mb-2">
-                                {partialResults.length} {partialResults.length === 1 ? 'recipe' : 'recipes'} extracted
+                                {t('recipeExtracted', { count: partialResults.length })}
                               </p>
 
                               {/* Progress bar */}
@@ -643,7 +646,7 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
                               {partialResults.length > 0 && (
                                 <div className="text-left max-w-xs mx-auto mt-3 max-h-24 overflow-y-auto">
                                   <p className="text-slate-400 text-xs uppercase tracking-wide mb-1">
-                                    Recipes found:
+                                    {t('recipesFound')}
                                   </p>
                                   <ul className="text-xs text-slate-300 space-y-0.5">
                                     {partialResults.map((recipe) => (
@@ -670,18 +673,18 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
                               {isCancelling && (
                                 <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
                               )}
-                              {isCancelling ? 'Cancelling...' : 'Cancel'}
+                              {isCancelling ? t('cancelling') : tCommon('cancel')}
                             </button>
                           )}
                         </>
                       ) : (
                         <>
                           <p className="text-sm text-white">
-                            {isExtracting ? 'Extracting recipe...' : 'Processing...'}
+                            {isExtracting ? t('extractingRecipe') : t('processing')}
                           </p>
                           {isExtracting && (
                             <p className="text-xs text-slate-300 mt-1">
-                              This may take a few seconds
+                              {t('mayTakeFewSeconds')}
                             </p>
                           )}
                         </>
@@ -697,7 +700,7 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
                 <p>{formatFileSize(selectedFile!.size)}</p>
                 {fileType === 'image' && selectedFile!.size > MAX_FILE_SIZE_MB * 0.8 * 1024 * 1024 && (
                   <p className="text-amber-400 mt-1">
-                    Large file - will be resized before upload
+                    {t('largeFileResize')}
                   </p>
                 )}
               </div>
@@ -709,21 +712,21 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
                   disabled={isUploading}
                   className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isUploading ? (isExtracting ? 'Extracting...' : 'Processing...') : 'Import Recipe'}
+                  {isUploading ? (isExtracting ? t('extractingRecipe') : t('processing')) : t('import')}
                 </button>
                 <button
                   onClick={handleReset}
                   disabled={isUploading}
                   className="w-full py-3 bg-slate-700 hover:bg-slate-600 rounded-xl font-medium transition disabled:opacity-50"
                 >
-                  Choose Different File
+                  {t('chooseDifferentFile')}
                 </button>
                 <button
                   onClick={onClose}
                   disabled={isUploading}
                   className="text-slate-400 hover:text-white py-2 transition disabled:opacity-50"
                 >
-                  Cancel
+                  {tCommon('cancel')}
                 </button>
               </div>
             </div>
@@ -753,10 +756,10 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
                 <div className="text-slate-400">
                   <UploadIcon />
                   <p className="text-sm">
-                    Drop file here or <span className="text-emerald-400">browse</span>
+                    {t('dropFileHere')}
                   </p>
                   <p className="text-xs mt-2 text-slate-500">
-                    JPEG, PNG, WebP, GIF, HEIC, or PDF up to {MAX_FILE_SIZE_MB}MB
+                    {t('fileRequirements', { maxSize: MAX_FILE_SIZE_MB })}
                   </p>
                 </div>
               </div>
@@ -765,7 +768,7 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
                 onClick={onClose}
                 className="w-full text-slate-400 hover:text-white py-2 transition"
               >
-                Cancel
+                {tCommon('cancel')}
               </button>
             </div>
           ) : (
@@ -794,7 +797,7 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
                 className="w-full flex items-center justify-center gap-3 py-6 bg-slate-800 hover:bg-slate-700 rounded-xl transition"
               >
                 <CameraIcon />
-                <span className="font-medium">Take Photo</span>
+                <span className="font-medium">{t('takePhoto')}</span>
               </button>
 
               {/* Choose from library button */}
@@ -803,18 +806,18 @@ export function RecipeImportModal({ isOpen, onClose, onImageCaptured }: RecipeIm
                 className="w-full flex items-center justify-center gap-3 py-6 bg-slate-800 hover:bg-slate-700 rounded-xl transition"
               >
                 <GalleryIcon />
-                <span className="font-medium">Choose File</span>
+                <span className="font-medium">{t('chooseFile')}</span>
               </button>
 
               <p className="text-xs text-center text-slate-500">
-                JPEG, PNG, WebP, GIF, HEIC, or PDF up to {MAX_FILE_SIZE_MB}MB
+                {t('fileRequirements', { maxSize: MAX_FILE_SIZE_MB })}
               </p>
 
               <button
                 onClick={onClose}
                 className="w-full text-slate-400 hover:text-white py-2 transition"
               >
-                Cancel
+                {tCommon('cancel')}
               </button>
             </div>
           )}

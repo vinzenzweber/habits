@@ -84,12 +84,12 @@ describe('RecipeImportModal', () => {
   describe('rendering', () => {
     it('renders when isOpen is true', () => {
       render(<RecipeImportModal {...defaultProps} />);
-      expect(screen.getByText('Import Recipe')).toBeInTheDocument();
+      expect(screen.getByText('importRecipe')).toBeInTheDocument();
     });
 
     it('does not render when isOpen is false', () => {
       render(<RecipeImportModal {...defaultProps} isOpen={false} />);
-      expect(screen.queryByText('Import Recipe')).not.toBeInTheDocument();
+      expect(screen.queryByText('importRecipe')).not.toBeInTheDocument();
     });
 
     it('renders desktop view with drop zone', () => {
@@ -99,7 +99,7 @@ describe('RecipeImportModal', () => {
         removeEventListener: vi.fn(),
       });
       render(<RecipeImportModal {...defaultProps} />);
-      expect(screen.getByText(/drop file here/i)).toBeInTheDocument();
+      expect(screen.getByText(/dropFileHere/i)).toBeInTheDocument();
     });
 
     it('renders mobile view with camera and library buttons', () => {
@@ -109,13 +109,13 @@ describe('RecipeImportModal', () => {
         removeEventListener: vi.fn(),
       });
       render(<RecipeImportModal {...defaultProps} />);
-      expect(screen.getByText('Take Photo')).toBeInTheDocument();
-      expect(screen.getByText('Choose File')).toBeInTheDocument();
+      expect(screen.getByText('takePhoto')).toBeInTheDocument();
+      expect(screen.getByText('chooseFile')).toBeInTheDocument();
     });
 
     it('renders cancel button', () => {
       render(<RecipeImportModal {...defaultProps} />);
-      expect(screen.getByText('Cancel')).toBeInTheDocument();
+      expect(screen.getByText('cancel')).toBeInTheDocument();
     });
   });
 
@@ -130,7 +130,7 @@ describe('RecipeImportModal', () => {
       await user.upload(input, file);
 
       await waitFor(() => {
-        expect(screen.getByText('Review File')).toBeInTheDocument();
+        expect(screen.getByText('reviewFile')).toBeInTheDocument();
         expect(screen.getByTestId('preview-image')).toBeInTheDocument();
       });
     });
@@ -148,11 +148,11 @@ describe('RecipeImportModal', () => {
       // Wait for component to update - use waitFor with explicit check
       await waitFor(() => {
         // PDF preview should show the import button (indicates preview state)
-        expect(screen.getByRole('button', { name: /import recipe/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /import/i })).toBeInTheDocument();
       });
 
       // Verify PDF-specific content is shown
-      expect(screen.getByText(/click import to extract recipes/i)).toBeInTheDocument();
+      expect(screen.getByText(/clickImport/i)).toBeInTheDocument();
     });
 
     it('shows file name and size in preview', async () => {
@@ -199,7 +199,7 @@ describe('RecipeImportModal', () => {
       await user.upload(input, file);
 
       await waitFor(() => {
-        expect(screen.getByText('Review File')).toBeInTheDocument();
+        expect(screen.getByText('reviewFile')).toBeInTheDocument();
       });
 
       return user;
@@ -207,23 +207,23 @@ describe('RecipeImportModal', () => {
 
     it('shows Import Recipe button in preview', async () => {
       await setupPreview();
-      const importButton = screen.getByRole('button', { name: /import recipe/i });
+      const importButton = screen.getByRole('button', { name: /import/i });
       expect(importButton).toBeInTheDocument();
       expect(importButton).not.toBeDisabled();
     });
 
     it('shows Choose Different File button in preview', async () => {
       await setupPreview();
-      expect(screen.getByRole('button', { name: /choose different file/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /chooseDifferentFile/i })).toBeInTheDocument();
     });
 
     it('resets to initial view when Choose Different File is clicked', async () => {
       const user = await setupPreview();
 
-      await user.click(screen.getByRole('button', { name: /choose different file/i }));
+      await user.click(screen.getByRole('button', { name: /chooseDifferentFile/i }));
 
       await waitFor(() => {
-        expect(screen.getByText('Import Recipe')).toBeInTheDocument();
+        expect(screen.getByText('importRecipe')).toBeInTheDocument();
         expect(screen.queryByTestId('preview-image')).not.toBeInTheDocument();
       });
     });
@@ -231,7 +231,7 @@ describe('RecipeImportModal', () => {
     it('revokes object URL when resetting', async () => {
       const user = await setupPreview();
 
-      await user.click(screen.getByRole('button', { name: /choose different file/i }));
+      await user.click(screen.getByRole('button', { name: /chooseDifferentFile/i }));
 
       expect(mockRevokeObjectURL).toHaveBeenCalled();
     });
@@ -249,10 +249,10 @@ describe('RecipeImportModal', () => {
       await user.upload(input, file);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /import recipe/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /import/i })).toBeInTheDocument();
       });
 
-      await user.click(screen.getByRole('button', { name: /import recipe/i }));
+      await user.click(screen.getByRole('button', { name: /import/i }));
 
       await waitFor(() => {
         expect(mockFetch).toHaveBeenCalledWith(
@@ -287,10 +287,10 @@ describe('RecipeImportModal', () => {
       await user.upload(input, file);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /import recipe/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /import/i })).toBeInTheDocument();
       });
 
-      await user.click(screen.getByRole('button', { name: /import recipe/i }));
+      await user.click(screen.getByRole('button', { name: /import/i }));
 
       expect(screen.getAllByText(/extracting/i).length).toBeGreaterThan(0);
     });
@@ -310,10 +310,10 @@ describe('RecipeImportModal', () => {
       await user.upload(input, file);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /import recipe/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /import/i })).toBeInTheDocument();
       });
 
-      await user.click(screen.getByRole('button', { name: /import recipe/i }));
+      await user.click(screen.getByRole('button', { name: /import/i }));
 
       await waitFor(() => {
         expect(screen.getByText(/Upload failed/i)).toBeInTheDocument();
@@ -372,10 +372,10 @@ describe('RecipeImportModal', () => {
       await user.upload(input, file);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /import recipe/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /import/i })).toBeInTheDocument();
       });
 
-      await user.click(screen.getByRole('button', { name: /import recipe/i }));
+      await user.click(screen.getByRole('button', { name: /import/i }));
 
       // Wait for polling to complete and callback to be called
       await waitFor(() => {
@@ -427,10 +427,10 @@ describe('RecipeImportModal', () => {
       await user.upload(input, file);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /import recipe/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /import/i })).toBeInTheDocument();
       });
 
-      await user.click(screen.getByRole('button', { name: /import recipe/i }));
+      await user.click(screen.getByRole('button', { name: /import/i }));
 
       // Wait for import results via polling
       await screen.findByText('Recipe 1', {}, { timeout: 5000 });
@@ -471,13 +471,13 @@ describe('RecipeImportModal', () => {
       await user.upload(input, file);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /import recipe/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /import/i })).toBeInTheDocument();
       });
 
-      await user.click(screen.getByRole('button', { name: /import recipe/i }));
+      await user.click(screen.getByRole('button', { name: /import/i }));
 
       // Error message should appear via polling
-      await screen.findByText(/no recipes were found in this pdf/i, {}, { timeout: 5000 });
+      await screen.findByText(/noRecipesFound/i, {}, { timeout: 5000 });
     });
 
     it('shows progress during polling', async () => {
@@ -530,10 +530,10 @@ describe('RecipeImportModal', () => {
       await user.upload(input, file);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /import recipe/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /import/i })).toBeInTheDocument();
       });
 
-      await user.click(screen.getByRole('button', { name: /import recipe/i }));
+      await user.click(screen.getByRole('button', { name: /import/i }));
 
       // Should show processing state with partial results
       await waitFor(() => {
@@ -581,10 +581,10 @@ describe('RecipeImportModal', () => {
       await user.upload(input, file);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /import recipe/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /import/i })).toBeInTheDocument();
       });
 
-      await user.click(screen.getByRole('button', { name: /import recipe/i }));
+      await user.click(screen.getByRole('button', { name: /import/i }));
 
       // Error from job failure should appear
       await screen.findByText(/pdf processing failed/i, {}, { timeout: 5000 });
@@ -632,10 +632,10 @@ describe('RecipeImportModal', () => {
       await user.upload(input, file);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /import recipe/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /import/i })).toBeInTheDocument();
       });
 
-      await user.click(screen.getByRole('button', { name: /import recipe/i }));
+      await user.click(screen.getByRole('button', { name: /import/i }));
 
       // Wait for polling to show progress (need to wait for 2 things: POST call, then first poll)
       // First wait for the POST to complete and polling to start
@@ -661,7 +661,7 @@ describe('RecipeImportModal', () => {
       });
 
       // Verify modal was reset without closing
-      await screen.findByText('Import Recipe');
+      await screen.findByText('importRecipe');
       expect(onClose).not.toHaveBeenCalled();
     }, 20000);
 
@@ -713,10 +713,10 @@ describe('RecipeImportModal', () => {
       await user.upload(input, file);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /import recipe/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /import/i })).toBeInTheDocument();
       });
 
-      await user.click(screen.getByRole('button', { name: /import recipe/i }));
+      await user.click(screen.getByRole('button', { name: /import/i }));
 
       // Wait for cancel button to appear
       const cancelButton = await screen.findByTestId('cancel-extraction-button', {}, { timeout: 8000 });
@@ -725,15 +725,15 @@ describe('RecipeImportModal', () => {
 
       await user.click(cancelButton);
 
-      // Check for loading state - button should be disabled and show "Cancelling..."
+      // Check for loading state - button should be disabled and show cancelling text
       await waitFor(() => {
         expect(cancelButton).toBeDisabled();
-        expect(screen.getByText('Cancelling...')).toBeInTheDocument();
+        expect(screen.getByText('cancelling')).toBeInTheDocument();
       });
 
       // Wait for reset to finish after DELETE completes
       await waitFor(() => {
-        expect(screen.getByText('Import Recipe')).toBeInTheDocument();
+        expect(screen.getByText('importRecipe')).toBeInTheDocument();
       });
       expect(onClose).not.toHaveBeenCalled();
     }, 20000);
@@ -779,10 +779,10 @@ describe('RecipeImportModal', () => {
       await user.upload(input, file);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /import recipe/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /import/i })).toBeInTheDocument();
       });
 
-      await user.click(screen.getByRole('button', { name: /import recipe/i }));
+      await user.click(screen.getByRole('button', { name: /import/i }));
 
       // Wait for cancel button to appear
       const cancelButton = await screen.findByTestId('cancel-extraction-button', {}, { timeout: 8000 });
@@ -839,19 +839,19 @@ describe('RecipeImportModal', () => {
       await user.upload(input, file);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /import recipe/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /import/i })).toBeInTheDocument();
       });
 
-      await user.click(screen.getByRole('button', { name: /import recipe/i }));
+      await user.click(screen.getByRole('button', { name: /import/i }));
 
       // Wait for cancel button to appear
       const cancelButton = await screen.findByTestId('cancel-extraction-button', {}, { timeout: 8000 });
 
       await user.click(cancelButton);
 
-      // Should show generic error message
+      // Should show generic error message (from translation key)
       await waitFor(() => {
-        expect(screen.getByText('Failed to cancel extraction')).toBeInTheDocument();
+        expect(screen.getByText(/failedToCancelExtraction/i)).toBeInTheDocument();
       });
 
       // Button should be re-enabled after error
@@ -868,7 +868,8 @@ describe('RecipeImportModal', () => {
       const user = userEvent.setup();
       render(<RecipeImportModal {...defaultProps} onClose={onClose} />);
 
-      await user.click(screen.getByLabelText('Close'));
+      // Translation mock returns key
+      await user.click(screen.getByLabelText('close'));
 
       expect(onClose).toHaveBeenCalled();
     });
@@ -878,7 +879,7 @@ describe('RecipeImportModal', () => {
       const user = userEvent.setup();
       render(<RecipeImportModal {...defaultProps} onClose={onClose} />);
 
-      await user.click(screen.getByText('Cancel'));
+      await user.click(screen.getByText('cancel'));
 
       expect(onClose).toHaveBeenCalled();
     });
@@ -907,7 +908,7 @@ describe('RecipeImportModal', () => {
     it('shows drag over state on dragOver', () => {
       render(<RecipeImportModal {...defaultProps} />);
 
-      const dropZone = screen.getByText(/drop file here/i).closest('div[class*="border-dashed"]');
+      const dropZone = screen.getByText(/dropFileHere/i).closest('div[class*="border-dashed"]');
       fireEvent.dragOver(dropZone!);
 
       expect(dropZone).toHaveClass('border-emerald-500');
@@ -916,7 +917,7 @@ describe('RecipeImportModal', () => {
     it('removes drag over state on dragLeave', () => {
       render(<RecipeImportModal {...defaultProps} />);
 
-      const dropZone = screen.getByText(/drop file here/i).closest('div[class*="border-dashed"]');
+      const dropZone = screen.getByText(/dropFileHere/i).closest('div[class*="border-dashed"]');
       fireEvent.dragOver(dropZone!);
       expect(dropZone).toHaveClass('border-emerald-500');
 

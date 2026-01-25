@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 import { CollectionSummary } from "@/lib/collection-types";
 
@@ -76,18 +77,19 @@ export function CreateCollectionCard({
 }: {
   onClick: () => void;
 }) {
+  const t = useTranslations("collections");
   return (
     <button
       onClick={onClick}
       className="flex w-32 shrink-0 flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-700 bg-transparent transition-colors hover:border-slate-600"
       style={{ aspectRatio: "1/1.35" }}
-      aria-label="Create new collection"
+      aria-label={t("createNewCollection")}
     >
       <div className="flex h-full flex-col items-center justify-center gap-2 p-2">
         <span className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800 text-xl text-slate-400">
           +
         </span>
-        <span className="text-xs text-slate-400">New Collection</span>
+        <span className="text-xs text-slate-400">{t("createNewCollection")}</span>
       </div>
     </button>
   );

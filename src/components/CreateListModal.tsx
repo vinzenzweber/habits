@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 
 interface CreateListModalProps {
   isOpen: boolean;
@@ -29,6 +30,8 @@ export function CreateListModal({
   onClose,
   onSuccess,
 }: CreateListModalProps) {
+  const t = useTranslations("groceryModal");
+  const tCommon = useTranslations("common");
   const [name, setName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +58,7 @@ export function CreateListModal({
 
   const handleCreate = useCallback(async () => {
     if (!name.trim()) {
-      setError("Please enter a list name");
+      setError(t("pleaseEnterListName"));
       return;
     }
 
@@ -72,7 +75,7 @@ export function CreateListModal({
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Failed to create list");
+        setError(data.error || t("failedToCreateList"));
         return;
       }
 
@@ -80,11 +83,11 @@ export function CreateListModal({
       onClose();
     } catch (err) {
       console.error("Error creating list:", err);
-      setError("Failed to create list");
+      setError(t("failedToCreateList"));
     } finally {
       setIsCreating(false);
     }
-  }, [name, onSuccess, onClose]);
+  }, [name, onSuccess, onClose, t]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -119,11 +122,11 @@ export function CreateListModal({
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-700 p-4">
-          <h2 id="create-list-title" className="text-lg font-semibold">Create Grocery List</h2>
+          <h2 id="create-list-title" className="text-lg font-semibold">{t("createGroceryList")}</h2>
           <button
             onClick={onClose}
             className="rounded p-1 text-slate-400 transition hover:text-white"
-            aria-label="Close"
+            aria-label={tCommon("close")}
           >
             <CloseIcon />
           </button>
@@ -145,7 +148,7 @@ export function CreateListModal({
                 htmlFor="list-name"
                 className="mb-2 block text-sm font-medium text-slate-300"
               >
-                List Name
+                {t("listName")}
               </label>
               <input
                 ref={inputRef}
@@ -154,7 +157,7 @@ export function CreateListModal({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="e.g., Weekly Groceries"
+                placeholder={t("listNamePlaceholder")}
                 className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 transition focus:border-emerald-500 focus:outline-none"
                 disabled={isCreating}
                 maxLength={100}
@@ -168,14 +171,14 @@ export function CreateListModal({
                 disabled={isCreating || !name.trim()}
                 className="w-full rounded-xl bg-emerald-500 py-3 font-medium text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isCreating ? "Creating..." : "Create List"}
+                {isCreating ? t("creating") : t("createList")}
               </button>
               <button
                 onClick={onClose}
                 disabled={isCreating}
                 className="py-2 text-slate-400 transition hover:text-white disabled:opacity-50"
               >
-                Cancel
+                {tCommon("cancel")}
               </button>
             </div>
           </div>

@@ -16,6 +16,7 @@ interface RecipeRatingSectionProps {
     addComment: string;
     submitRating: string;
     ratingSubmitted: string;
+    ratingSectionLabel: string;
   };
 }
 
@@ -81,7 +82,7 @@ export function RecipeRatingSection({
   return (
     <section
       className="rounded-3xl border border-slate-800 bg-slate-900/50 p-5 backdrop-blur sm:p-6"
-      aria-label="Rating"
+      aria-label={t.ratingSectionLabel}
     >
       <div className="flex flex-wrap items-center gap-6">
         {/* Average rating display */}

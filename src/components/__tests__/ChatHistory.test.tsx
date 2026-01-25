@@ -67,7 +67,8 @@ describe('ChatHistory', () => {
       render(<ChatHistory {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Chat History')).toBeInTheDocument();
+        // Translation mock returns the key
+        expect(screen.getByText('title')).toBeInTheDocument();
       });
     });
   });
@@ -93,8 +94,9 @@ describe('ChatHistory', () => {
       render(<ChatHistory {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText('No conversations yet')).toBeInTheDocument();
-        expect(screen.getByText('Start chatting to see your history here.')).toBeInTheDocument();
+        // Translation mock returns keys
+        expect(screen.getByText('noConversations')).toBeInTheDocument();
+        expect(screen.getByText('startChatting')).toBeInTheDocument();
       });
     });
   });
@@ -109,7 +111,8 @@ describe('ChatHistory', () => {
       render(<ChatHistory {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Failed to load chat history')).toBeInTheDocument();
+        // Translation mock returns key
+        expect(screen.getByText('failedToLoadChatHistory')).toBeInTheDocument();
       });
     });
 
@@ -122,7 +125,8 @@ describe('ChatHistory', () => {
       render(<ChatHistory {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Try Again')).toBeInTheDocument();
+        // Translation mock returns key
+        expect(screen.getByText('tryAgain')).toBeInTheDocument();
       });
     });
 
@@ -137,10 +141,11 @@ describe('ChatHistory', () => {
       render(<ChatHistory {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Try Again')).toBeInTheDocument();
+        // Translation mock returns key
+        expect(screen.getByText('tryAgain')).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByText('Try Again'));
+      fireEvent.click(screen.getByText('tryAgain'));
 
       await waitFor(() => {
         expect(screen.getByText('Workout modification help')).toBeInTheDocument();
@@ -174,7 +179,8 @@ describe('ChatHistory', () => {
       render(<ChatHistory {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText('New Chat')).toBeInTheDocument();
+        // Translation mock returns key
+        expect(screen.getByText('newChat')).toBeInTheDocument();
       });
     });
 
@@ -200,9 +206,10 @@ describe('ChatHistory', () => {
       render(<ChatHistory {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText(/8 messages/)).toBeInTheDocument();
-        expect(screen.getByText(/4 messages/)).toBeInTheDocument();
-        expect(screen.getByText(/0 messages/)).toBeInTheDocument();
+        // Translation mock returns key with params: "messageCount count:8"
+        expect(screen.getByText(/messageCount.*count:8/)).toBeInTheDocument();
+        expect(screen.getByText(/messageCount.*count:4/)).toBeInTheDocument();
+        expect(screen.getByText(/messageCount.*count:0/)).toBeInTheDocument();
       });
     });
 
@@ -225,7 +232,8 @@ describe('ChatHistory', () => {
       render(<ChatHistory {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText(/1 message$/)).toBeInTheDocument();
+        // Translation mock returns key with params
+        expect(screen.getByText(/messageCount.*count:1/)).toBeInTheDocument();
       });
     });
   });
@@ -240,7 +248,8 @@ describe('ChatHistory', () => {
       render(<ChatHistory {...defaultProps} currentSessionId={3} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Current')).toBeInTheDocument();
+        // Translation mock returns key
+        expect(screen.getByText('current')).toBeInTheDocument();
       });
     });
 
@@ -253,7 +262,8 @@ describe('ChatHistory', () => {
       render(<ChatHistory {...defaultProps} currentSessionId={3} />);
 
       await waitFor(() => {
-        const currentIndicators = screen.getAllByText('Current');
+        // Translation mock returns key
+        const currentIndicators = screen.getAllByText('current');
         expect(currentIndicators).toHaveLength(1);
       });
     });
@@ -290,10 +300,11 @@ describe('ChatHistory', () => {
       render(<ChatHistory {...defaultProps} onClose={onClose} />);
 
       await waitFor(() => {
-        expect(screen.getByLabelText('Close history')).toBeInTheDocument();
+        // Translation mock returns key
+        expect(screen.getByLabelText('closeHistory')).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByLabelText('Close history'));
+      fireEvent.click(screen.getByLabelText('closeHistory'));
 
       expect(onClose).toHaveBeenCalled();
     });
@@ -308,7 +319,8 @@ describe('ChatHistory', () => {
       render(<ChatHistory {...defaultProps} onClose={onClose} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Chat History')).toBeInTheDocument();
+        // Translation mock returns key
+        expect(screen.getByText('title')).toBeInTheDocument();
       });
 
       // Click the backdrop (first element with aria-hidden="true")
@@ -333,7 +345,8 @@ describe('ChatHistory', () => {
       render(<ChatHistory {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Load More')).toBeInTheDocument();
+        // Translation mock returns key
+        expect(screen.getByText('loadMore')).toBeInTheDocument();
       });
     });
 
@@ -353,7 +366,8 @@ describe('ChatHistory', () => {
         expect(screen.getByText('Workout modification help')).toBeInTheDocument();
       });
 
-      expect(screen.queryByText('Load More')).not.toBeInTheDocument();
+      // Translation mock returns key
+      expect(screen.queryByText('loadMore')).not.toBeInTheDocument();
     });
 
     it('fetches more sessions when Load More is clicked', async () => {
@@ -388,10 +402,11 @@ describe('ChatHistory', () => {
       render(<ChatHistory {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Load More')).toBeInTheDocument();
+        // Translation mock returns key
+        expect(screen.getByText('loadMore')).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByText('Load More'));
+      fireEvent.click(screen.getByText('loadMore'));
 
       await waitFor(() => {
         expect(screen.getByText('Older session')).toBeInTheDocument();
@@ -422,9 +437,9 @@ describe('ChatHistory', () => {
       render(<ChatHistory {...defaultProps} />);
 
       await waitFor(() => {
-        // Look for the paragraph element containing date info
+        // Look for the paragraph element containing date info - translation mock returns key
         const dateElements = document.querySelectorAll('.text-slate-400');
-        const hasToday = Array.from(dateElements).some(el => el.textContent?.includes('Today'));
+        const hasToday = Array.from(dateElements).some(el => el.textContent?.includes('today'));
         expect(hasToday).toBe(true);
       });
     });
@@ -448,9 +463,9 @@ describe('ChatHistory', () => {
       render(<ChatHistory {...defaultProps} />);
 
       await waitFor(() => {
-        // Look for the paragraph element containing date info
+        // Look for the paragraph element containing date info - translation mock returns key
         const dateElements = document.querySelectorAll('.text-slate-400');
-        const hasYesterday = Array.from(dateElements).some(el => el.textContent?.includes('Yesterday'));
+        const hasYesterday = Array.from(dateElements).some(el => el.textContent?.includes('yesterday'));
         expect(hasYesterday).toBe(true);
       });
     });
@@ -474,9 +489,9 @@ describe('ChatHistory', () => {
       render(<ChatHistory {...defaultProps} />);
 
       await waitFor(() => {
-        // Look for the paragraph element containing date info
+        // Look for the paragraph element containing date info - translation mock returns "daysAgo count:3"
         const dateElements = document.querySelectorAll('.text-slate-400');
-        const hasDaysAgo = Array.from(dateElements).some(el => el.textContent?.includes('3 days ago'));
+        const hasDaysAgo = Array.from(dateElements).some(el => el.textContent?.includes('daysAgo'));
         expect(hasDaysAgo).toBe(true);
       });
     });

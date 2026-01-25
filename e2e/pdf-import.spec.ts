@@ -20,7 +20,7 @@ test.describe('PDF Recipe Import', () => {
 
       // Click import button
       const importButton = authenticatedPage.getByRole('button', {
-        name: /import recipe from photo or pdf/i,
+        name: /import from photo or pdf/i,
       });
       await importButton.click();
 
@@ -40,7 +40,7 @@ test.describe('PDF Recipe Import', () => {
       await authenticatedPage.goto('/recipes');
 
       const importButton = authenticatedPage.getByRole('button', {
-        name: /import recipe from photo or pdf/i,
+        name: /import from photo or pdf/i,
       });
       await importButton.click();
 
@@ -53,7 +53,7 @@ test.describe('PDF Recipe Import', () => {
       await authenticatedPage.goto('/recipes');
 
       const importButton = authenticatedPage.getByRole('button', {
-        name: /import recipe from photo or pdf/i,
+        name: /import from photo or pdf/i,
       });
       await importButton.click();
 
@@ -66,7 +66,7 @@ test.describe('PDF Recipe Import', () => {
 
       // The import button should indicate it supports both photos and PDFs
       const importButton = authenticatedPage.getByRole('button', {
-        name: /import recipe from photo or pdf/i,
+        name: /import from photo or pdf/i,
       });
       await expect(importButton).toBeVisible();
     });
@@ -81,7 +81,7 @@ test.describe('PDF Recipe Import', () => {
       await authenticatedPage.goto('/recipes');
 
       const importButton = authenticatedPage.getByRole('button', {
-        name: /import recipe from photo or pdf/i,
+        name: /import from photo or pdf/i,
       });
       await importButton.click();
 
@@ -103,7 +103,7 @@ test.describe('PDF Recipe Import', () => {
       await authenticatedPage.goto('/recipes');
 
       const importButton = authenticatedPage.getByRole('button', {
-        name: /import recipe from photo or pdf/i,
+        name: /import from photo or pdf/i,
       });
       await importButton.click();
 
@@ -187,7 +187,7 @@ test.describe('PDF Recipe Import', () => {
       await authenticatedPage.goto('/recipes');
 
       const importButton = authenticatedPage.getByRole('button', {
-        name: /import recipe from photo or pdf/i,
+        name: /import from photo or pdf/i,
       });
       await importButton.click();
 
@@ -206,7 +206,7 @@ test.describe('PDF Recipe Import', () => {
       ).toBeVisible();
 
       await authenticatedPage
-        .getByRole('button', { name: 'Import Recipe', exact: true })
+        .getByRole('button', { name: 'Import', exact: true })
         .click();
 
       await expect
@@ -214,7 +214,7 @@ test.describe('PDF Recipe Import', () => {
         .toBeGreaterThanOrEqual(2);
 
       await expect(
-        authenticatedPage.getByText(/2 recipes imported/i)
+        authenticatedPage.getByText(/2 recipes extracted/i)
       ).toBeVisible({ timeout: 20000 });
       await expect(authenticatedPage.getByText('Mock Recipe One')).toBeVisible();
       await expect(authenticatedPage.getByText('Mock Recipe Two')).toBeVisible();
@@ -227,7 +227,7 @@ test.describe('PDF Recipe Import', () => {
       await authenticatedPage.goto('/recipes');
 
       const importButton = authenticatedPage.getByRole('button', {
-        name: /import recipe from photo or pdf/i,
+        name: /import from photo or pdf/i,
       });
       await importButton.click();
 
@@ -244,7 +244,7 @@ test.describe('PDF Recipe Import', () => {
       await authenticatedPage.goto('/recipes');
 
       const importButton = authenticatedPage.getByRole('button', {
-        name: /import recipe from photo or pdf/i,
+        name: /import from photo or pdf/i,
       });
       await importButton.click();
 
@@ -261,7 +261,7 @@ test.describe('PDF Recipe Import', () => {
       await authenticatedPage.goto('/recipes');
 
       const importButton = authenticatedPage.getByRole('button', {
-        name: /import recipe from photo or pdf/i,
+        name: /import from photo or pdf/i,
       });
 
       // Open and close
@@ -281,7 +281,7 @@ test.describe('PDF Recipe Import', () => {
       await authenticatedPage.goto('/recipes');
 
       const importButton = authenticatedPage.getByRole('button', {
-        name: /import recipe from photo or pdf/i,
+        name: /import from photo or pdf/i,
       });
       await importButton.click();
 
@@ -303,7 +303,7 @@ test.describe('PDF Recipe Import', () => {
       await authenticatedPage.goto('/recipes');
 
       const importButton = authenticatedPage.getByRole('button', {
-        name: /import recipe from photo or pdf/i,
+        name: /import from photo or pdf/i,
       });
       await importButton.click();
 
@@ -316,7 +316,7 @@ test.describe('PDF Recipe Import', () => {
       await authenticatedPage.goto('/recipes');
 
       const importButton = authenticatedPage.getByRole('button', {
-        name: /import recipe from photo or pdf/i,
+        name: /import from photo or pdf/i,
       });
       await importButton.click();
 
@@ -331,7 +331,7 @@ test.describe('PDF Recipe Import', () => {
       await authenticatedPage.goto('/recipes');
 
       const importButton = authenticatedPage.getByRole('button', {
-        name: /import recipe from photo or pdf/i,
+        name: /import from photo or pdf/i,
       });
       await importButton.click();
 
@@ -345,7 +345,7 @@ test.describe('PDF Recipe Import', () => {
       await authenticatedPage.goto('/recipes');
 
       const importButton = authenticatedPage.getByRole('button', {
-        name: /import recipe from photo or pdf/i,
+        name: /import from photo or pdf/i,
       });
       await importButton.click();
 
@@ -366,7 +366,7 @@ test.describe('PDF Recipe Import', () => {
       await authenticatedPage.goto('/recipes');
 
       const importButton = authenticatedPage.getByRole('button', {
-        name: /import recipe from photo or pdf/i,
+        name: /import from photo or pdf/i,
       });
       await importButton.click();
 
@@ -379,7 +379,7 @@ test.describe('PDF Recipe Import', () => {
       await authenticatedPage.goto('/recipes');
 
       const importButton = authenticatedPage.getByRole('button', {
-        name: /import recipe from photo or pdf/i,
+        name: /import from photo or pdf/i,
       });
       await importButton.click();
 
@@ -392,7 +392,7 @@ test.describe('PDF Recipe Import', () => {
       await authenticatedPage.goto('/recipes');
 
       const importButton = authenticatedPage.getByRole('button', {
-        name: /import recipe from photo or pdf/i,
+        name: /import from photo or pdf/i,
       });
       await importButton.click();
 

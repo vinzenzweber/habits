@@ -34,14 +34,14 @@ describe('StepsEditor', () => {
 
     it('renders add step button', () => {
       render(<StepsEditor steps={createMockSteps()} onChange={() => {}} />);
-      expect(screen.getByText('+ Add step')).toBeInTheDocument();
+      expect(screen.getByText('+ addStep')).toBeInTheDocument();
     });
 
     it('renders move up and move down buttons for each step', () => {
       render(<StepsEditor steps={createMockSteps()} onChange={() => {}} />);
 
-      const moveUpButtons = screen.getAllByTitle('Move up');
-      const moveDownButtons = screen.getAllByTitle('Move down');
+      const moveUpButtons = screen.getAllByTitle('moveUp');
+      const moveDownButtons = screen.getAllByTitle('moveDown');
 
       expect(moveUpButtons).toHaveLength(3);
       expect(moveDownButtons).toHaveLength(3);
@@ -54,7 +54,7 @@ describe('StepsEditor', () => {
       const onChange = vi.fn();
       render(<StepsEditor steps={createMockSteps()} onChange={onChange} />);
 
-      await user.click(screen.getByText('+ Add step'));
+      await user.click(screen.getByText('+ addStep'));
 
       expect(onChange).toHaveBeenCalledWith([
         ...createMockSteps(),
@@ -67,7 +67,7 @@ describe('StepsEditor', () => {
       const onChange = vi.fn();
       render(<StepsEditor steps={[]} onChange={onChange} />);
 
-      await user.click(screen.getByText('+ Add step'));
+      await user.click(screen.getByText('+ addStep'));
 
       expect(onChange).toHaveBeenCalledWith([{ number: 1, instruction: '' }]);
     });
@@ -79,7 +79,7 @@ describe('StepsEditor', () => {
       const onChange = vi.fn();
       render(<StepsEditor steps={createMockSteps()} onChange={onChange} />);
 
-      const removeButtons = screen.getAllByTitle('Remove step');
+      const removeButtons = screen.getAllByTitle('removeStep');
       await user.click(removeButtons[1]); // Remove step 2
 
       expect(onChange).toHaveBeenCalledWith([
@@ -96,7 +96,7 @@ describe('StepsEditor', () => {
         />
       );
 
-      expect(screen.queryByTitle('Remove step')).not.toBeInTheDocument();
+      expect(screen.queryByTitle('removeStep')).not.toBeInTheDocument();
     });
   });
 
@@ -120,7 +120,7 @@ describe('StepsEditor', () => {
       const onChange = vi.fn();
       render(<StepsEditor steps={createMockSteps()} onChange={onChange} />);
 
-      const moveUpButtons = screen.getAllByTitle('Move up');
+      const moveUpButtons = screen.getAllByTitle('moveUp');
       await user.click(moveUpButtons[1]); // Move step 2 up
 
       expect(onChange).toHaveBeenCalledWith([
@@ -135,7 +135,7 @@ describe('StepsEditor', () => {
       const onChange = vi.fn();
       render(<StepsEditor steps={createMockSteps()} onChange={onChange} />);
 
-      const moveDownButtons = screen.getAllByTitle('Move down');
+      const moveDownButtons = screen.getAllByTitle('moveDown');
       await user.click(moveDownButtons[1]); // Move step 2 down
 
       expect(onChange).toHaveBeenCalledWith([
@@ -148,14 +148,14 @@ describe('StepsEditor', () => {
     it('disables move up button for first step', () => {
       render(<StepsEditor steps={createMockSteps()} onChange={() => {}} />);
 
-      const moveUpButtons = screen.getAllByTitle('Move up');
+      const moveUpButtons = screen.getAllByTitle('moveUp');
       expect(moveUpButtons[0]).toBeDisabled();
     });
 
     it('disables move down button for last step', () => {
       render(<StepsEditor steps={createMockSteps()} onChange={() => {}} />);
 
-      const moveDownButtons = screen.getAllByTitle('Move down');
+      const moveDownButtons = screen.getAllByTitle('moveDown');
       expect(moveDownButtons[2]).toBeDisabled();
     });
 
@@ -164,7 +164,7 @@ describe('StepsEditor', () => {
       const onChange = vi.fn();
       render(<StepsEditor steps={createMockSteps()} onChange={onChange} />);
 
-      const moveUpButtons = screen.getAllByTitle('Move up');
+      const moveUpButtons = screen.getAllByTitle('moveUp');
       await user.click(moveUpButtons[0]); // Try to move first step up (disabled)
 
       expect(onChange).not.toHaveBeenCalled();
@@ -175,7 +175,7 @@ describe('StepsEditor', () => {
       const onChange = vi.fn();
       render(<StepsEditor steps={createMockSteps()} onChange={onChange} />);
 
-      const moveDownButtons = screen.getAllByTitle('Move down');
+      const moveDownButtons = screen.getAllByTitle('moveDown');
       await user.click(moveDownButtons[2]); // Try to move last step down (disabled)
 
       expect(onChange).not.toHaveBeenCalled();

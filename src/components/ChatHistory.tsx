@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 
 interface ChatSession {
   id: number;
@@ -22,6 +23,10 @@ export function ChatHistory({
   onSelectSession,
   currentSessionId
 }: ChatHistoryProps) {
+  const t = useTranslations('chatHistory');
+  const tCommon = useTranslations('common');
+  const tErrors = useTranslations('errors');
+  const locale = useLocale();
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -45,7 +50,7 @@ export function ChatHistory({
       const response = await fetch(url);
 
       if (!response.ok) {
-        throw new Error('Failed to load chat history');
+        throw new Error(tErrors('failedToLoadChatHistory'));
       }
 
       const data = await response.json();
@@ -58,7 +63,7 @@ export function ChatHistory({
       setHasMore(data.hasMore);
       setNextCursor(data.nextCursor);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err.message : tCommon('error'));
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -95,13 +100,13 @@ export function ChatHistory({
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
     if (diffDays === 0) {
-      return 'Today';
+      return t('today');
     } else if (diffDays === 1) {
-      return 'Yesterday';
+      return t('yesterday');
     } else if (diffDays < 7) {
-      return `${diffDays} days ago`;
+      return t('daysAgo', { count: diffDays });
     } else {
-      return date.toLocaleDateString('en-US', {
+      return date.toLocaleDateString(locale, {
         month: 'short',
         day: 'numeric',
         year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
@@ -127,11 +132,11 @@ export function ChatHistory({
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-700">
-          <h2 className="text-lg font-semibold">Chat History</h2>
+          <h2 className="text-lg font-semibold">{t('title')}</h2>
           <button
             onClick={onClose}
             className="text-slate-400 hover:text-white text-2xl leading-none"
-            aria-label="Close history"
+            aria-label={t('closeHistory')}
           >
             ✕
           </button>
@@ -158,7 +163,7 @@ export function ChatHistory({
                 onClick={() => fetchSessions()}
                 className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded text-sm transition"
               >
-                Try Again
+                {t('tryAgain')}
               </button>
             </div>
           )}
@@ -166,9 +171,9 @@ export function ChatHistory({
           {/* Empty state */}
           {!loading && !error && sessions.length === 0 && (
             <div className="p-8 text-center text-slate-400">
-              <p className="text-lg mb-2">No conversations yet</p>
+              <p className="text-lg mb-2">{t('noConversations')}</p>
               <p className="text-sm">
-                Start chatting to see your history here.
+                {t('startChatting')}
               </p>
             </div>
           )}
@@ -187,10 +192,10 @@ export function ChatHistory({
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <h3 className="font-medium text-white truncate">
-                        {session.title || 'New Chat'}
+                        {session.title || t('newChat')}
                       </h3>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        {formatDate(session.createdAt)} • {session.messageCount} {session.messageCount === 1 ? 'message' : 'messages'}
+                        {formatDate(session.createdAt)} • {t('messageCount', { count: session.messageCount })}
                       </p>
                       {session.preview && (
                         <p className="text-sm text-slate-500 mt-1 line-clamp-2">
@@ -199,7 +204,7 @@ export function ChatHistory({
                       )}
                     </div>
                     {currentSessionId === session.id && (
-                      <span className="text-xs text-emerald-400 whitespace-nowrap">Current</span>
+                      <span className="text-xs text-emerald-400 whitespace-nowrap">{t('current')}</span>
                     )}
                   </div>
                 </button>
@@ -215,7 +220,7 @@ export function ChatHistory({
                 disabled={loadingMore}
                 className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 rounded text-sm transition"
               >
-                {loadingMore ? 'Loading...' : 'Load More'}
+                {loadingMore ? tCommon('loading') : t('loadMore')}
               </button>
             </div>
           )}
