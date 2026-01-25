@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import withSerwistInit from "@serwist/next";
+import createNextIntlPlugin from "next-intl/plugin";
 
 // Serwist adds a webpack configuration for service worker bundling.
 // Next.js 16 uses Turbopack by default for all builds, but Serwist doesn't support Turbopack.
@@ -35,4 +36,6 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSerwist(nextConfig);
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
+
+export default withSerwist(withNextIntl(nextConfig));

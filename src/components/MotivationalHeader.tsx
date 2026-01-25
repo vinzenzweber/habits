@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { useTranslations } from "next-intl";
 
 interface MotivationalHeaderProps {
   hasStreak: boolean;
@@ -16,25 +17,6 @@ function getTimeOfDay(): TimeOfDay {
   return "evening";
 }
 
-const MESSAGES = {
-  morning: {
-    withStreak: "Morning momentum builds champions",
-    noStreak: "Start your day strong",
-  },
-  midday: {
-    withStreak: "Midday power-up awaits",
-    noStreak: "Perfect time for a workout",
-  },
-  afternoon: {
-    withStreak: "Afternoon energy boost ready",
-    noStreak: "Beat the evening slump",
-  },
-  evening: {
-    withStreak: "End your day accomplished",
-    noStreak: "There's still time today",
-  },
-};
-
 // Empty subscribe function - time of day only needs to be read once on mount
 function subscribe() {
   return () => {};
@@ -49,17 +31,15 @@ function useTimeOfDay(): TimeOfDay | null {
   );
 }
 
-// Default message to show during SSR (neutral greeting)
-const DEFAULT_MESSAGE = "Your workout awaits";
-
 export function MotivationalHeader({ hasStreak }: MotivationalHeaderProps) {
+  const t = useTranslations('motivationalHeader');
   const timeOfDay = useTimeOfDay();
 
   const message = timeOfDay
     ? hasStreak
-      ? MESSAGES[timeOfDay].withStreak
-      : MESSAGES[timeOfDay].noStreak
-    : DEFAULT_MESSAGE;
+      ? t(`${timeOfDay}.withStreak`)
+      : t(`${timeOfDay}.noStreak`)
+    : t('default');
 
   return (
     <h2 className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">

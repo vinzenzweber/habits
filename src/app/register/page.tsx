@@ -3,6 +3,7 @@ import { useState, useRef, useLayoutEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import { WorkoutPreviewMini } from "@/components/WorkoutPreviewMini";
 import { getDefaultUnitSystemForLocale, type UnitSystem } from "@/lib/user-preferences";
 
@@ -16,6 +17,8 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const t = useTranslations('auth');
+  const tErrors = useTranslations('errors');
 
   // Browser preferences stored in ref (doesn't need to trigger re-renders, only read on submit)
   const browserPrefs = useRef(DEFAULT_BROWSER_PREFS);
@@ -54,7 +57,7 @@ export default function RegisterPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || "Registration failed");
+        setError(data.error || t('registrationFailed'));
         setLoading(false);
         return;
       }
@@ -67,14 +70,14 @@ export default function RegisterPage() {
       });
 
       if (result?.error) {
-        setError("Registration successful, but login failed. Please try logging in.");
+        setError(t('registrationSuccessLoginFailed'));
         setLoading(false);
       } else {
         router.push("/onboarding");
         router.refresh();
       }
-    } catch (err) {
-      setError("An error occurred. Please try again.");
+    } catch {
+      setError(tErrors('generic'));
       setLoading(false);
     }
   };
@@ -83,9 +86,9 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
       <div className="bg-slate-900 rounded-lg p-8 max-w-md w-full space-y-6">
         <div>
-          <p className="text-emerald-400 text-sm font-medium mb-1">Build your streak, transform your routine</p>
-          <h1 className="text-2xl font-bold">Get Started</h1>
-          <p className="text-slate-400 text-sm mt-2">7 unique workouts designed for every day of the week</p>
+          <p className="text-emerald-400 text-sm font-medium mb-1">{t('buildYourStreak')}</p>
+          <h1 className="text-2xl font-bold">{t('getStarted')}</h1>
+          <p className="text-slate-400 text-sm mt-2">{t('sevenUniqueWorkouts')}</p>
         </div>
 
         <WorkoutPreviewMini />
@@ -98,7 +101,7 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           <div>
-            <label htmlFor="name" className="block text-sm mb-2">Name</label>
+            <label htmlFor="name" className="block text-sm mb-2">{t('name')}</label>
             <input
               id="name"
               type="text"
@@ -112,7 +115,7 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label htmlFor="email" className="block text-sm mb-2">Email</label>
+            <label htmlFor="email" className="block text-sm mb-2">{t('email')}</label>
             <input
               id="email"
               type="email"
@@ -125,7 +128,7 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm mb-2">Password (min 8 characters)</label>
+            <label htmlFor="password" className="block text-sm mb-2">{t('passwordMinLength')}</label>
             <input
               id="password"
               type="password"
@@ -143,14 +146,14 @@ export default function RegisterPage() {
             disabled={loading}
             className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded font-medium transition disabled:opacity-50"
           >
-            {loading ? "Creating account..." : "Register"}
+            {loading ? t('creatingAccount') : t('register')}
           </button>
         </form>
 
         <p className="text-center mt-4 text-slate-400">
-          Already have an account?{" "}
+          {t('hasAccount')}{" "}
           <Link href="/login" className="text-emerald-400 hover:underline">
-            Login
+            {t('login')}
           </Link>
         </p>
       </div>

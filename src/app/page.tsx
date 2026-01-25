@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { LogoutButton } from "@/components/LogoutButton";
@@ -26,12 +27,14 @@ function formatDuration(seconds: number) {
 }
 
 export default async function Home() {
-  const [nextWorkout, allWorkouts, completions, streakStats] = await Promise.all([
+  const [nextWorkout, allWorkouts, completions, streakStats, t] = await Promise.all([
     getNextUncompletedWorkout(),
     getAllWorkouts(),
     getTodayCompletions(),
     getUserStreakStats(),
+    getTranslations('home'),
   ]);
+  const tCommon = await getTranslations('common');
   const todaySlug = getTodaySlug();
   const hasStreak = (streakStats?.currentStreak ?? 0) >= 1;
   const hasCompletedToday = completions[todaySlug] ?? false;
@@ -51,7 +54,7 @@ export default async function Home() {
       }
     }
     // Onboarding complete but no workouts - show error
-    throw new Error("Workout plan missing. Please contact support.");
+    throw new Error(t('workoutMissing'));
   }
 
   return (
@@ -88,10 +91,10 @@ export default async function Home() {
               <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-400">
                   {nextWorkout.slug === todaySlug
-                    ? "Today"
+                    ? t('today')
                     : hasCompletedToday
-                      ? "Today Complete · Up Next"
-                      : "Up Next"
+                      ? t('todayComplete')
+                      : t('upNext')
                   } · {nextWorkout.label}
                 </p>
                 <h3 className="text-2xl font-semibold text-white sm:text-3xl">
@@ -103,7 +106,7 @@ export default async function Home() {
               </div>
               <div className="flex flex-col items-end gap-2">
                 <span className="inline-flex items-center justify-center rounded-full bg-emerald-400 px-4 py-2 text-sm font-medium text-slate-950">
-                  View
+                  {tCommon('view')}
                 </span>
                 <span className="text-xs text-slate-400">
                   {nextWorkout.segments.length} exercises · {formatDuration(nextWorkout.totalSeconds)}
@@ -118,7 +121,7 @@ export default async function Home() {
         {/* Weekly Schedule */}
         <section className="space-y-4">
           <h2 className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">
-            Weekly Schedule
+            {t('weeklySchedule')}
           </h2>
           <div className="grid gap-3">
             {allWorkouts.map((workout) => {
@@ -165,7 +168,7 @@ export default async function Home() {
                         </h3>
                         {isToday && !isCompleted && (
                           <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-400">
-                            Today
+                            {t('today')}
                           </span>
                         )}
                       </div>

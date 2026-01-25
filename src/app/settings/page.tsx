@@ -1,9 +1,13 @@
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { auth } from "@/lib/auth";
 import { UserSettingsForm } from "@/components/UserSettingsForm";
 
 export default async function SettingsPage() {
-  const session = await auth();
+  const [session, t] = await Promise.all([
+    auth(),
+    getTranslations('settings'),
+  ]);
 
   if (!session?.user) {
     redirect("/login");
@@ -13,8 +17,8 @@ export default async function SettingsPage() {
     <div className="min-h-screen bg-slate-950 p-4 pb-24">
       <div className="max-w-md mx-auto">
         <header className="mb-6">
-          <h1 className="text-2xl font-bold">Settings</h1>
-          <p className="text-slate-400 text-sm mt-1">Customize your app preferences</p>
+          <h1 className="text-2xl font-bold">{t('title')}</h1>
+          <p className="text-slate-400 text-sm mt-1">{t('subtitle')}</p>
         </header>
 
         <UserSettingsForm

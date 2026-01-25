@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 
 interface ShieldBannerProps {
   currentStreak: number;
@@ -14,6 +15,7 @@ type ProtectionType = "shield" | "restDay" | null;
  * Uses a ref to prevent duplicate API calls on remounts
  */
 export function ShieldBanner({ currentStreak }: ShieldBannerProps) {
+  const t = useTranslations('shieldBanner');
   const [protectionType, setProtectionType] = useState<ProtectionType>(null);
   const [dismissed, setDismissed] = useState(false);
   const hasChecked = useRef(false);
@@ -62,10 +64,10 @@ export function ShieldBanner({ currentStreak }: ShieldBannerProps) {
           </span>
           <div>
             <p className={`font-medium ${isRestDay ? "text-emerald-300" : "text-blue-300"}`}>
-              {isRestDay ? "Rest Day Used!" : "Streak Shield Activated!"}
+              {isRestDay ? t('restDayUsed') : t('shieldActivated')}
             </p>
             <p className="mt-1 text-sm text-slate-400">
-              Your {currentStreak}-day streak was protected. Keep it going today!
+              {t('streakProtected', { count: currentStreak })}
             </p>
           </div>
         </div>

@@ -173,6 +173,84 @@ Railway deployment configured via:
 - User registration auto-creates default workouts
 - All routes protected except /login, /register, and `/api/exercises/[name]/images/[index]` (public for Next.js Image optimization)
 
+## Internationalization (i18n)
+
+Full app internationalization using next-intl with cookie-based locale detection (no URL prefixes to preserve existing routes and PWA bookmarks).
+
+### Supported Locales
+
+| Locale | Language | Base Translations |
+|--------|----------|-------------------|
+| `en-US` | English (US) | — (default) |
+| `de-DE` | German (Germany) | — |
+| `de-AT` | German (Austria) | Uses `de-DE` |
+| `es-ES` | Spanish (Spain) | — |
+| `es-CO` | Spanish (Colombia) | Uses `es-ES` |
+
+Regional variants (de-AT, es-CO) share translations with their base locale but preserve full locale code for number/date formatting via Intl APIs.
+
+### Key Files
+
+- `src/i18n/config.ts` — Locale configuration, variant mapping, matching logic
+- `src/i18n/request.ts` — Request-time locale resolution (session → cookie → default)
+- `middleware.ts` — Browser locale detection for unauthenticated users
+- `messages/*.json` — Translation files (en-US, de-DE, es-ES)
+
+### Translation Structure
+
+Translations are organized by namespace in JSON files:
+
+```json
+{
+  "common": { "save": "Save", "cancel": "Cancel" },
+  "nav": { "home": "Home", "recipes": "Recipes" },
+  "auth": { "login": "Login", "register": "Register" },
+  "streak": { "dayStreak": "{count} Day Streak" },
+  ...
+}
+```
+
+### Usage Patterns
+
+**Server Components:**
+```typescript
+import { getTranslations } from 'next-intl/server';
+
+export default async function Page() {
+  const t = await getTranslations('namespace');
+  return <h1>{t('key')}</h1>;
+}
+```
+
+**Client Components:**
+```typescript
+'use client';
+import { useTranslations } from 'next-intl';
+
+export function Component() {
+  const t = useTranslations('namespace');
+  return <button>{t('save')}</button>;
+}
+```
+
+**With Variables:**
+```typescript
+t('greeting', { name: 'John' })  // "Hello, {name}!" → "Hello, John!"
+t('dayStreak', { count: 5 })     // "{count} Day Streak" → "5 Day Streak"
+```
+
+**Pluralization:**
+```json
+{ "items": "{count, plural, one {# item} other {# items}}" }
+```
+
+### Locale Resolution Order
+
+1. Authenticated users: `session.user.locale` (stored in database)
+2. Unauthenticated users: `NEXT_LOCALE` cookie
+3. First visit: Detected from `Accept-Language` header, saved to cookie
+4. Fallback: `en-US`
+
 ## Streak Preservation System
 
 The app includes a streak preservation system to help users maintain their workout streak on difficult days (low motivation, illness, travel).

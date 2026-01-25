@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
 import "./globals.css";
 import { BottomNav } from "@/components/BottomNav";
 import { ChatButton } from "@/components/ChatButton";
@@ -53,21 +55,27 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await auth();
+  const [session, locale, messages] = await Promise.all([
+    auth(),
+    getLocale(),
+    getMessages(),
+  ]);
 
   return (
-    <html lang="en">
+    <html lang={locale}>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-950 text-slate-100`}
       >
-        <ChatProvider>
-          <ServiceWorkerRegistration />
-          <MainContentWrapper>
-            {children}
-          </MainContentWrapper>
-          {session?.user && <BottomNav />}
-          {session?.user && <ChatButton />}
-        </ChatProvider>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <ChatProvider>
+            <ServiceWorkerRegistration />
+            <MainContentWrapper>
+              {children}
+            </MainContentWrapper>
+            {session?.user && <BottomNav />}
+            {session?.user && <ChatButton />}
+          </ChatProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );
