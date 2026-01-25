@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import {
   GroceryListWithItems,
   GroceryListItem,
@@ -30,6 +31,10 @@ export function GroceryListDetailClient({
   checkedByNames,
 }: GroceryListDetailClientProps) {
   const router = useRouter();
+  const t = useTranslations("groceryLists");
+  const tModal = useTranslations("groceryModal");
+  const tCommon = useTranslations("common");
+  const tSharing = useTranslations("sharing");
   const [list, setList] = useState(initialList);
   const [userNames, setUserNames] = useState(checkedByNames);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -171,7 +176,7 @@ export function GroceryListDetailClient({
   const handleDeleteList = useCallback(async () => {
     if (!isOwner) return;
 
-    if (!confirm("Are you sure you want to delete this list? This cannot be undone.")) {
+    if (!confirm(tModal("confirmDeleteList"))) {
       return;
     }
 
@@ -190,7 +195,7 @@ export function GroceryListDetailClient({
       console.error("Error deleting list:", error);
       setIsDeleting(false);
     }
-  }, [list.id, isOwner, router]);
+  }, [list.id, isOwner, router, tModal]);
 
   const handleItemAdded = useCallback(() => {
     // Refresh the list to get the new item
@@ -239,7 +244,7 @@ export function GroceryListDetailClient({
                 d="M15 19l-7-7 7-7"
               />
             </svg>
-            <span>Back</span>
+            <span>{tCommon("back")}</span>
           </Link>
 
           {/* Menu button */}
@@ -293,7 +298,7 @@ export function GroceryListDetailClient({
                           d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
                         />
                       </svg>
-                      Share List
+                      {t("shareList")}
                     </button>
                   )}
                   {isOwner && (
@@ -318,7 +323,7 @@ export function GroceryListDetailClient({
                           d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                         />
                       </svg>
-                      {isDeleting ? "Deleting..." : "Delete List"}
+                      {isDeleting ? tCommon("loading") : tModal("deleteList")}
                     </button>
                   )}
                 </div>
@@ -331,9 +336,9 @@ export function GroceryListDetailClient({
         <div>
           <h1 className="text-2xl font-bold">{list.name}</h1>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-400">
-            {!list.isOwner && <span>Shared by {list.ownerName}</span>}
+            {!list.isOwner && <span>{tSharing("sharedByLabel")} {list.ownerName}</span>}
             {list.shares.length > 0 && (
-              <span>Shared with {list.shares.length} people</span>
+              <span>{tSharing("sharedWith")} {list.shares.length}</span>
             )}
           </div>
         </div>
@@ -342,7 +347,7 @@ export function GroceryListDetailClient({
         {totalItems > 0 && (
           <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
             <div className="mb-2 flex items-center justify-between text-sm">
-              <span className="text-slate-400">Progress</span>
+              <span className="text-slate-400">{t("progress")}</span>
               <span className="font-medium">
                 {checkedItems}/{totalItems} ({progressPercent}%)
               </span>
@@ -386,9 +391,9 @@ export function GroceryListDetailClient({
         ) : (
           <div className="flex flex-col items-center justify-center rounded-xl border border-slate-800 bg-slate-900/50 py-12 text-center">
             <div className="mb-4 text-5xl">🛒</div>
-            <p className="text-lg font-medium text-white">No items yet</p>
+            <p className="text-lg font-medium text-white">{t("emptyList")}</p>
             <p className="mt-1 text-sm text-slate-400">
-              Add items to start your shopping list
+              {t("addItemsToStart")}
             </p>
           </div>
         )}
@@ -413,7 +418,7 @@ export function GroceryListDetailClient({
                   d="M12 4v16m8-8H4"
                 />
               </svg>
-              Add Item
+              {t("addItem")}
             </button>
           )}
 
@@ -435,7 +440,7 @@ export function GroceryListDetailClient({
                   d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                 />
               </svg>
-              Clear Checked ({checkedItems})
+              {t("clearChecked")} ({checkedItems})
             </button>
           )}
 
@@ -444,7 +449,7 @@ export function GroceryListDetailClient({
             className="flex items-center justify-center gap-2 rounded-xl border border-slate-700 px-4 py-3 text-slate-300 transition hover:bg-slate-800"
           >
             <span>🛒</span>
-            Shopping Mode
+            {t("shoppingMode")}
           </Link>
         </div>
       </div>

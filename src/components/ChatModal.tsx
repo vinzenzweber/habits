@@ -1,6 +1,7 @@
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { ChatHistory } from './ChatHistory';
 
 interface ToolCall {
@@ -64,6 +65,7 @@ export function ChatModal({
   pageContext
 }: ChatModalProps) {
   const router = useRouter();
+  const t = useTranslations('chat');
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [sessionId, setSessionId] = useState<number | null>(null);
@@ -727,14 +729,14 @@ export function ChatModal({
         } : undefined}
       >
         <div className="flex items-center justify-between p-4 border-b border-slate-700">
-          <h2 className="text-lg font-semibold">FitStreak AI</h2>
+          <h2 className="text-lg font-semibold">{t('fitStreakAI')}</h2>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowHistory(true)}
               className="text-xs px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300 transition"
-              title="View chat history"
+              title={t('viewHistory')}
             >
-              History
+              {t('history')}
             </button>
             {messages.length > 0 && (
               <button
@@ -743,9 +745,9 @@ export function ChatModal({
                   setSessionId(null);
                 }}
                 className="text-xs px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300 transition"
-                title="Start new conversation"
+                title={t('startNewConversation')}
               >
-                New Chat
+                {t('newChat')}
               </button>
             )}
             <button
@@ -907,7 +909,7 @@ export function ChatModal({
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             disabled={loading || isRecording || isTranscribing}
-            placeholder={isRecording ? "Recording..." : isTranscribing ? "Transcribing..." : "Type a message..."}
+            placeholder={isRecording ? t('recording') : isTranscribing ? t('transcribing') : t('typeMessage')}
             rows={1}
             className="flex-1 p-3 rounded bg-slate-800 text-white border border-slate-700 focus:border-emerald-500 outline-none disabled:opacity-50 resize-none overflow-y-auto"
             style={{ minHeight: '48px', maxHeight: '150px' }}
@@ -922,7 +924,7 @@ export function ChatModal({
                   ? 'bg-slate-700 cursor-wait'
                   : 'bg-slate-700 hover:bg-slate-600'
             } disabled:opacity-50`}
-            title={isRecording ? "Click to stop and send" : isTranscribing ? "Transcribing..." : "Click to record"}
+            title={isRecording ? t('clickToStopAndSend') : isTranscribing ? t('transcribing') : t('clickToRecord')}
           >
             {isTranscribing ? (
               <span className="text-xl">⏳</span>
@@ -937,7 +939,7 @@ export function ChatModal({
             disabled={loading || !input.trim() || isRecording || isTranscribing}
             className="px-4 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 disabled:cursor-not-allowed rounded text-white font-medium transition"
           >
-            Send
+            {t('send')}
           </button>
         </div>
       </div>

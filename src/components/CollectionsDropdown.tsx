@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 import { CollectionSummary, ReceivedCollection } from "@/lib/collection-types";
 
@@ -104,6 +105,8 @@ export function CollectionsDropdown({
   receivedCollections,
   onCreateCollection,
 }: CollectionsDropdownProps) {
+  const t = useTranslations("collections");
+  const tSharing = useTranslations("sharing");
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -160,7 +163,7 @@ export function CollectionsDropdown({
         aria-haspopup="true"
       >
         <FolderIcon />
-        <span>Collections</span>
+        <span>{t("collections")}</span>
         {totalCount > 0 && (
           <span className="text-xs text-slate-400">({totalCount})</span>
         )}
@@ -178,7 +181,7 @@ export function CollectionsDropdown({
           {collections.length > 0 && (
             <>
               <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                My Collections
+                {t("myCollections")}
               </div>
               {collections.map((collection) => (
                 <Link
@@ -204,7 +207,7 @@ export function CollectionsDropdown({
           {/* Empty state for my collections */}
           {collections.length === 0 && (
             <div className="px-3 py-2 text-sm text-slate-500">
-              No collections yet
+              {t("noCollections")}
             </div>
           )}
 
@@ -213,7 +216,7 @@ export function CollectionsDropdown({
             <>
               <div className="my-1 border-t border-slate-700" />
               <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Shared with me
+                {t("sharedWithMe")}
               </div>
               {receivedCollections.map((received) => (
                 <Link
@@ -226,7 +229,7 @@ export function CollectionsDropdown({
                   <div className="flex items-center gap-2 truncate">
                     <UserIcon />
                     <span className="truncate">
-                      From {received.sharedBy.name}
+                      {tSharing("fromLabel")} {received.sharedBy.name}
                     </span>
                   </div>
                   <ChevronRightIcon />
@@ -243,7 +246,7 @@ export function CollectionsDropdown({
             role="menuitem"
           >
             <PlusIcon />
-            <span>Create new collection</span>
+            <span>{t("createNewCollection")}</span>
           </button>
         </div>
       )}
