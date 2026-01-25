@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   type UserPreferencesWithRecipe,
   type UnitSystem,
@@ -25,6 +26,7 @@ export function UserSettingsForm({
   userEmail,
 }: UserSettingsFormProps) {
   const router = useRouter();
+  const t = useTranslations('settings');
   const [timezone, setTimezone] = useState(initialPreferences.timezone);
   const [locale, setLocale] = useState(initialPreferences.locale);
   const [unitSystem, setUnitSystem] = useState<UnitSystem>(initialPreferences.unitSystem);
@@ -95,17 +97,17 @@ export function UserSettingsForm({
     <div className="space-y-6">
       {/* User Info Section */}
       <section className="bg-slate-900 rounded-lg p-6">
-        <h2 className="text-lg font-semibold mb-4">Account</h2>
+        <h2 className="text-lg font-semibold mb-4">{t('account')}</h2>
         <div className="space-y-3">
           {userName && (
             <div>
-              <span className="text-slate-400 text-sm">Name</span>
+              <span className="text-slate-400 text-sm">{t('accountName')}</span>
               <p className="text-slate-100">{userName}</p>
             </div>
           )}
           {userEmail && (
             <div>
-              <span className="text-slate-400 text-sm">Email</span>
+              <span className="text-slate-400 text-sm">{t('accountEmail')}</span>
               <p className="text-slate-100">{userEmail}</p>
             </div>
           )}
@@ -114,7 +116,7 @@ export function UserSettingsForm({
 
       {/* Preferences Form */}
       <form onSubmit={handleSubmit} className="bg-slate-900 rounded-lg p-6 space-y-5">
-        <h2 className="text-lg font-semibold">Preferences</h2>
+        <h2 className="text-lg font-semibold">{t('preferences')}</h2>
 
         {error && (
           <div role="alert" className="bg-red-500/20 text-red-200 p-3 rounded text-sm">
@@ -124,14 +126,14 @@ export function UserSettingsForm({
 
         {success && (
           <div role="status" className="bg-emerald-500/20 text-emerald-200 p-3 rounded text-sm">
-            Preferences saved successfully
+            {t('preferencesSaved')}
           </div>
         )}
 
         {/* Timezone */}
         <div>
           <label htmlFor="timezone" className="block text-sm mb-2 text-slate-300">
-            Timezone
+            {t('timezone')}
           </label>
           <select
             id="timezone"
@@ -150,14 +152,14 @@ export function UserSettingsForm({
             ))}
           </select>
           <p className="text-slate-500 text-xs mt-1">
-            Used for displaying dates and scheduling
+            {t('timezoneDescription')}
           </p>
         </div>
 
         {/* Locale */}
         <div>
           <label htmlFor="locale" className="block text-sm mb-2 text-slate-300">
-            Language &amp; Region
+            {t('languageRegion')}
           </label>
           <select
             id="locale"
@@ -176,14 +178,14 @@ export function UserSettingsForm({
             ))}
           </select>
           <p className="text-slate-500 text-xs mt-1">
-            Used for number and date formatting
+            {t('languageRegionDescription')}
           </p>
         </div>
 
         {/* Unit System */}
         <div>
           <label htmlFor="unitSystem" className="block text-sm mb-2 text-slate-300">
-            Unit System
+            {t('unitSystem')}
           </label>
           <select
             id="unitSystem"
@@ -199,18 +201,18 @@ export function UserSettingsForm({
             ))}
           </select>
           <p className="text-slate-500 text-xs mt-1">
-            Used for weights, measurements, and temperatures
+            {t('unitSystemDescription')}
           </p>
         </div>
 
         {/* Recipe Preferences Section */}
         <div className="border-t border-slate-700 pt-5 mt-5">
-          <h3 className="text-md font-semibold mb-4 text-slate-200">Recipe Preferences</h3>
+          <h3 className="text-md font-semibold mb-4 text-slate-200">{t('recipePreferences')}</h3>
 
           {/* Default Recipe Language */}
           <div className="mb-4">
             <label htmlFor="defaultRecipeLocale" className="block text-sm mb-2 text-slate-300">
-              Default Recipe Language
+              {t('defaultRecipeLanguage')}
             </label>
             <select
               id="defaultRecipeLocale"
@@ -226,14 +228,14 @@ export function UserSettingsForm({
               ))}
             </select>
             <p className="text-slate-500 text-xs mt-1">
-              Language used when the AI creates new recipes for you
+              {t('defaultRecipeLanguageDescription')}
             </p>
           </div>
 
           {/* Ingredient Region */}
           <div className="mb-4">
             <label htmlFor="userRegionTimezone" className="block text-sm mb-2 text-slate-300">
-              Ingredient Region
+              {t('ingredientRegion')}
             </label>
             <div className="flex gap-2">
               <select
@@ -264,11 +266,11 @@ export function UserSettingsForm({
                 disabled={saving}
                 className="px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm disabled:opacity-50"
               >
-                Detect
+                {t('detect')}
               </button>
             </div>
             <p className="text-slate-500 text-xs mt-1">
-              Adapts ingredient names to your region (e.g., Austrian &quot;Schlagobers&quot; vs. German &quot;Sahne&quot;)
+              {t('ingredientRegionDescription')}
             </p>
           </div>
 
@@ -284,10 +286,10 @@ export function UserSettingsForm({
             />
             <div>
               <label htmlFor="showMeasurementConversions" className="block text-sm text-slate-300">
-                Show Measurement Conversions
+                {t('showMeasurementConversions')}
               </label>
               <p className="text-slate-500 text-xs mt-1">
-                Display both metric and imperial measurements in recipes (e.g., &quot;500ml (2 cups)&quot;)
+                {t('showMeasurementConversionsDescription')}
               </p>
             </div>
           </div>
@@ -298,19 +300,19 @@ export function UserSettingsForm({
           disabled={saving}
           className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded font-medium transition disabled:opacity-50"
         >
-          {saving ? 'Saving...' : 'Save Preferences'}
+          {saving ? t('savingPreferences') : t('savePreferences')}
         </button>
       </form>
 
       {/* Logout Section */}
       <section className="bg-slate-900 rounded-lg p-6">
-        <h2 className="text-lg font-semibold mb-4">Session</h2>
+        <h2 className="text-lg font-semibold mb-4">{t('session')}</h2>
         <button
           onClick={handleLogout}
           disabled={loggingOut}
           className="w-full bg-slate-800 hover:bg-slate-700 text-red-400 py-3 rounded font-medium transition disabled:opacity-50"
         >
-          {loggingOut ? 'Logging out...' : 'Log out'}
+          {loggingOut ? t('loggingOut') : t('logOut')}
         </button>
       </section>
     </div>

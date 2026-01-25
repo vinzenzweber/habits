@@ -73,7 +73,12 @@
     "ingredientRegionDescription": "Adapts ingredient names to your region (e.g., Austrian \"Schlagobers\" vs. German \"Sahne\")",
     "showMeasurementConversions": "Show Measurement Conversions",
     "showMeasurementConversionsDescription": "Display both metric and imperial measurements in recipes (e.g., \"500ml (2 cups)\")",
-    "savePreferences": "Save Preferences"
+    "savePreferences": "Save Preferences",
+    "savingPreferences": "Saving...",
+    "detect": "Detect",
+    "session": "Session",
+    "logOut": "Log out",
+    "loggingOut": "Logging out..."
   },
   "home": {
     "today": "Today",
