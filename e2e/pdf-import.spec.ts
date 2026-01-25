@@ -214,7 +214,7 @@ test.describe('PDF Recipe Import', () => {
         .toBeGreaterThanOrEqual(2);
 
       await expect(
-        authenticatedPage.getByText(/2 recipes imported/i)
+        authenticatedPage.getByText(/2 recipes extracted/i)
       ).toBeVisible({ timeout: 20000 });
       await expect(authenticatedPage.getByText('Mock Recipe One')).toBeVisible();
       await expect(authenticatedPage.getByText('Mock Recipe Two')).toBeVisible();
