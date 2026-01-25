@@ -206,7 +206,7 @@ test.describe('PDF Recipe Import', () => {
       ).toBeVisible();
 
       await authenticatedPage
-        .getByRole('button', { name: 'Import Recipe', exact: true })
+        .getByRole('button', { name: /import/i })
         .click();
 
       await expect
