@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
 import { InstallPrompt } from "@/components/InstallPrompt";
-import { LogoutButton } from "@/components/LogoutButton";
 import { MotivationalHeader } from "@/components/MotivationalHeader";
 import { NanoWorkoutCard } from "@/components/NanoWorkoutCard";
 import { ShieldBanner } from "@/components/ShieldBanner";
@@ -61,11 +60,10 @@ export default async function Home() {
     <main className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto flex max-w-3xl flex-col gap-8 px-5 pb-24 pt-12 sm:px-8">
         {/* Header */}
-        <header className="flex items-center justify-between">
+        <header>
           <p className="text-xs font-semibold uppercase tracking-[0.4em] text-emerald-400">
             FitStreak
           </p>
-          <LogoutButton />
         </header>
 
         {/* Shield Banner (shows when shield was auto-applied) */}

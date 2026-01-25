@@ -34,6 +34,7 @@ export function UserSettingsForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,6 +77,19 @@ export function UserSettingsForm({
   const isCustomTimezone = !COMMON_TIMEZONES.some(tz => tz.value === timezone);
   // Check if the current locale is in the supported list
   const isCustomLocale = !SUPPORTED_LOCALES.some(l => l.value === locale);
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+      });
+      router.push('/login');
+      router.refresh();
+    } catch {
+      setLoggingOut(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -287,6 +301,18 @@ export function UserSettingsForm({
           {saving ? 'Saving...' : 'Save Preferences'}
         </button>
       </form>
+
+      {/* Logout Section */}
+      <section className="bg-slate-900 rounded-lg p-6">
+        <h2 className="text-lg font-semibold mb-4">Session</h2>
+        <button
+          onClick={handleLogout}
+          disabled={loggingOut}
+          className="w-full bg-slate-800 hover:bg-slate-700 text-red-400 py-3 rounded font-medium transition disabled:opacity-50"
+        >
+          {loggingOut ? 'Logging out...' : 'Log out'}
+        </button>
+      </section>
     </div>
   );
 }

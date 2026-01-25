@@ -3,7 +3,6 @@ import { Suspense } from "react";
 
 import { auth } from "@/lib/auth";
 import { getUserGroceryLists } from "@/lib/grocery-db";
-import { LogoutButton } from "@/components/LogoutButton";
 import { GroceryListClient } from "@/components/GroceryListClient";
 import { GroceryListPageHeader } from "@/components/GroceryListPageHeader";
 
@@ -22,11 +21,10 @@ export default async function GroceryListsPage() {
     <main className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto flex max-w-3xl flex-col gap-8 px-5 pb-24 pt-12 sm:px-8">
         {/* Header */}
-        <header className="flex items-center justify-between">
+        <header>
           <p className="text-xs font-semibold uppercase tracking-[0.4em] text-emerald-400">
             FitStreak
           </p>
-          <LogoutButton />
         </header>
 
         {/* Title section with Create button */}
