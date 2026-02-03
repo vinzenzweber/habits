@@ -21,7 +21,7 @@ import {
   MEMORY_CATEGORIES,
   type MemoryCategory
 } from "@/lib/memory-tools";
-import { createFeedbackIssue } from "@/lib/github-tools";
+import { createFeedbackIssue, type Screenshot } from "@/lib/github-tools";
 import {
   searchExercises,
   getOrCreateExercise,
@@ -408,7 +408,7 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "create_feedback_issue",
-      description: "Create a GitHub issue for app/product feedback. Use this ONLY for feedback about the app itself (bugs, feature requests, UI issues), NOT for fitness-related feedback.",
+      description: "Create a GitHub issue for app/product feedback. Use this ONLY for feedback about the app itself (bugs, feature requests, UI issues), NOT for fitness-related feedback. Screenshots are automatically attached by the client if available.",
       parameters: {
         type: "object",
         properties: {
@@ -424,6 +424,18 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
             type: "string",
             enum: ["bug", "feature", "improvement", "question"],
             description: "Type of feedback: bug (something broken), feature (new capability), improvement (enhance existing), question (need clarification)"
+          },
+          screenshots: {
+            type: "array",
+            description: "Optional array of screenshots captured by the client. Each screenshot has a label and dataUrl (base64).",
+            items: {
+              type: "object",
+              properties: {
+                label: { type: "string" },
+                dataUrl: { type: "string" }
+              },
+              required: ["label", "dataUrl"]
+            }
           }
         },
         required: ["title", "description", "feedbackType"]
@@ -806,7 +818,8 @@ async function executeTool(
         userId,
         args.title,
         args.description,
-        args.feedbackType
+        args.feedbackType,
+        args.screenshots as Screenshot[] | undefined
       );
       break;
 
@@ -1156,6 +1169,21 @@ ${memoryContext}${pageContextSection}${instructionSection}`;
 
               // Send tool complete event
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "tool_end", tool: displayName })}\n\n`));
+
+              // If feedback issue was created successfully, notify client to capture screenshots
+              if (toolName === 'create_feedback_issue') {
+                try {
+                  const parsedResult = JSON.parse(result);
+                  if (parsedResult.success && parsedResult.issueNumber) {
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                      type: "feedback_created",
+                      issueNumber: parsedResult.issueNumber
+                    })}\n\n`));
+                  }
+                } catch {
+                  // Ignore parse errors
+                }
+              }
             }
 
             maxIterations--;

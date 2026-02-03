@@ -3,6 +3,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { ChatHistory } from './ChatHistory';
+import { captureFeedbackScreenshots } from '@/lib/screenshot-capture';
 
 interface ToolCall {
   id: string;
@@ -276,6 +277,26 @@ export function ChatModal({
     handleSend(ratingText[rating]);
   };
 
+  // Handle feedback issue screenshot capture and upload
+  const handleFeedbackScreenshots = useCallback(async (issueNumber: number) => {
+    try {
+      // Capture screenshots of current UI and background view
+      const screenshots = await captureFeedbackScreenshots('[data-chat-modal]');
+
+      if (screenshots.length > 0) {
+        // Upload screenshots to the feedback API
+        await fetch('/api/feedback/screenshots', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ issueNumber, screenshots })
+        });
+      }
+    } catch (error) {
+      // Silent fail - screenshots are optional
+      console.error('Failed to capture/upload feedback screenshots:', error);
+    }
+  }, []);
+
   // Sanitize HTML to prevent XSS
   const sanitizeHtml = (text: string) => {
     return text
@@ -372,6 +393,9 @@ export function ChatModal({
                 if (data.tool === 'Updating workout') {
                   workoutUpdatedRef.current = true;
                 }
+              } else if (data.type === 'feedback_created') {
+                // Capture and upload screenshots for the feedback issue
+                handleFeedbackScreenshots(data.issueNumber);
               } else if (data.type === 'content') {
                 fullContent += data.content;
                 setStreamingContent(fullContent);
@@ -484,6 +508,9 @@ export function ChatModal({
                 if (data.tool === 'Updating workout') {
                   workoutUpdatedRef.current = true;
                 }
+              } else if (data.type === 'feedback_created') {
+                // Capture and upload screenshots for the feedback issue
+                handleFeedbackScreenshots(data.issueNumber);
               } else if (data.type === 'content') {
                 fullContent += data.content;
                 setStreamingContent(fullContent);
@@ -742,6 +769,7 @@ export function ChatModal({
       />
       {/* Chat container: full-screen modal on mobile, sidebar on desktop */}
       <div
+        data-chat-modal
         className="fixed z-50 bg-slate-900 flex flex-col transition-all duration-300 ease-in-out
           inset-x-0 bottom-0 rounded-t-lg h-[80vh]
           md:inset-x-auto md:inset-y-0 md:right-0 md:w-[400px] md:h-screen md:rounded-none md:border-l md:border-slate-700"
