@@ -92,6 +92,7 @@ Key functions:
 - Manages state: currentIndex, remainingSeconds, isRunning, hasFinished
 - Category-specific styling via `CATEGORY_STYLES` (color-coded badges/progress bars)
 - Wake Lock API to prevent screen sleep during workout
+- Auto-scrolls to current exercise using ref Map pattern (smooth scroll, centered)
 
 **InstallPrompt** (src/components/InstallPrompt.tsx):
 - Prompts users to install the PWA on supported platforms
