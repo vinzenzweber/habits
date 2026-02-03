@@ -774,7 +774,7 @@ export function ChatModal({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', touchAction: 'pan-y', overscrollBehavior: 'contain' }}>
           {messages.length === 0 && !streamingContent && (
             <div className="text-center text-slate-400 py-8">
               <p className="mb-2">{t('aiAssistantDescription')}</p>
