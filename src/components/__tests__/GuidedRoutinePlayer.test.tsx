@@ -74,6 +74,9 @@ const mockFetch = vi.fn().mockImplementation(() =>
   })
 );
 
+// Mock scrollIntoView for all elements
+const mockScrollIntoView = vi.fn();
+
 beforeEach(() => {
   mockStart = vi.fn();
   mockConnect = vi.fn();
@@ -82,10 +85,12 @@ beforeEach(() => {
   mockCreateBufferSource = vi.fn();
   audioContextCreated = false;
   audioContextState = 'running';
+  mockScrollIntoView.mockClear();
 
   global.AudioContext = MockAudioContext as unknown as typeof AudioContext;
   (global as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext = MockAudioContext as unknown as typeof AudioContext;
   global.fetch = mockFetch;
+  Element.prototype.scrollIntoView = mockScrollIntoView;
 });
 
 afterEach(() => {
@@ -441,6 +446,101 @@ describe('GuidedRoutinePlayer countdown beeps', () => {
       expect(getByText(/noGuidedPlan/)).toBeInTheDocument();
       // createBufferSource shouldn't be called for empty workout
       expect(mockStart).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('auto-scroll to current segment', () => {
+    it('scrolls to first segment on mount with smooth behavior and center alignment', async () => {
+      vi.useFakeTimers();
+      const segments = createMockSegments(2);
+      const workout = createMockWorkout(segments);
+
+      render(<GuidedRoutinePlayer workout={workout} />);
+
+      // Wait for async operations to settle and effects to run
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      // Initial scroll should happen for segment 0 with proper options
+      expect(mockScrollIntoView).toHaveBeenCalledWith({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    });
+
+    it('does not scroll when timer is paused', async () => {
+      vi.useFakeTimers();
+      const segments = createMockSegments(2);
+      segments[0].durationSeconds = 3;
+      segments[1].durationSeconds = 5;
+      const workout = createMockWorkout(segments);
+
+      const { getByRole } = render(<GuidedRoutinePlayer workout={workout} />);
+
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      // Pause the timer
+      const pauseButton = getByRole('button', { name: /pause/i });
+      act(() => {
+        pauseButton.click();
+      });
+
+      mockScrollIntoView.mockClear();
+
+      // Advance time (but timer is paused so segment won't change)
+      act(() => {
+        vi.advanceTimersByTime(5000);
+      });
+
+      // Should not scroll since timer is paused and segment index hasn't changed
+      expect(mockScrollIntoView).not.toHaveBeenCalled();
+    });
+
+    it('does not scroll after workout finishes', async () => {
+      vi.useFakeTimers();
+      const segments = createMockSegments(1);
+      segments[0].durationSeconds = 2;
+      const workout = createMockWorkout(segments);
+
+      // Mock fetch for completion tracking
+      global.fetch = vi.fn()
+        .mockImplementationOnce(() => Promise.resolve({
+          arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+        }))
+        .mockImplementation(() => Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ completionId: 1 }),
+        }));
+
+      render(<GuidedRoutinePlayer workout={workout} />);
+
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      // Complete the workout
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+
+      mockScrollIntoView.mockClear();
+
+      // Advance more time after completion
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+
+      // Should not scroll after workout is finished
+      expect(mockScrollIntoView).not.toHaveBeenCalled();
     });
   });
 });
