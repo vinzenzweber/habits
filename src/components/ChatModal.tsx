@@ -112,6 +112,13 @@ export function ChatModal({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading, streamingContent]);
 
+  // Auto-scroll to bottom when modal opens with existing messages
+  useEffect(() => {
+    if (isOpen && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [isOpen]);
+
   // Cleanup audio and stream reader on unmount
   useEffect(() => {
     return () => {
