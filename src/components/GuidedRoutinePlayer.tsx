@@ -131,6 +131,8 @@ export function GuidedRoutinePlayer({
   const startTimeRef = useRef<number>(0);
   const hasTrackedCompletionRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  // Refs for auto-scrolling to current segment
+  const segmentRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const { isFullscreen, toggleFullscreen, isSupported } = useFullscreen(containerRef);
 
   // Play beep sound using Web Audio API (doesn't interrupt background music)
@@ -283,6 +285,20 @@ export function GuidedRoutinePlayer({
       playBeep();
     }
   }, [hasFinished, hasRoutine, isRunning, remainingSeconds, playBeep]);
+
+  // Auto-scroll to current segment when it changes
+  useEffect(() => {
+    if (hasFinished || !isRunning) return;
+
+    const currentSegmentElement = segmentRefs.current.get(currentIndex);
+    if (currentSegmentElement) {
+      // Use smooth scroll to center the current segment in view
+      currentSegmentElement.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }
+  }, [currentIndex, hasFinished, isRunning]);
 
   const currentSegment = segments[currentIndex];
   const nextSegment = segments[currentIndex + 1];
@@ -540,6 +556,13 @@ export function GuidedRoutinePlayer({
                       return (
                         <div
                           key={segment.id}
+                          ref={(el) => {
+                            if (el) {
+                              segmentRefs.current.set(index, el);
+                            } else {
+                              segmentRefs.current.delete(index);
+                            }
+                          }}
                           className={`rounded-2xl border border-white/5 bg-white/5 px-4 py-3 transition ${
                             index === currentIndex
                               ? "border-emerald-300/50 shadow-lg shadow-emerald-500/10"
