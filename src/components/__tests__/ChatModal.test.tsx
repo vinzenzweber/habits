@@ -102,6 +102,68 @@ describe('ChatModal', () => {
       });
     });
 
+    it('scrolls to bottom when reopening modal with pre-populated messages (issue #325)', async () => {
+      // Mock successful API response with streaming messages
+      mockFetch.mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: true,
+          body: {
+            getReader: () => ({
+              read: vi
+                .fn()
+                .mockResolvedValueOnce({
+                  done: false,
+                  value: new TextEncoder().encode('data: {"type":"session","sessionId":1}\n'),
+                })
+                .mockResolvedValueOnce({
+                  done: false,
+                  value: new TextEncoder().encode('data: {"type":"content","content":"Hello!"}\n'),
+                })
+                .mockResolvedValueOnce({
+                  done: false,
+                  value: new TextEncoder().encode('data: {"type":"done","toolCalls":[]}\n'),
+                })
+                .mockResolvedValueOnce({ done: true, value: undefined }),
+              cancel: vi.fn().mockResolvedValue(undefined),
+            }),
+          },
+        })
+      );
+
+      // 1. Render modal open
+      const { rerender } = render(<ChatModal {...defaultProps} isOpen={true} />);
+
+      // 2. Send a message to populate messages state
+      const textarea = screen.getByPlaceholderText('typeMessage');
+      const sendButton = screen.getByText('send');
+
+      fireEvent.change(textarea, { target: { value: 'Test message' } });
+      fireEvent.click(sendButton);
+
+      // Wait for message to be sent and response to appear
+      await waitFor(() => {
+        expect(screen.getByText('Test message')).toBeInTheDocument();
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText(/Hello!/)).toBeInTheDocument();
+      });
+
+      // Clear scroll calls from sending message
+      mockScrollIntoView.mockClear();
+
+      // 3. Close the modal
+      rerender(<ChatModal {...defaultProps} isOpen={false} />);
+
+      // 4. Reopen the modal with existing messages in state
+      rerender(<ChatModal {...defaultProps} isOpen={true} />);
+
+      // 5. Verify scrollIntoView was called when reopening with existing messages
+      await waitFor(() => {
+        expect(mockScrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth' });
+      });
+    });
+
     it('does not scroll when modal is closed', () => {
       render(<ChatModal {...defaultProps} isOpen={false} />);
 
