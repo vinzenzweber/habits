@@ -168,3 +168,70 @@ describe("Chat Route - Exercise Selection Prompts", () => {
     });
   });
 });
+
+describe("Chat Route - Concise Response Style (Issue #316)", () => {
+  describe("Response Style section", () => {
+    it("instructs to be concise and direct", () => {
+      expect(routeFileContent).toContain(
+        "Be concise and direct—avoid unnecessary pleasantries or acknowledgments"
+      );
+    });
+
+    it("instructs to get straight to actionable advice", () => {
+      expect(routeFileContent).toContain("Get straight to actionable advice");
+    });
+
+    it("no longer has 'conversational but professional' as primary style", () => {
+      // Old phrasing that encouraged more verbose responses
+      expect(routeFileContent).not.toContain(
+        "Be conversational but professional"
+      );
+    });
+  });
+
+  describe("Post-Workout Feedback section", () => {
+    it("does not contain verbose 'Acknowledge their strength' phrase", () => {
+      expect(routeFileContent).not.toContain("Acknowledge their strength");
+    });
+
+    it("does not contain verbose 'Congratulate them' phrase", () => {
+      expect(routeFileContent).not.toContain("Congratulate them");
+    });
+
+    it("does not contain verbose 'Be encouraging about their effort' phrase", () => {
+      expect(routeFileContent).not.toContain(
+        "Be encouraging about their effort"
+      );
+    });
+
+    it("contains direct feedback guidance for Too Easy", () => {
+      expect(routeFileContent).toContain(
+        '**"Too Easy"**: Suggest ways to increase intensity'
+      );
+    });
+
+    it("contains direct feedback guidance for Just Right", () => {
+      expect(routeFileContent).toContain(
+        '**"Just Right"**: Note this is the right level for progress'
+      );
+    });
+
+    it("contains direct feedback guidance for Too Hard", () => {
+      expect(routeFileContent).toContain(
+        '**"Too Hard"**: Suggest easier modifications'
+      );
+    });
+  });
+
+  describe("App Feedback Confirmation", () => {
+    it("uses concise 'Feedback recorded' confirmation", () => {
+      expect(routeFileContent).toContain('Simply confirm: "Feedback recorded."');
+    });
+
+    it("does not use verbose 'Thanks for the feedback' confirmation", () => {
+      expect(routeFileContent).not.toContain(
+        'Thanks for the feedback! I\'ve recorded it.'
+      );
+    });
+  });
+});
