@@ -460,11 +460,11 @@ export function GuidedRoutinePlayer({
               />
             )}
             <div className="flex-1 space-y-3">
-              <h1 className="text-3xl font-semibold leading-tight sm:text-4xl">
+              <h1 className="text-5xl font-semibold leading-tight sm:text-6xl">
                 {hasFinished ? t("workoutComplete") : currentSegment?.title}
               </h1>
               {!hasFinished && currentSegment?.detail ? (
-                <p className="text-xl text-slate-200 sm:text-2xl">
+                <p className="text-3xl text-slate-200 sm:text-4xl">
                   {currentSegment.detail}
                 </p>
               ) : null}
