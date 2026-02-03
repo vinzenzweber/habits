@@ -1,11 +1,11 @@
 import { auth } from "@/lib/auth";
+import { uploadImageToGitHub, type Screenshot } from "@/lib/github-screenshot-upload";
 
 export const runtime = 'nodejs';
 
-interface Screenshot {
-  label: string;
-  dataUrl: string;
-}
+// Limits to prevent abuse
+const MAX_SCREENSHOTS = 2;
+const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB per image
 
 /**
  * Upload screenshots and update an existing GitHub issue
@@ -28,6 +28,33 @@ export async function POST(request: Request) {
       return Response.json({ error: "Screenshots are required" }, { status: 400 });
     }
 
+    // Enforce screenshot count limit
+    if (screenshots.length > MAX_SCREENSHOTS) {
+      return Response.json({
+        error: `Maximum ${MAX_SCREENSHOTS} screenshots allowed`
+      }, { status: 400 });
+    }
+
+    // Validate screenshot sizes
+    for (const screenshot of screenshots) {
+      if (!screenshot.dataUrl || typeof screenshot.dataUrl !== 'string') {
+        return Response.json({ error: "Invalid screenshot format" }, { status: 400 });
+      }
+
+      // Estimate size from base64 (rough calculation: base64 is ~4/3 of binary size)
+      const base64Match = screenshot.dataUrl.match(/^data:image\/(png|jpeg|jpg);base64,(.+)$/);
+      if (!base64Match) {
+        return Response.json({ error: "Invalid image data format" }, { status: 400 });
+      }
+
+      const estimatedSize = (base64Match[2].length * 3) / 4;
+      if (estimatedSize > MAX_IMAGE_SIZE_BYTES) {
+        return Response.json({
+          error: `Screenshot too large (max ${MAX_IMAGE_SIZE_BYTES / 1024 / 1024}MB)`
+        }, { status: 400 });
+      }
+    }
+
     const token = process.env.GITHUB_TOKEN;
     const repo = process.env.GITHUB_REPO || 'vinzenzweber/habits';
 
@@ -35,7 +62,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "GitHub integration not configured" }, { status: 500 });
     }
 
-    // First, get the existing issue body
+    // First, get the existing issue and validate ownership
     const issueResponse = await fetch(`https://api.github.com/repos/${repo}/issues/${issueNumber}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -50,6 +77,18 @@ export async function POST(request: Request) {
 
     const issueData = await issueResponse.json();
     const existingBody = issueData.body || '';
+
+    // Validate this is a user-feedback issue created by this user
+    const hasUserFeedbackLabel = issueData.labels?.some(
+      (label: { name: string }) => label.name === 'user-feedback'
+    );
+    const containsUserId = existingBody.includes(`User ID: ${session.user.id}`);
+
+    if (!hasUserFeedbackLabel || !containsUserId) {
+      return Response.json({
+        error: "You can only attach screenshots to your own feedback issues"
+      }, { status: 403 });
+    }
 
     // Upload screenshots to GitHub
     const uploadedScreenshots: { label: string; url: string }[] = [];
@@ -71,7 +110,7 @@ export async function POST(request: Request) {
       .join('\n\n');
 
     // Update issue body with screenshots section
-    let newBody = existingBody;
+    let newBody: string;
     if (existingBody.includes('## Screenshots')) {
       // Replace existing screenshots section
       newBody = existingBody.replace(
@@ -117,61 +156,5 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Screenshot upload error:', error);
     return Response.json({ error: "Failed to process screenshots" }, { status: 500 });
-  }
-}
-
-/**
- * Upload an image to GitHub and get a markdown-compatible URL
- */
-async function uploadImageToGitHub(
-  token: string,
-  repo: string,
-  screenshot: Screenshot,
-  issueNumber: number
-): Promise<string | null> {
-  try {
-    // Extract base64 data from data URL
-    const matches = screenshot.dataUrl.match(/^data:image\/(png|jpeg|jpg);base64,(.+)$/);
-    if (!matches) {
-      console.error('Invalid image data URL format');
-      return null;
-    }
-
-    const extension = matches[1] === 'jpeg' ? 'jpg' : matches[1];
-    const base64Data = matches[2];
-
-    // Create a unique filename with timestamp
-    const timestamp = Date.now();
-    const sanitizedLabel = screenshot.label.toLowerCase().replace(/[^a-z0-9]/g, '-');
-    const filename = `feedback-${issueNumber}-${sanitizedLabel}-${timestamp}.${extension}`;
-    const path = `.github/feedback-screenshots/${filename}`;
-
-    // Upload file to repository
-    const response = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message: `Add feedback screenshot for issue #${issueNumber}`,
-        content: base64Data,
-        branch: 'main'
-      })
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('GitHub image upload error:', error);
-      return null;
-    }
-
-    const data = await response.json();
-    return data.content?.download_url || null;
-  } catch (error) {
-    console.error('Failed to upload image:', error);
-    return null;
   }
 }

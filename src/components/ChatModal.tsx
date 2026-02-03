@@ -757,12 +757,14 @@ export function ChatModal({
     <>
       {/* Mobile backdrop overlay */}
       <div
+        data-chat-modal
         className="fixed inset-0 bg-black/50 z-50 md:hidden"
         onClick={onClose}
         aria-hidden="true"
       />
       {/* Desktop backdrop overlay - subtle so content remains visible */}
       <div
+        data-chat-modal
         className="hidden md:fixed md:inset-0 md:block md:z-40"
         onClick={onClose}
         aria-hidden="true"

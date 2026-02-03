@@ -104,10 +104,13 @@ describe('POST /api/feedback/screenshots', () => {
   })
 
   it('successfully uploads screenshots and updates issue', async () => {
-    // Mock get existing issue
+    // Mock get existing issue with proper labels and user ID
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve({ body: '## User Feedback\n\nOriginal description\n\n---\n*Metadata*' })
+      json: () => Promise.resolve({
+        body: '## User Feedback\n\nOriginal description\n\n---\n*User ID: user-123*',
+        labels: [{ name: 'user-feedback' }, { name: 'bug' }]
+      })
     })
 
     // Mock screenshot upload
@@ -150,10 +153,13 @@ describe('POST /api/feedback/screenshots', () => {
   })
 
   it('handles multiple screenshots', async () => {
-    // Mock get existing issue
+    // Mock get existing issue with proper labels and user ID
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve({ body: '## User Feedback\n\nDescription\n\n---\n*Metadata*' })
+      json: () => Promise.resolve({
+        body: '## User Feedback\n\nDescription\n\n---\n*User ID: user-123*',
+        labels: [{ name: 'user-feedback' }]
+      })
     })
 
     // Mock first screenshot upload
@@ -198,10 +204,13 @@ describe('POST /api/feedback/screenshots', () => {
   })
 
   it('returns 500 when all screenshot uploads fail', async () => {
-    // Mock get existing issue
+    // Mock get existing issue with proper labels and user ID
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve({ body: 'Issue body' })
+      json: () => Promise.resolve({
+        body: 'Issue body\n\n---\n*User ID: user-123*',
+        labels: [{ name: 'user-feedback' }]
+      })
     })
 
     // Mock failed screenshot upload

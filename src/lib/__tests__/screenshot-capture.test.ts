@@ -46,9 +46,13 @@ describe('screenshot-capture', () => {
 
       expect(html2canvas).toHaveBeenCalledWith(document.body, expect.objectContaining({
         useCORS: true,
-        allowTaint: true,
+        allowTaint: false,
         backgroundColor: '#0a0a0a',
-        logging: false
+        logging: false,
+        width: window.innerWidth,
+        height: window.innerHeight,
+        x: window.scrollX,
+        y: window.scrollY
       }))
 
       expect(result).not.toBeNull()

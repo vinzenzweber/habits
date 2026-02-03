@@ -21,7 +21,7 @@ import {
   MEMORY_CATEGORIES,
   type MemoryCategory
 } from "@/lib/memory-tools";
-import { createFeedbackIssue, type Screenshot } from "@/lib/github-tools";
+import { createFeedbackIssue } from "@/lib/github-tools";
 import {
   searchExercises,
   getOrCreateExercise,
@@ -424,18 +424,6 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
             type: "string",
             enum: ["bug", "feature", "improvement", "question"],
             description: "Type of feedback: bug (something broken), feature (new capability), improvement (enhance existing), question (need clarification)"
-          },
-          screenshots: {
-            type: "array",
-            description: "Optional array of screenshots captured by the client. Each screenshot has a label and dataUrl (base64).",
-            items: {
-              type: "object",
-              properties: {
-                label: { type: "string" },
-                dataUrl: { type: "string" }
-              },
-              required: ["label", "dataUrl"]
-            }
           }
         },
         required: ["title", "description", "feedbackType"]
@@ -818,8 +806,7 @@ async function executeTool(
         userId,
         args.title,
         args.description,
-        args.feedbackType,
-        args.screenshots as Screenshot[] | undefined
+        args.feedbackType
       );
       break;
 

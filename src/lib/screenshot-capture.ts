@@ -80,12 +80,17 @@ export async function captureViewport(
   try {
     const html2canvas = await getHtml2Canvas();
 
-    // Capture the entire document body
+    // Capture only the currently visible viewport region of the document
     const canvas = await html2canvas(document.body, {
       useCORS: true,
-      allowTaint: true,
+      allowTaint: false,
       backgroundColor: '#0a0a0a', // Match app dark background
       logging: false,
+      // Constrain capture to the current viewport
+      width: window.innerWidth,
+      height: window.innerHeight,
+      x: window.scrollX,
+      y: window.scrollY,
       // Ignore elements that shouldn't be captured (like modals being captured)
       ignoreElements: (_element) => {
         // Don't ignore anything for full viewport capture
@@ -122,12 +127,12 @@ export async function captureBackgroundView(
 ): Promise<CapturedScreenshot | null> {
   const opts = { ...DEFAULT_OPTIONS, ...options };
 
+  // Find elements to hide during capture
+  const elementsToHide = document.querySelectorAll(modalSelector);
+  const originalStyles: { element: HTMLElement; display: string }[] = [];
+
   try {
     const html2canvas = await getHtml2Canvas();
-
-    // Find elements to hide during capture
-    const elementsToHide = document.querySelectorAll(modalSelector);
-    const originalStyles: { element: HTMLElement; display: string }[] = [];
 
     // Hide modal elements
     elementsToHide.forEach((el) => {
@@ -142,14 +147,9 @@ export async function captureBackgroundView(
     // Capture the background
     const canvas = await html2canvas(document.body, {
       useCORS: true,
-      allowTaint: true,
+      allowTaint: false,
       backgroundColor: '#0a0a0a',
       logging: false
-    });
-
-    // Restore hidden elements
-    originalStyles.forEach(({ element, display }) => {
-      element.style.display = display;
     });
 
     // Resize to fit max dimensions
@@ -168,6 +168,11 @@ export async function captureBackgroundView(
   } catch (error) {
     console.error('Failed to capture background view:', error);
     return null;
+  } finally {
+    // Always restore hidden elements, even if capture fails
+    originalStyles.forEach(({ element, display }) => {
+      element.style.display = display;
+    });
   }
 }
 
