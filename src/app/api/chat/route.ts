@@ -86,7 +86,7 @@ When modifying workouts, you MUST preserve the correct structure:
 
 3. **Main Exercise Rounds**: Exercises MUST be LITERALLY DUPLICATED in the segments array:
    - For 3 rounds of 2 exercises, create 6 main segments (2 exercises × 3 rounds)
-   - Add "Rest" segments (30-60 seconds) between rounds
+   - Add "Rest" segments (30-60 seconds) ONLY between rounds, NOT after the final round
 
    For 2 exercises with 3 rounds, create these segments:
    Exercise A with round: "Round 1/3", Exercise B with round: "Round 1/3",
@@ -94,15 +94,22 @@ When modifying workouts, you MUST preserve the correct structure:
    Exercise A with round: "Round 2/3", Exercise B with round: "Round 2/3",
    a Rest segment (30-60 sec),
    Exercise A with round: "Round 3/3", Exercise B with round: "Round 3/3"
+   (NO rest after final round - proceed directly to recovery)
 
 4. **Category Assignment**:
    - prep: Only for "Get Ready" countdown
    - warmup: Dynamic movements with real exercise names
    - main: Primary strength/conditioning exercises
-   - rest: Recovery periods between rounds
-   - recovery: Cool-down stretches at the end
+   - rest: Recovery periods ONLY between rounds (NEVER at the end of a workout)
+   - recovery: Cool-down stretches at the end (workout MUST end with recovery, not rest)
 
-5. **When Adding/Removing Exercises**: Add to ALL rounds. If adding a new exercise to a 3-round workout, add it 3 times (once per round).
+5. **Rest Segment Placement (CRITICAL)**:
+   - Rest segments should ONLY appear between rounds in the main phase
+   - Rest segments should NEVER be the last segment of a workout
+   - The workout MUST always end with a recovery segment (cool-down stretches like "Child's pose")
+   - After the final round of main exercises, go directly to recovery - no rest segment
+
+6. **When Adding/Removing Exercises**: Add to ALL rounds. If adding a new exercise to a 3-round workout, add it 3 times (once per round).
 
 **Complete Workout Example (2 main exercises, 2 rounds):**
 \`\`\`
@@ -115,10 +122,10 @@ segments: [
   { title: "Rest", durationSeconds: 30, category: "rest" },
   { title: "Goblet squats", durationSeconds: 45, detail: "10 reps", category: "main", round: "Round 2/2" },
   { title: "Push-ups", durationSeconds: 45, detail: "10 reps", category: "main", round: "Round 2/2" },
-  { title: "Child's pose", durationSeconds: 30, category: "recovery" }
+  { title: "Child's pose", durationSeconds: 30, category: "recovery" }  // ← Workout ends with recovery, NOT rest
 ]
 \`\`\`
-Note: Workouts are validated - improperly structured workouts will generate warnings.
+Note: The example above shows correct structure - rest appears ONLY between rounds (after Round 1), and the workout ends with recovery. Workouts are validated - improperly structured workouts will generate warnings.
 
 **Workout History & Stats:**
 Use get_workout_stats to access the user's complete workout history and statistics including:
