@@ -12,6 +12,7 @@ type FeedbackType = 'bug' | 'feature' | 'improvement' | 'question';
 
 /**
  * Create a GitHub issue for app feedback
+ * Screenshots are uploaded separately via the authenticated /api/feedback/screenshots endpoint
  */
 export async function createFeedbackIssue(
   userId: string,
@@ -35,7 +36,8 @@ export async function createFeedbackIssue(
     'question': ['question', 'user-feedback']
   };
 
-  const issueBody = `## User Feedback
+  // Build issue body
+  const buildIssueBody = () => `## User Feedback
 
 ${description}
 
@@ -45,6 +47,7 @@ ${description}
 *Date: ${new Date().toISOString()}*`;
 
   try {
+    // Create the issue (screenshots will be added separately via API endpoint)
     const response = await fetch(`https://api.github.com/repos/${repo}/issues`, {
       method: 'POST',
       headers: {
@@ -55,7 +58,7 @@ ${description}
       },
       body: JSON.stringify({
         title: `[User Feedback] ${title}`,
-        body: issueBody,
+        body: buildIssueBody(),
         labels: labelMap[feedbackType]
       })
     });
@@ -67,9 +70,11 @@ ${description}
     }
 
     const data = await response.json();
+    const issueNumber = data.number;
+
     return {
       success: true,
-      issueNumber: data.number,
+      issueNumber,
       message: 'Feedback recorded'
     };
   } catch (error) {
@@ -77,3 +82,5 @@ ${description}
     return { success: false, message: 'Failed to create issue' };
   }
 }
+
+export type { FeedbackType };

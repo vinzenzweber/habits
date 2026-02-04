@@ -398,6 +398,7 @@ The chat functions as a personal fitness trainer with:
 - `search_exercises` - Find exercises in library (prefer ones with images ready)
 - `create_exercise` - Add new exercise (auto-queues image generation)
 - `get_exercise_images` - Check image generation status
+- `create_feedback_issue` - Create GitHub issue with auto-attached screenshots (via html2canvas DOM capture)
 
 **Voice Features:**
 - Speech-to-text input via `gpt-4o-mini-transcribe` with fitness terminology prompt
@@ -407,6 +408,12 @@ The chat functions as a personal fitness trainer with:
 - OpenAI GPT-4o with function calling (SDK v6.15.0)
 - Chat UI: floating button (💬) opens right sidebar on desktop, full-screen modal on mobile
 - Workout modifications are versioned in database
+- html2canvas v1.4.1 for client-side DOM screenshot capture
+
+**GitHub Issue Integration:**
+- `POST /api/feedback/screenshots` - Upload screenshot attachments to GitHub issues
+- Screenshots captured client-side via html2canvas, uploaded as base64
+- Auto-attached by AI when creating feedback issues
 
 ## Exercise Images
 

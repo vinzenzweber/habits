@@ -408,7 +408,7 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "create_feedback_issue",
-      description: "Create a GitHub issue for app/product feedback. Use this ONLY for feedback about the app itself (bugs, feature requests, UI issues), NOT for fitness-related feedback.",
+      description: "Create a GitHub issue for app/product feedback. Use this ONLY for feedback about the app itself (bugs, feature requests, UI issues), NOT for fitness-related feedback. Screenshots are automatically attached by the client if available.",
       parameters: {
         type: "object",
         properties: {
@@ -1156,6 +1156,21 @@ ${memoryContext}${pageContextSection}${instructionSection}`;
 
               // Send tool complete event
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "tool_end", tool: displayName })}\n\n`));
+
+              // If feedback issue was created successfully, notify client to capture screenshots
+              if (toolName === 'create_feedback_issue') {
+                try {
+                  const parsedResult = JSON.parse(result);
+                  if (parsedResult.success && parsedResult.issueNumber) {
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                      type: "feedback_created",
+                      issueNumber: parsedResult.issueNumber
+                    })}\n\n`));
+                  }
+                } catch {
+                  // Ignore parse errors
+                }
+              }
             }
 
             maxIterations--;
