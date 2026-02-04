@@ -19,10 +19,12 @@ export async function uploadImageToGitHub(
   issueNumber: number
 ): Promise<string | null> {
   try {
+    console.log('[GitHub Upload] Starting upload for:', screenshot.label);
+
     // Extract base64 data from data URL
     const matches = screenshot.dataUrl.match(/^data:image\/(png|jpeg|jpg);base64,(.+)$/);
     if (!matches) {
-      console.error('Invalid image data URL format');
+      console.error('[GitHub Upload] Invalid image data URL format. URL starts with:', screenshot.dataUrl?.substring(0, 50));
       return null;
     }
 
@@ -36,6 +38,7 @@ export async function uploadImageToGitHub(
     const path = `.github/feedback-screenshots/${filename}`;
 
     // Upload file to repository (branch omitted to use default)
+    console.log('[GitHub Upload] Uploading to:', path);
     const response = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
       method: 'PUT',
       headers: {
@@ -52,14 +55,16 @@ export async function uploadImageToGitHub(
 
     if (!response.ok) {
       const error = await response.text();
-      console.error('GitHub image upload error:', error);
+      console.error('[GitHub Upload] Failed:', response.status, error);
       return null;
     }
 
     const data = await response.json();
-    return data.content?.download_url || null;
+    const downloadUrl = data.content?.download_url || null;
+    console.log('[GitHub Upload] Success, download_url:', downloadUrl);
+    return downloadUrl;
   } catch (error) {
-    console.error('Failed to upload image:', error);
+    console.error('[GitHub Upload] Exception:', error);
     return null;
   }
 }
