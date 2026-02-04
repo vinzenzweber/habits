@@ -1,5 +1,6 @@
 import { auth } from "./auth";
 import { query } from "./db";
+import { getExerciseDescriptions } from "./exercise-library";
 
 export type DaySlug =
   | "monday"
@@ -154,6 +155,96 @@ function buildStructuredWorkout(config: WorkoutConfig): StructuredWorkout {
           title: step.title,
           durationSeconds: step.durationSeconds,
           detail: step.detail ?? describeExercise(step.title),
+          category: step.category ?? phase.category,
+          round: rounds > 1 ? `Round ${roundIndex + 1}/${rounds}` : undefined,
+        });
+
+        // Add transition period between steps (not after the last step in a round)
+        const isLastStep = stepIndex === phase.steps.length - 1;
+        if (phase.restBetweenStepsSeconds && !isLastStep) {
+          const nextStep = phase.steps[stepIndex + 1];
+          segments.push({
+            id: `${config.slug}-${segments.length}`,
+            title: "Get ready",
+            durationSeconds: phase.restBetweenStepsSeconds,
+            detail: `Next: ${nextStep.title}`,
+            category: "rest",
+            round: rounds > 1 ? `Round ${roundIndex + 1}/${rounds}` : undefined,
+          });
+        }
+      }
+
+      if (
+        phase.restBetweenRoundsSeconds &&
+        roundIndex < rounds - 1
+      ) {
+        segments.push({
+          id: `${config.slug}-${segments.length}`,
+          title: "Rest",
+          durationSeconds: phase.restBetweenRoundsSeconds,
+          detail: "Reset before the next round",
+          category: "rest",
+          round: `Round ${roundIndex + 1}/${rounds}`,
+        });
+      }
+    }
+  }
+
+  const totalSeconds = segments.reduce(
+    (total, segment) => total + segment.durationSeconds,
+    0,
+  );
+
+  return {
+    slug: config.slug,
+    title: config.title,
+    focus: config.focus,
+    description: config.description,
+    segments,
+    totalSeconds,
+  };
+}
+
+/**
+ * Build a structured workout with exercise descriptions from the database.
+ * Falls back to EXERCISE_DESCRIPTIONS constant if exercise not found in database.
+ * Use this async version when you need database-driven descriptions.
+ */
+async function buildStructuredWorkoutAsync(config: WorkoutConfig): Promise<StructuredWorkout> {
+  // Collect all exercise titles from the config
+  const exerciseTitles = new Set<string>();
+  for (const phase of config.phases) {
+    for (const step of phase.steps) {
+      exerciseTitles.add(step.title);
+    }
+  }
+
+  // Fetch descriptions from database
+  const dbDescriptions = await getExerciseDescriptions(Array.from(exerciseTitles));
+
+  // Helper to get description with database fallback to hardcoded constant
+  const describeExerciseFromDb = (title: string): string => {
+    // First try database
+    const dbDescription = dbDescriptions.get(title);
+    if (dbDescription) {
+      return dbDescription;
+    }
+    // Fall back to hardcoded descriptions
+    return EXERCISE_DESCRIPTIONS[title] ?? "Controlled reps with steady tempo.";
+  };
+
+  const segments: RoutineSegment[] = [];
+
+  for (const phase of config.phases) {
+    const rounds = phase.rounds ?? 1;
+    for (let roundIndex = 0; roundIndex < rounds; roundIndex += 1) {
+      for (let stepIndex = 0; stepIndex < phase.steps.length; stepIndex += 1) {
+        const step = phase.steps[stepIndex];
+        segments.push({
+          id: `${config.slug}-${segments.length}`,
+          title: step.title,
+          durationSeconds: step.durationSeconds,
+          detail: step.detail ?? describeExerciseFromDb(step.title),
           category: step.category ?? phase.category,
           round: rounds > 1 ? `Round ${roundIndex + 1}/${rounds}` : undefined,
         });
@@ -909,4 +1000,11 @@ function calculateStreaks(completions: Array<{ completed_at: string }>): {
   return { currentStreak, longestStreak };
 }
 
-export { structuredWorkouts, DAY_ORDER, DAY_LABELS };
+export {
+  structuredWorkouts,
+  DAY_ORDER,
+  DAY_LABELS,
+  buildStructuredWorkoutAsync,
+  EXERCISE_DESCRIPTIONS,
+};
+export type { WorkoutConfig };
