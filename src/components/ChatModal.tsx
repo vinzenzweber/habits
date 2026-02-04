@@ -287,7 +287,7 @@ export function ChatModal({
       console.log('[Feedback Screenshots] Captured', screenshots.length, 'screenshots');
 
       if (screenshots.length === 0) {
-        console.warn('[Feedback Screenshots] No screenshots captured - html2canvas may have failed');
+        console.warn('[Feedback Screenshots] No screenshots captured - screenshot capture may have failed');
         return;
       }
 
