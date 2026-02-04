@@ -57,6 +57,7 @@ Applied migrations are tracked in the `_migrations` table.
   - `/grocery-lists` — Grocery lists overview (owned + shared lists)
   - `/grocery-lists/[id]` — Grocery list detail with items grouped by category
   - `/grocery-lists/[id]/shop` — Full-screen shopping mode with large touch targets
+  - `/settings/exercises` — Exercise library management (view and edit descriptions)
 
 ### Core Data Model
 
@@ -438,6 +439,18 @@ exercises table → exercise_images table → Railway volume (/data/images)
 2. Job queued in `image_generation_jobs` table
 3. Worker processes job: web search → gpt-image-1 generation → save to volume
 4. Images served via `/api/exercises/[name]/images/[1|2]`
+
+### Exercise Management
+
+All authenticated users can view and edit exercise descriptions via `/settings/exercises`.
+
+**API Endpoints:**
+- `GET /api/exercises` - List all exercises with image status
+- `PATCH /api/exercises/[name]` - Update exercise description
+
+**Key Functions:**
+- `getAllExercisesForManagement()` - Fetches all exercises with metadata (src/lib/exercise-db.ts:17)
+- `updateExerciseDescription()` - Updates exercise description (src/lib/exercise-db.ts:41)
 
 ### Commands
 
