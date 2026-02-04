@@ -568,3 +568,63 @@ export async function getAllExercises(): Promise<Exercise[]> {
     updatedAt: row.updated_at
   }));
 }
+
+/**
+ * Update an exercise's description (form cues)
+ */
+export async function updateExerciseDescription(
+  exerciseId: number,
+  formCues: string
+): Promise<Exercise | null> {
+  const result = await query(
+    `UPDATE exercises
+     SET form_cues = $1, updated_at = NOW()
+     WHERE id = $2
+     RETURNING id, name, normalized_name, description, form_cues, muscle_groups, equipment, category, created_at, updated_at`,
+    [formCues, exerciseId]
+  );
+
+  if (result.rows.length === 0) return null;
+
+  const row = result.rows[0];
+  return {
+    id: row.id,
+    name: row.name,
+    normalizedName: row.normalized_name,
+    description: row.description,
+    formCues: row.form_cues,
+    muscleGroups: row.muscle_groups || [],
+    equipment: row.equipment || [],
+    category: row.category,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+/**
+ * Get all exercises with descriptions for admin management
+ * Returns exercises sorted by name with hasDescription flag
+ */
+export async function getAllExercisesForManagement(): Promise<Array<{
+  id: number;
+  name: string;
+  formCues: string | null;
+  hasDescription: boolean;
+  category: string | null;
+  updatedAt: Date;
+}>> {
+  const result = await query(
+    `SELECT id, name, form_cues, category, updated_at
+     FROM exercises
+     ORDER BY name`
+  );
+
+  return result.rows.map(row => ({
+    id: row.id,
+    name: row.name,
+    formCues: row.form_cues,
+    hasDescription: !!row.form_cues && row.form_cues.trim().length > 0,
+    category: row.category,
+    updatedAt: row.updated_at
+  }));
+}

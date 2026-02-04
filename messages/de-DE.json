@@ -742,5 +742,23 @@
     "releaseToSend": "Loslassen zum Senden",
     "holdToRecord": "Halten zum Aufnehmen",
     "send": "Senden"
+  },
+  "exercises": {
+    "title": "Übungsbeschreibungen",
+    "subtitle": "Übungsbeschreibungen für Workouts anzeigen und bearbeiten",
+    "totalExercises": "Gesamt",
+    "withDescription": "Mit Beschreibung",
+    "withoutDescription": "Ohne Beschreibung",
+    "searchPlaceholder": "Übungen suchen...",
+    "filterAll": "Alle",
+    "filterWithDescription": "Mit",
+    "filterWithoutDescription": "Ohne",
+    "noExercisesFound": "Keine Übungen gefunden",
+    "hasDescription": "Beschreibung vorhanden",
+    "missingDescription": "Fehlt",
+    "saved": "Gespeichert!",
+    "descriptionPlaceholder": "Übungsbeschreibung eingeben...",
+    "saving": "Speichern...",
+    "showingCount": "Zeige {count} von {total} Übungen"
   }
 }

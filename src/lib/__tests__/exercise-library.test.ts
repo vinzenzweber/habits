@@ -7,6 +7,8 @@ import {
   normalizeExerciseName,
   getExercisesWithCompleteImages,
   getExerciseDescriptions,
+  updateExerciseDescription,
+  getAllExercisesForManagement,
 } from '../exercise-library';
 
 // Mock database
@@ -246,6 +248,223 @@ describe('exercise-library', () => {
 
       expect(result.size).toBe(1);
       expect(result.get('Arm circles (forward/back)')).toBe('Arms straight, small to big circles both ways.');
+    });
+  });
+
+  // ============================================
+  // updateExerciseDescription Tests
+  // ============================================
+
+  describe('updateExerciseDescription', () => {
+    it('updates exercise description and returns updated exercise', async () => {
+      const mockUpdatedRow = {
+        id: 1,
+        name: 'Push-ups',
+        normalized_name: 'push-ups',
+        description: null,
+        form_cues: 'Updated description for push-ups.',
+        muscle_groups: ['chest', 'triceps'],
+        equipment: [],
+        category: 'main',
+        created_at: new Date('2024-01-01'),
+        updated_at: new Date('2024-01-15'),
+      };
+
+      vi.mocked(query).mockResolvedValueOnce({
+        rows: [mockUpdatedRow],
+        rowCount: 1,
+      });
+
+      const result = await updateExerciseDescription(1, 'Updated description for push-ups.');
+
+      expect(query).toHaveBeenCalledTimes(1);
+      expect(query).toHaveBeenCalledWith(
+        expect.stringContaining('UPDATE exercises'),
+        ['Updated description for push-ups.', 1]
+      );
+      expect(result).not.toBeNull();
+      expect(result?.id).toBe(1);
+      expect(result?.name).toBe('Push-ups');
+      expect(result?.formCues).toBe('Updated description for push-ups.');
+    });
+
+    it('returns null when exercise not found', async () => {
+      vi.mocked(query).mockResolvedValueOnce({
+        rows: [],
+        rowCount: 0,
+      });
+
+      const result = await updateExerciseDescription(999, 'Some description');
+
+      expect(result).toBeNull();
+    });
+
+    it('updates with empty string to clear description', async () => {
+      const mockUpdatedRow = {
+        id: 1,
+        name: 'Push-ups',
+        normalized_name: 'push-ups',
+        description: null,
+        form_cues: '',
+        muscle_groups: [],
+        equipment: [],
+        category: null,
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+
+      vi.mocked(query).mockResolvedValueOnce({
+        rows: [mockUpdatedRow],
+        rowCount: 1,
+      });
+
+      const result = await updateExerciseDescription(1, '');
+
+      expect(result?.formCues).toBe('');
+    });
+
+    it('handles null muscle_groups and equipment arrays', async () => {
+      const mockUpdatedRow = {
+        id: 1,
+        name: 'New Exercise',
+        normalized_name: 'new-exercise',
+        description: null,
+        form_cues: 'A description',
+        muscle_groups: null,
+        equipment: null,
+        category: null,
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+
+      vi.mocked(query).mockResolvedValueOnce({
+        rows: [mockUpdatedRow],
+        rowCount: 1,
+      });
+
+      const result = await updateExerciseDescription(1, 'A description');
+
+      expect(result?.muscleGroups).toEqual([]);
+      expect(result?.equipment).toEqual([]);
+    });
+  });
+
+  // ============================================
+  // getAllExercisesForManagement Tests
+  // ============================================
+
+  describe('getAllExercisesForManagement', () => {
+    it('returns all exercises sorted by name', async () => {
+      const mockRows = [
+        {
+          id: 1,
+          name: 'Burpees',
+          form_cues: 'Jump, plank, push-up, repeat.',
+          category: 'hiit',
+          updated_at: new Date('2024-01-10'),
+        },
+        {
+          id: 2,
+          name: 'Push-ups',
+          form_cues: 'Hands under shoulders, lower chest.',
+          category: 'main',
+          updated_at: new Date('2024-01-15'),
+        },
+        {
+          id: 3,
+          name: 'Squats',
+          form_cues: null,
+          category: 'main',
+          updated_at: new Date('2024-01-05'),
+        },
+      ];
+
+      vi.mocked(query).mockResolvedValueOnce({
+        rows: mockRows,
+        rowCount: 3,
+      });
+
+      const result = await getAllExercisesForManagement();
+
+      expect(query).toHaveBeenCalledTimes(1);
+      expect(query).toHaveBeenCalledWith(
+        expect.stringContaining('SELECT id, name, form_cues, category, updated_at')
+      );
+      expect(result).toHaveLength(3);
+    });
+
+    it('correctly identifies exercises with descriptions', async () => {
+      const mockRows = [
+        {
+          id: 1,
+          name: 'Push-ups',
+          form_cues: 'Hands under shoulders.',
+          category: 'main',
+          updated_at: new Date(),
+        },
+        {
+          id: 2,
+          name: 'Squats',
+          form_cues: null,
+          category: 'main',
+          updated_at: new Date(),
+        },
+        {
+          id: 3,
+          name: 'Empty Description',
+          form_cues: '   ',
+          category: 'main',
+          updated_at: new Date(),
+        },
+      ];
+
+      vi.mocked(query).mockResolvedValueOnce({
+        rows: mockRows,
+        rowCount: 3,
+      });
+
+      const result = await getAllExercisesForManagement();
+
+      expect(result[0].hasDescription).toBe(true);  // Has description
+      expect(result[1].hasDescription).toBe(false); // null
+      expect(result[2].hasDescription).toBe(false); // Whitespace only - no meaningful content
+    });
+
+    it('returns empty array when no exercises exist', async () => {
+      vi.mocked(query).mockResolvedValueOnce({
+        rows: [],
+        rowCount: 0,
+      });
+
+      const result = await getAllExercisesForManagement();
+
+      expect(result).toEqual([]);
+    });
+
+    it('includes all required fields in result', async () => {
+      const mockRow = {
+        id: 42,
+        name: 'Test Exercise',
+        form_cues: 'Test description.',
+        category: 'warmup',
+        updated_at: new Date('2024-06-15'),
+      };
+
+      vi.mocked(query).mockResolvedValueOnce({
+        rows: [mockRow],
+        rowCount: 1,
+      });
+
+      const result = await getAllExercisesForManagement();
+
+      expect(result[0]).toEqual({
+        id: 42,
+        name: 'Test Exercise',
+        formCues: 'Test description.',
+        hasDescription: true,
+        category: 'warmup',
+        updatedAt: new Date('2024-06-15'),
+      });
     });
   });
 });
