@@ -3,7 +3,9 @@
 import { useState, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 
-// Internal state interface - updatedAt is always Date after normalization
+// Internal state interface for normalized exercises
+// updatedAt is always Date because we normalize serialized strings in useState initializer (lines 29-34)
+// and in API response handler (line 107)
 interface ExerciseItem {
   id: number;
   name: string;
