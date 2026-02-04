@@ -19,8 +19,6 @@ export async function uploadImageToGitHub(
   issueNumber: number
 ): Promise<string | null> {
   try {
-    console.log('[GitHub Upload] Starting upload for:', screenshot.label);
-
     // Extract base64 data from data URL
     const matches = screenshot.dataUrl.match(/^data:image\/(png|jpeg|jpg);base64,(.+)$/);
     if (!matches) {
@@ -38,7 +36,6 @@ export async function uploadImageToGitHub(
     const path = `.github/feedback-screenshots/${filename}`;
 
     // Upload file to repository (branch omitted to use default)
-    console.log('[GitHub Upload] Uploading to:', path);
     const response = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
       method: 'PUT',
       headers: {
@@ -60,9 +57,7 @@ export async function uploadImageToGitHub(
     }
 
     const data = await response.json();
-    const downloadUrl = data.content?.download_url || null;
-    console.log('[GitHub Upload] Success, download_url:', downloadUrl);
-    return downloadUrl;
+    return data.content?.download_url || null;
   } catch (error) {
     console.error('[GitHub Upload] Exception:', error);
     return null;

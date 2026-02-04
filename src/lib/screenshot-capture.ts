@@ -95,9 +95,7 @@ export async function captureViewport(
   const opts = { ...DEFAULT_OPTIONS, ...options };
 
   try {
-    console.log('[Screenshot] captureViewport: loading modern-screenshot...');
     const { domToDataUrl } = await getModernScreenshot();
-    console.log('[Screenshot] captureViewport: modern-screenshot loaded, capturing...');
 
     // Capture the document body
     const dataUrl = await domToDataUrl(document.body, {
@@ -111,8 +109,6 @@ export async function captureViewport(
       },
     });
 
-    console.log('[Screenshot] captureViewport: captured, resizing...');
-
     // Resize to fit max dimensions
     const resized = await resizeImage(
       dataUrl,
@@ -121,8 +117,6 @@ export async function captureViewport(
       opts.format!,
       opts.quality!
     );
-
-    console.log('[Screenshot] captureViewport: resized to', resized.width, 'x', resized.height);
 
     return {
       label: 'Current UI',
@@ -151,9 +145,7 @@ export async function captureBackgroundView(
   const originalStyles: { element: HTMLElement; display: string }[] = [];
 
   try {
-    console.log('[Screenshot] captureBackgroundView: loading modern-screenshot...');
     const { domToDataUrl } = await getModernScreenshot();
-    console.log('[Screenshot] captureBackgroundView: hiding', elementsToHide.length, 'modal elements');
 
     // Hide modal elements
     elementsToHide.forEach((el) => {
@@ -165,14 +157,10 @@ export async function captureBackgroundView(
     // Small delay to let DOM update
     await new Promise(resolve => setTimeout(resolve, 50));
 
-    console.log('[Screenshot] captureBackgroundView: capturing...');
-
     // Capture the background
     const dataUrl = await domToDataUrl(document.body, {
       backgroundColor: '#0a0a0a',
     });
-
-    console.log('[Screenshot] captureBackgroundView: captured, resizing...');
 
     // Resize to fit max dimensions
     const resized = await resizeImage(
@@ -182,8 +170,6 @@ export async function captureBackgroundView(
       opts.format!,
       opts.quality!
     );
-
-    console.log('[Screenshot] captureBackgroundView: resized to', resized.width, 'x', resized.height);
 
     return {
       label: 'Background View',
