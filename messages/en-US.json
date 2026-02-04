@@ -742,5 +742,23 @@
     "releaseToSend": "Release to send",
     "holdToRecord": "Hold to record",
     "send": "Send"
+  },
+  "exercises": {
+    "title": "Exercise Descriptions",
+    "subtitle": "View and edit exercise descriptions used in workouts",
+    "totalExercises": "Total",
+    "withDescription": "With description",
+    "withoutDescription": "Without description",
+    "searchPlaceholder": "Search exercises...",
+    "filterAll": "All",
+    "filterWithDescription": "With",
+    "filterWithoutDescription": "Without",
+    "noExercisesFound": "No exercises found",
+    "hasDescription": "Has description",
+    "missingDescription": "Missing",
+    "saved": "Saved!",
+    "descriptionPlaceholder": "Enter exercise description...",
+    "saving": "Saving...",
+    "showingCount": "Showing {count} of {total} exercises"
   }
 }

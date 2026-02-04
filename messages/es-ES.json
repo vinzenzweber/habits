@@ -742,5 +742,23 @@
     "releaseToSend": "Suelta para enviar",
     "holdToRecord": "Mantén presionado para grabar",
     "send": "Enviar"
+  },
+  "exercises": {
+    "title": "Descripciones de Ejercicios",
+    "subtitle": "Ver y editar descripciones de ejercicios para entrenamientos",
+    "totalExercises": "Total",
+    "withDescription": "Con descripción",
+    "withoutDescription": "Sin descripción",
+    "searchPlaceholder": "Buscar ejercicios...",
+    "filterAll": "Todos",
+    "filterWithDescription": "Con",
+    "filterWithoutDescription": "Sin",
+    "noExercisesFound": "No se encontraron ejercicios",
+    "hasDescription": "Tiene descripción",
+    "missingDescription": "Falta",
+    "saved": "¡Guardado!",
+    "descriptionPlaceholder": "Ingresa la descripción del ejercicio...",
+    "saving": "Guardando...",
+    "showingCount": "Mostrando {count} de {total} ejercicios"
   }
 }
