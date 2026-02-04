@@ -1,6 +1,6 @@
 /**
  * Client-side screenshot capture utility for feedback
- * Uses html2canvas to capture DOM elements as images
+ * Uses modern-screenshot which supports CSS Color Level 4 (lab, oklch, etc.)
  */
 
 interface CaptureOptions {
@@ -25,47 +25,64 @@ const DEFAULT_OPTIONS: CaptureOptions = {
 };
 
 /**
- * Dynamically import html2canvas only when needed
+ * Dynamically import modern-screenshot only when needed
  * This keeps the main bundle smaller since screenshots are rare
  */
-async function getHtml2Canvas(): Promise<typeof import('html2canvas').default> {
-  const html2canvasModule = await import('html2canvas');
-  return html2canvasModule.default;
+async function getModernScreenshot() {
+  const modernScreenshot = await import('modern-screenshot');
+  return modernScreenshot;
 }
 
 /**
- * Resize a canvas to fit within max dimensions while preserving aspect ratio
+ * Resize an image blob to fit within max dimensions while preserving aspect ratio
+ * Returns a data URL of the resized image
  */
-function resizeCanvas(
-  sourceCanvas: HTMLCanvasElement,
+async function resizeImage(
+  dataUrl: string,
   maxWidth: number,
-  maxHeight: number
-): HTMLCanvasElement {
-  const { width, height } = sourceCanvas;
+  maxHeight: number,
+  format: 'png' | 'jpeg',
+  quality: number
+): Promise<{ dataUrl: string; width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const { width, height } = img;
 
-  // If already within bounds, return original
-  if (width <= maxWidth && height <= maxHeight) {
-    return sourceCanvas;
-  }
+      // If already within bounds, return original
+      if (width <= maxWidth && height <= maxHeight) {
+        resolve({ dataUrl, width, height });
+        return;
+      }
 
-  // Calculate scale to fit within bounds
-  const scale = Math.min(maxWidth / width, maxHeight / height);
-  const newWidth = Math.round(width * scale);
-  const newHeight = Math.round(height * scale);
+      // Calculate scale to fit within bounds
+      const scale = Math.min(maxWidth / width, maxHeight / height);
+      const newWidth = Math.round(width * scale);
+      const newHeight = Math.round(height * scale);
 
-  // Create resized canvas
-  const resizedCanvas = document.createElement('canvas');
-  resizedCanvas.width = newWidth;
-  resizedCanvas.height = newHeight;
+      // Create resized canvas
+      const canvas = document.createElement('canvas');
+      canvas.width = newWidth;
+      canvas.height = newHeight;
 
-  const ctx = resizedCanvas.getContext('2d');
-  if (!ctx) {
-    return sourceCanvas;
-  }
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve({ dataUrl, width, height });
+        return;
+      }
 
-  // Draw scaled image
-  ctx.drawImage(sourceCanvas, 0, 0, newWidth, newHeight);
-  return resizedCanvas;
+      // Draw scaled image
+      ctx.drawImage(img, 0, 0, newWidth, newHeight);
+
+      // Convert to data URL with compression
+      const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
+      const resizedDataUrl = canvas.toDataURL(mimeType, quality);
+
+      resolve({ dataUrl: resizedDataUrl, width: newWidth, height: newHeight });
+    };
+    img.onerror = () => reject(new Error('Failed to load image for resizing'));
+    img.src = dataUrl;
+  });
 }
 
 /**
@@ -78,41 +95,43 @@ export async function captureViewport(
   const opts = { ...DEFAULT_OPTIONS, ...options };
 
   try {
-    const html2canvas = await getHtml2Canvas();
+    console.log('[Screenshot] captureViewport: loading modern-screenshot...');
+    const { domToDataUrl } = await getModernScreenshot();
+    console.log('[Screenshot] captureViewport: modern-screenshot loaded, capturing...');
 
-    // Capture only the currently visible viewport region of the document
-    const canvas = await html2canvas(document.body, {
-      useCORS: true,
-      allowTaint: false,
+    // Capture the document body
+    const dataUrl = await domToDataUrl(document.body, {
       backgroundColor: '#0a0a0a', // Match app dark background
-      logging: false,
       // Constrain capture to the current viewport
       width: window.innerWidth,
       height: window.innerHeight,
-      x: window.scrollX,
-      y: window.scrollY,
-      // Ignore elements that shouldn't be captured (like modals being captured)
-      ignoreElements: (_element) => {
-        // Don't ignore anything for full viewport capture
-        return false;
-      }
+      style: {
+        // Override any problematic positioning during capture
+        transform: `translate(${-window.scrollX}px, ${-window.scrollY}px)`,
+      },
     });
 
-    // Resize to fit max dimensions
-    const resizedCanvas = resizeCanvas(canvas, opts.maxWidth!, opts.maxHeight!);
+    console.log('[Screenshot] captureViewport: captured, resizing...');
 
-    // Convert to data URL with compression
-    const mimeType = opts.format === 'png' ? 'image/png' : 'image/jpeg';
-    const dataUrl = resizedCanvas.toDataURL(mimeType, opts.quality);
+    // Resize to fit max dimensions
+    const resized = await resizeImage(
+      dataUrl,
+      opts.maxWidth!,
+      opts.maxHeight!,
+      opts.format!,
+      opts.quality!
+    );
+
+    console.log('[Screenshot] captureViewport: resized to', resized.width, 'x', resized.height);
 
     return {
       label: 'Current UI',
-      dataUrl,
-      width: resizedCanvas.width,
-      height: resizedCanvas.height
+      dataUrl: resized.dataUrl,
+      width: resized.width,
+      height: resized.height
     };
   } catch (error) {
-    console.error('Failed to capture viewport:', error);
+    console.error('[Screenshot] captureViewport failed:', error);
     return null;
   }
 }
@@ -132,7 +151,9 @@ export async function captureBackgroundView(
   const originalStyles: { element: HTMLElement; display: string }[] = [];
 
   try {
-    const html2canvas = await getHtml2Canvas();
+    console.log('[Screenshot] captureBackgroundView: loading modern-screenshot...');
+    const { domToDataUrl } = await getModernScreenshot();
+    console.log('[Screenshot] captureBackgroundView: hiding', elementsToHide.length, 'modal elements');
 
     // Hide modal elements
     elementsToHide.forEach((el) => {
@@ -144,29 +165,34 @@ export async function captureBackgroundView(
     // Small delay to let DOM update
     await new Promise(resolve => setTimeout(resolve, 50));
 
+    console.log('[Screenshot] captureBackgroundView: capturing...');
+
     // Capture the background
-    const canvas = await html2canvas(document.body, {
-      useCORS: true,
-      allowTaint: false,
+    const dataUrl = await domToDataUrl(document.body, {
       backgroundColor: '#0a0a0a',
-      logging: false
     });
 
-    // Resize to fit max dimensions
-    const resizedCanvas = resizeCanvas(canvas, opts.maxWidth!, opts.maxHeight!);
+    console.log('[Screenshot] captureBackgroundView: captured, resizing...');
 
-    // Convert to data URL with compression
-    const mimeType = opts.format === 'png' ? 'image/png' : 'image/jpeg';
-    const dataUrl = resizedCanvas.toDataURL(mimeType, opts.quality);
+    // Resize to fit max dimensions
+    const resized = await resizeImage(
+      dataUrl,
+      opts.maxWidth!,
+      opts.maxHeight!,
+      opts.format!,
+      opts.quality!
+    );
+
+    console.log('[Screenshot] captureBackgroundView: resized to', resized.width, 'x', resized.height);
 
     return {
       label: 'Background View',
-      dataUrl,
-      width: resizedCanvas.width,
-      height: resizedCanvas.height
+      dataUrl: resized.dataUrl,
+      width: resized.width,
+      height: resized.height
     };
   } catch (error) {
-    console.error('Failed to capture background view:', error);
+    console.error('[Screenshot] captureBackgroundView failed:', error);
     return null;
   } finally {
     // Always restore hidden elements, even if capture fails

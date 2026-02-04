@@ -12,19 +12,25 @@ const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB per image
  * POST /api/feedback/screenshots
  */
 export async function POST(request: Request) {
+  console.log('[Feedback Screenshots API] POST request received');
+
   const session = await auth();
   if (!session?.user?.id) {
+    console.log('[Feedback Screenshots API] Unauthorized - no session');
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
     const { issueNumber, screenshots } = await request.json();
+    console.log('[Feedback Screenshots API] Processing:', { issueNumber, screenshotCount: screenshots?.length });
 
     if (!issueNumber || typeof issueNumber !== 'number') {
+      console.log('[Feedback Screenshots API] Missing or invalid issue number');
       return Response.json({ error: "Issue number is required" }, { status: 400 });
     }
 
     if (!screenshots || !Array.isArray(screenshots) || screenshots.length === 0) {
+      console.log('[Feedback Screenshots API] No screenshots provided');
       return Response.json({ error: "Screenshots are required" }, { status: 400 });
     }
 
@@ -93,14 +99,20 @@ export async function POST(request: Request) {
     // Upload screenshots to GitHub
     const uploadedScreenshots: { label: string; url: string }[] = [];
 
+    console.log('[Feedback Screenshots API] Uploading', screenshots.length, 'screenshots to GitHub');
     for (const screenshot of screenshots as Screenshot[]) {
+      console.log('[Feedback Screenshots API] Uploading screenshot:', screenshot.label, 'dataUrl length:', screenshot.dataUrl?.length);
       const imageUrl = await uploadImageToGitHub(token, repo, screenshot, issueNumber);
       if (imageUrl) {
+        console.log('[Feedback Screenshots API] Upload successful:', imageUrl);
         uploadedScreenshots.push({ label: screenshot.label, url: imageUrl });
+      } else {
+        console.log('[Feedback Screenshots API] Upload failed for:', screenshot.label);
       }
     }
 
     if (uploadedScreenshots.length === 0) {
+      console.error('[Feedback Screenshots API] All screenshot uploads failed');
       return Response.json({ error: "Failed to upload screenshots" }, { status: 500 });
     }
 
@@ -148,13 +160,14 @@ export async function POST(request: Request) {
       return Response.json({ error: "Failed to update issue with screenshots" }, { status: 500 });
     }
 
+    console.log('[Feedback Screenshots API] Successfully uploaded', uploadedScreenshots.length, 'screenshots');
     return Response.json({
       success: true,
       screenshotsUploaded: uploadedScreenshots.length
     });
 
   } catch (error) {
-    console.error('Screenshot upload error:', error);
+    console.error('[Feedback Screenshots API] Error:', error);
     return Response.json({ error: "Failed to process screenshots" }, { status: 500 });
   }
 }

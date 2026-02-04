@@ -3,12 +3,12 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-// Mock html2canvas - factory cannot reference external variables
-vi.mock('html2canvas', () => ({
-  default: vi.fn()
+// Mock modern-screenshot - factory cannot reference external variables
+vi.mock('modern-screenshot', () => ({
+  domToDataUrl: vi.fn()
 }))
 
-import html2canvas from 'html2canvas'
+import { domToDataUrl } from 'modern-screenshot'
 import {
   captureViewport,
   captureBackgroundView,
@@ -17,51 +17,63 @@ import {
 } from '../screenshot-capture'
 
 describe('screenshot-capture', () => {
-  // Define mock canvas inside the test suite
-  const mockCanvas = {
-    width: 1920,
-    height: 1080,
-    toDataURL: vi.fn().mockReturnValue('data:image/jpeg;base64,mockedData'),
-    getContext: vi.fn().mockReturnValue({
-      drawImage: vi.fn()
-    })
-  }
+  // Use a minimal valid 1x1 PNG that browsers can load
+  const mockDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+
+  // Mock Image to prevent loading issues in jsdom
+  let originalImage: typeof Image
 
   beforeEach(() => {
     vi.clearAllMocks()
-    // Setup the mock to return our canvas
-    vi.mocked(html2canvas).mockResolvedValue(mockCanvas as unknown as HTMLCanvasElement)
-    // Reset the mock canvas
-    mockCanvas.width = 1920
-    mockCanvas.height = 1080
+    // Setup the mock to return our data URL
+    vi.mocked(domToDataUrl).mockResolvedValue(mockDataUrl)
+
+    // Mock Image to immediately trigger onload
+    originalImage = global.Image
+    class MockImage {
+      onload: (() => void) | null = null
+      onerror: (() => void) | null = null
+      width = 100
+      height = 100
+      private _src = ''
+
+      get src() {
+        return this._src
+      }
+
+      set src(value: string) {
+        this._src = value
+        // Trigger onload asynchronously to simulate real behavior
+        setTimeout(() => {
+          if (this.onload) this.onload()
+        }, 0)
+      }
+    }
+    global.Image = MockImage as unknown as typeof Image
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
+    global.Image = originalImage
   })
 
   describe('captureViewport', () => {
-    it('captures the viewport using html2canvas', async () => {
+    it('captures the viewport using modern-screenshot', async () => {
       const result = await captureViewport()
 
-      expect(html2canvas).toHaveBeenCalledWith(document.body, expect.objectContaining({
-        useCORS: true,
-        allowTaint: false,
+      expect(domToDataUrl).toHaveBeenCalledWith(document.body, expect.objectContaining({
         backgroundColor: '#0a0a0a',
-        logging: false,
         width: window.innerWidth,
-        height: window.innerHeight,
-        x: window.scrollX,
-        y: window.scrollY
+        height: window.innerHeight
       }))
 
       expect(result).not.toBeNull()
       expect(result?.label).toBe('Current UI')
-      expect(result?.dataUrl).toBe('data:image/jpeg;base64,mockedData')
+      expect(result?.dataUrl).toContain('data:image/')
     })
 
     it('returns null when capture fails', async () => {
-      vi.mocked(html2canvas).mockRejectedValueOnce(new Error('Capture failed'))
+      vi.mocked(domToDataUrl).mockRejectedValueOnce(new Error('Capture failed'))
 
       const result = await captureViewport()
 
@@ -71,19 +83,17 @@ describe('screenshot-capture', () => {
     it('uses png format when specified', async () => {
       await captureViewport({ format: 'png', quality: 1 })
 
-      // The function should call toDataURL with png format
-      // Since we're testing the actual implementation logic, this tests that the options
-      // are being processed correctly
-      expect(html2canvas).toHaveBeenCalled()
+      // The function should call domToDataUrl
+      expect(domToDataUrl).toHaveBeenCalled()
     })
   })
 
   describe('captureBackgroundView', () => {
-    it('calls html2canvas to capture background', async () => {
+    it('calls modern-screenshot to capture background', async () => {
       const result = await captureBackgroundView('[data-nonexistent]')
 
-      expect(html2canvas).toHaveBeenCalled()
-      // Should return screenshot data when html2canvas succeeds
+      expect(domToDataUrl).toHaveBeenCalled()
+      // Should return screenshot data when domToDataUrl succeeds
       expect(result).not.toBeNull()
       expect(result?.label).toBe('Background View')
     })
@@ -105,7 +115,7 @@ describe('screenshot-capture', () => {
     })
 
     it('returns null when capture fails', async () => {
-      vi.mocked(html2canvas).mockRejectedValueOnce(new Error('Capture failed'))
+      vi.mocked(domToDataUrl).mockRejectedValueOnce(new Error('Capture failed'))
 
       const result = await captureBackgroundView()
 
@@ -117,8 +127,8 @@ describe('screenshot-capture', () => {
     it('captures both background and viewport screenshots', async () => {
       const results = await captureFeedbackScreenshots()
 
-      // Should call html2canvas twice - once for background, once for viewport
-      expect(html2canvas).toHaveBeenCalledTimes(2)
+      // Should call domToDataUrl twice - once for background, once for viewport
+      expect(domToDataUrl).toHaveBeenCalledTimes(2)
       expect(results).toHaveLength(2)
       expect(results[0]?.label).toBe('Background View')
       expect(results[1]?.label).toBe('Current UI')
@@ -126,9 +136,9 @@ describe('screenshot-capture', () => {
 
     it('returns partial results when one capture fails', async () => {
       // First call (background) fails, second call (viewport) succeeds
-      vi.mocked(html2canvas)
+      vi.mocked(domToDataUrl)
         .mockRejectedValueOnce(new Error('Background capture failed'))
-        .mockResolvedValueOnce(mockCanvas as unknown as HTMLCanvasElement)
+        .mockResolvedValueOnce(mockDataUrl)
 
       const results = await captureFeedbackScreenshots()
 
@@ -137,7 +147,7 @@ describe('screenshot-capture', () => {
     })
 
     it('returns empty array when all captures fail', async () => {
-      vi.mocked(html2canvas).mockRejectedValue(new Error('All captures failed'))
+      vi.mocked(domToDataUrl).mockRejectedValue(new Error('All captures failed'))
 
       const results = await captureFeedbackScreenshots()
 

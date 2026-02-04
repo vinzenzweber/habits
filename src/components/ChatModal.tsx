@@ -280,20 +280,36 @@ export function ChatModal({
   // Handle feedback issue screenshot capture and upload
   const handleFeedbackScreenshots = useCallback(async (issueNumber: number) => {
     try {
+      console.log('[Feedback Screenshots] Starting capture for issue', issueNumber);
+
       // Capture screenshots of current UI and background view
       const screenshots = await captureFeedbackScreenshots('[data-chat-modal]');
+      console.log('[Feedback Screenshots] Captured', screenshots.length, 'screenshots');
 
-      if (screenshots.length > 0) {
-        // Upload screenshots to the feedback API
-        await fetch('/api/feedback/screenshots', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ issueNumber, screenshots })
-        });
+      if (screenshots.length === 0) {
+        console.warn('[Feedback Screenshots] No screenshots captured - html2canvas may have failed');
+        return;
       }
+
+      // Upload screenshots to the feedback API
+      console.log('[Feedback Screenshots] Uploading to API...');
+      const response = await fetch('/api/feedback/screenshots', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ issueNumber, screenshots })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('[Feedback Screenshots] Upload failed:', response.status, errorData);
+        return;
+      }
+
+      const result = await response.json();
+      console.log('[Feedback Screenshots] Upload successful:', result);
     } catch (error) {
       // Silent fail - screenshots are optional
-      console.error('Failed to capture/upload feedback screenshots:', error);
+      console.error('[Feedback Screenshots] Error:', error);
     }
   }, []);
 
