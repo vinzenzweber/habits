@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // Import structuredWorkouts before mocks to test the builder function
-import { structuredWorkouts } from '../workoutPlan'
+import { structuredWorkouts, EXERCISE_DESCRIPTIONS } from '../workoutPlan'
 
 // Mock auth
 vi.mock('@/lib/auth', () => ({
@@ -11,6 +11,12 @@ vi.mock('@/lib/auth', () => ({
 // Mock database
 vi.mock('@/lib/db', () => ({
   query: vi.fn()
+}))
+
+// Mock exercise-library
+vi.mock('../exercise-library', () => ({
+  getExerciseDescriptions: vi.fn(),
+  normalizeExerciseName: vi.fn((name: string) => name.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-'))
 }))
 
 describe('buildStructuredWorkout - transition segments', () => {
@@ -571,6 +577,190 @@ describe('workoutPlan', () => {
       const result = await getWorkoutBySlug('monday')
 
       expect(result).toBeNull()
+    })
+  })
+
+  describe('buildStructuredWorkoutAsync', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+    })
+
+    it('uses database descriptions when available', async () => {
+      const { getExerciseDescriptions } = await import('../exercise-library')
+      vi.mocked(getExerciseDescriptions).mockResolvedValue(
+        new Map([
+          ['Push-ups', 'Database description for push-ups.'],
+          ['Goblet squats', 'Database description for goblet squats.']
+        ])
+      )
+
+      const { buildStructuredWorkoutAsync } = await import('../workoutPlan')
+      const result = await buildStructuredWorkoutAsync({
+        slug: 'monday',
+        title: 'Test Workout',
+        focus: 'Testing',
+        description: 'A test workout',
+        phases: [
+          {
+            title: 'Main',
+            category: 'main',
+            steps: [
+              { title: 'Push-ups', durationSeconds: 60 },
+              { title: 'Goblet squats', durationSeconds: 60 }
+            ]
+          }
+        ]
+      })
+
+      // Should use database descriptions
+      expect(result.segments[0].detail).toBe('Database description for push-ups.')
+      expect(result.segments[1].detail).toBe('Database description for goblet squats.')
+    })
+
+    it('falls back to EXERCISE_DESCRIPTIONS when exercise not in database', async () => {
+      const { getExerciseDescriptions } = await import('../exercise-library')
+      // Empty map - no exercises in database
+      vi.mocked(getExerciseDescriptions).mockResolvedValue(new Map())
+
+      const { buildStructuredWorkoutAsync } = await import('../workoutPlan')
+      const result = await buildStructuredWorkoutAsync({
+        slug: 'monday',
+        title: 'Test Workout',
+        focus: 'Testing',
+        description: 'A test workout',
+        phases: [
+          {
+            title: 'Main',
+            category: 'main',
+            steps: [
+              { title: 'Push-ups', durationSeconds: 60 }
+            ]
+          }
+        ]
+      })
+
+      // Should fall back to hardcoded description
+      expect(result.segments[0].detail).toBe(EXERCISE_DESCRIPTIONS['Push-ups'])
+    })
+
+    it('uses default fallback when exercise not in database or EXERCISE_DESCRIPTIONS', async () => {
+      const { getExerciseDescriptions } = await import('../exercise-library')
+      vi.mocked(getExerciseDescriptions).mockResolvedValue(new Map())
+
+      const { buildStructuredWorkoutAsync } = await import('../workoutPlan')
+      const result = await buildStructuredWorkoutAsync({
+        slug: 'monday',
+        title: 'Test Workout',
+        focus: 'Testing',
+        description: 'A test workout',
+        phases: [
+          {
+            title: 'Main',
+            category: 'main',
+            steps: [
+              { title: 'Unknown Exercise', durationSeconds: 60 }
+            ]
+          }
+        ]
+      })
+
+      // Should use default fallback
+      expect(result.segments[0].detail).toBe('Controlled reps with steady tempo.')
+    })
+
+    it('respects explicit detail in step config over database or fallback', async () => {
+      const { getExerciseDescriptions } = await import('../exercise-library')
+      vi.mocked(getExerciseDescriptions).mockResolvedValue(
+        new Map([['Push-ups', 'Database description']])
+      )
+
+      const { buildStructuredWorkoutAsync } = await import('../workoutPlan')
+      const result = await buildStructuredWorkoutAsync({
+        slug: 'monday',
+        title: 'Test Workout',
+        focus: 'Testing',
+        description: 'A test workout',
+        phases: [
+          {
+            title: 'Main',
+            category: 'main',
+            steps: [
+              { title: 'Push-ups', durationSeconds: 60, detail: '15 reps · Tempo 3:0:2:0' }
+            ]
+          }
+        ]
+      })
+
+      // Should use explicit detail from step config
+      expect(result.segments[0].detail).toBe('15 reps · Tempo 3:0:2:0')
+    })
+
+    it('calculates totalSeconds correctly', async () => {
+      const { getExerciseDescriptions } = await import('../exercise-library')
+      vi.mocked(getExerciseDescriptions).mockResolvedValue(new Map())
+
+      const { buildStructuredWorkoutAsync } = await import('../workoutPlan')
+      const result = await buildStructuredWorkoutAsync({
+        slug: 'monday',
+        title: 'Test Workout',
+        focus: 'Testing',
+        description: 'A test workout',
+        phases: [
+          {
+            title: 'Warmup',
+            category: 'warmup',
+            steps: [
+              { title: 'Exercise 1', durationSeconds: 30 }
+            ]
+          },
+          {
+            title: 'Main',
+            category: 'main',
+            rounds: 2,
+            restBetweenRoundsSeconds: 60,
+            steps: [
+              { title: 'Exercise 2', durationSeconds: 45 }
+            ]
+          }
+        ]
+      })
+
+      // warmup: 30 + main: (45 * 2 rounds) + rest: 60 = 30 + 90 + 60 = 180
+      expect(result.totalSeconds).toBe(180)
+    })
+
+    it('handles transition segments between HIIT exercises', async () => {
+      const { getExerciseDescriptions } = await import('../exercise-library')
+      vi.mocked(getExerciseDescriptions).mockResolvedValue(new Map())
+
+      const { buildStructuredWorkoutAsync } = await import('../workoutPlan')
+      const result = await buildStructuredWorkoutAsync({
+        slug: 'friday',
+        title: 'Test HIIT',
+        focus: 'Testing',
+        description: 'A test HIIT workout',
+        phases: [
+          {
+            title: 'HIIT',
+            category: 'hiit',
+            restBetweenStepsSeconds: 5,
+            steps: [
+              { title: 'Exercise A', durationSeconds: 60 },
+              { title: 'Exercise B', durationSeconds: 60 },
+              { title: 'Exercise C', durationSeconds: 60 }
+            ]
+          }
+        ]
+      })
+
+      // Should have 3 exercises + 2 transitions = 5 segments
+      expect(result.segments.length).toBe(5)
+
+      // Check transition segments
+      const transitions = result.segments.filter(s => s.title === 'Get ready')
+      expect(transitions.length).toBe(2)
+      expect(transitions[0].detail).toBe('Next: Exercise B')
+      expect(transitions[1].detail).toBe('Next: Exercise C')
     })
   })
 })

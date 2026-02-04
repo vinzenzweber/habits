@@ -515,6 +515,37 @@ export async function getExercisesWithCompleteImages(
 }
 
 /**
+ * Batch lookup exercise descriptions (form cues) by name
+ * Returns a Map of exercise name -> form cues (description)
+ * Used for building workouts with database-driven exercise descriptions
+ */
+export async function getExerciseDescriptions(
+  exerciseNames: string[]
+): Promise<Map<string, string>> {
+  if (exerciseNames.length === 0) {
+    return new Map();
+  }
+
+  const normalizedNames = exerciseNames.map(normalizeExerciseName);
+
+  const result = await query(
+    `SELECT name, form_cues
+     FROM exercises
+     WHERE normalized_name = ANY($1)
+       AND form_cues IS NOT NULL`,
+    [normalizedNames]
+  );
+
+  const descriptionMap = new Map<string, string>();
+
+  for (const row of result.rows) {
+    descriptionMap.set(row.name, row.form_cues);
+  }
+
+  return descriptionMap;
+}
+
+/**
  * Get all exercises (for seeding/admin)
  */
 export async function getAllExercises(): Promise<Exercise[]> {

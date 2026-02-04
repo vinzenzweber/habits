@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   normalizeExerciseName,
   getExercisesWithCompleteImages,
+  getExerciseDescriptions,
 } from '../exercise-library';
 
 // Mock database
@@ -157,6 +158,94 @@ describe('exercise-library', () => {
       ]);
 
       expect(result.has('push-up-modified')).toBe(true);
+    });
+  });
+
+  // ============================================
+  // getExerciseDescriptions Tests
+  // ============================================
+
+  describe('getExerciseDescriptions', () => {
+    it('returns empty Map for empty input array', async () => {
+      const result = await getExerciseDescriptions([]);
+
+      expect(result).toBeInstanceOf(Map);
+      expect(result.size).toBe(0);
+      expect(query).not.toHaveBeenCalled();
+    });
+
+    it('queries database with normalized exercise names', async () => {
+      vi.mocked(query).mockResolvedValueOnce({
+        rows: [],
+        rowCount: 0,
+      });
+
+      await getExerciseDescriptions(['Push-ups', 'Goblet squats']);
+
+      expect(query).toHaveBeenCalledTimes(1);
+      expect(query).toHaveBeenCalledWith(
+        expect.stringContaining('SELECT name, form_cues'),
+        [['push-ups', 'goblet-squats']]
+      );
+    });
+
+    it('returns Map with exercise names and descriptions', async () => {
+      vi.mocked(query).mockResolvedValueOnce({
+        rows: [
+          { name: 'Push-ups', form_cues: 'Hands under shoulders, body straight, lower chest, press up.' },
+          { name: 'Goblet squats', form_cues: 'Hold bell at chest, squat deep, drive up.' },
+        ],
+        rowCount: 2,
+      });
+
+      const result = await getExerciseDescriptions(['Push-ups', 'Goblet squats', 'Unknown Exercise']);
+
+      expect(result).toBeInstanceOf(Map);
+      expect(result.size).toBe(2);
+      expect(result.get('Push-ups')).toBe('Hands under shoulders, body straight, lower chest, press up.');
+      expect(result.get('Goblet squats')).toBe('Hold bell at chest, squat deep, drive up.');
+      expect(result.has('Unknown Exercise')).toBe(false);
+    });
+
+    it('returns empty Map when no exercises found in database', async () => {
+      vi.mocked(query).mockResolvedValueOnce({
+        rows: [],
+        rowCount: 0,
+      });
+
+      const result = await getExerciseDescriptions(['Push-ups', 'Squats']);
+
+      expect(result).toBeInstanceOf(Map);
+      expect(result.size).toBe(0);
+    });
+
+    it('only includes exercises with non-null form_cues', async () => {
+      vi.mocked(query).mockResolvedValueOnce({
+        rows: [
+          { name: 'Push-ups', form_cues: 'Description for push-ups.' },
+          // Note: form_cues IS NOT NULL is in the query, so this won't be returned by DB
+        ],
+        rowCount: 1,
+      });
+
+      const result = await getExerciseDescriptions(['Push-ups', 'No Description Exercise']);
+
+      expect(result.size).toBe(1);
+      expect(result.get('Push-ups')).toBe('Description for push-ups.');
+    });
+
+    it('handles exercises with special characters in names', async () => {
+      vi.mocked(query).mockResolvedValueOnce({
+        rows: [
+          { name: 'Arm circles (forward/back)', form_cues: 'Arms straight, small to big circles both ways.' },
+        ],
+        rowCount: 1,
+      });
+
+      const result = await getExerciseDescriptions(['Arm circles (forward/back)']);
+
+      expect(result.size).toBe(1);
+      expect(result.get('Arm circles (forward/back)')).toBe('Arms straight, small to big circles both ways.');
     });
   });
 });

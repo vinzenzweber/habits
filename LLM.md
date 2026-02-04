@@ -76,13 +76,18 @@ All workout data is defined in `src/lib/workoutPlan.ts`:
 
 Workouts are configured via a builder pattern:
 1. Define phases with category, rounds, and rest periods
-2. `buildStructuredWorkout()` expands phases into a flat segment array
-3. Exercise descriptions are auto-populated from `EXERCISE_DESCRIPTIONS`
+2. Build workout with sync or async approach:
+   - **Sync**: `buildStructuredWorkout()` uses hardcoded `EXERCISE_DESCRIPTIONS`
+   - **Async**: `buildStructuredWorkoutAsync()` fetches descriptions from database via `getExerciseDescriptions()` with fallback to `EXERCISE_DESCRIPTIONS`
+3. Builder expands phases into a flat segment array with descriptions populated
 
 Key functions:
 - `getWorkoutForToday()` — Returns today's workout based on current date
 - `getWorkoutBySlug(slug)` — Returns workout for a specific day
 - `getAllWorkouts()` — Returns all seven workouts
+- `buildStructuredWorkout()` — Sync builder using hardcoded descriptions
+- `buildStructuredWorkoutAsync()` — Async builder using database descriptions
+- `getExerciseDescriptions()` — Fetches exercise descriptions from database with fallback
 
 ### UI Components
 
