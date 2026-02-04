@@ -13,7 +13,8 @@ interface ExerciseItem {
 }
 
 interface ExerciseDescriptionsManagerProps {
-  initialExercises: ExerciseItem[];
+  // updatedAt is Date on server but gets serialized to string across server→client boundary
+  initialExercises: Array<Omit<ExerciseItem, 'updatedAt'> & { updatedAt: string | Date }>;
 }
 
 export function ExerciseDescriptionsManager({
@@ -23,7 +24,13 @@ export function ExerciseDescriptionsManager({
   const tErrors = useTranslations('errors');
   const tCommon = useTranslations('common');
 
-  const [exercises, setExercises] = useState(initialExercises);
+  // Normalize dates from server-side serialization (strings → Date objects)
+  const [exercises, setExercises] = useState(() =>
+    initialExercises.map((ex) => ({
+      ...ex,
+      updatedAt: new Date(ex.updatedAt),
+    }))
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'with' | 'without'>('all');
   const [editingId, setEditingId] = useState<number | null>(null);
