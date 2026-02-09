@@ -19,15 +19,15 @@
     "test:e2e:headed": "playwright test --headed"
   },
   "dependencies": {
-    "@serwist/next": "^9.5.3",
-    "@sidequest/postgres-backend": "^1.13.6",
+    "@serwist/next": "^9.5.5",
+    "@sidequest/postgres-backend": "^1.13.7",
     "bcryptjs": "^3.0.3",
     "canvas-confetti": "^1.9.4",
     "modern-screenshot": "^4.6.8",
     "next": "^16.1.6",
     "next-auth": "^5.0.0-beta.30",
     "next-intl": "^4.8.2",
-    "openai": "^6.17.0",
+    "openai": "^6.18.0",
     "pdf-parse": "^2.4.5",
     "pdfjs-dist": "^5.4.624",
     "pg": "^8.18.0",
