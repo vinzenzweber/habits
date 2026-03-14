@@ -469,7 +469,7 @@ export function GuidedRoutinePlayer({
             <div className="mt-5 flex justify-center gap-2">
               <button
                 type="button"
-                onClick={handleToggle}
+                onClick={handleRestart}
                 className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-slate-950 transition hover:bg-emerald-300"
               >
                 {t("replay")}
@@ -524,6 +524,7 @@ export function GuidedRoutinePlayer({
                       return (
                         <div
                           key={segment.id}
+                          data-active={isActive ? "true" : undefined}
                           ref={(el) => {
                             if (el) {
                               segmentRefs.current.set(index, el);

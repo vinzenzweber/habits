@@ -674,8 +674,8 @@ describe('GuidedRoutinePlayer countdown beeps', () => {
         await Promise.resolve();
       });
 
-      // Active segment should have the expanded class
-      const activeSegment = container.querySelector('.border-emerald-300\\/40');
+      // Active segment is identified by data-active attribute
+      const activeSegment = container.querySelector('[data-active="true"]');
       expect(activeSegment).toBeInTheDocument();
 
       // Should contain the timer (formatTime output for 10s = "0:10")
