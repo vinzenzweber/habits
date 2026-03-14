@@ -449,6 +449,122 @@ describe('GuidedRoutinePlayer countdown beeps', () => {
     });
   });
 
+  describe('transition beep', () => {
+    it('plays a beep when transitioning to the next segment', async () => {
+      vi.useFakeTimers();
+      const segments = createMockSegments(2);
+      segments[0].durationSeconds = 5;
+      segments[1].durationSeconds = 10;
+      const workout = createMockWorkout(segments);
+
+      render(<GuidedRoutinePlayer workout={workout} />);
+
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      // Advance to 4s remaining (1s in) - first countdown beep
+      act(() => { vi.advanceTimersByTime(1000); });
+      expect(mockCreateBufferSource.mock.calls.length).toBe(1);
+
+      // Advance to 3s remaining
+      act(() => { vi.advanceTimersByTime(1000); });
+      expect(mockCreateBufferSource.mock.calls.length).toBe(2);
+
+      // Advance to 2s remaining
+      act(() => { vi.advanceTimersByTime(1000); });
+      expect(mockCreateBufferSource.mock.calls.length).toBe(3);
+
+      // Advance to 1s remaining
+      act(() => { vi.advanceTimersByTime(1000); });
+      expect(mockCreateBufferSource.mock.calls.length).toBe(4);
+
+      // Advance past transition to second segment - transition beep plays
+      act(() => { vi.advanceTimersByTime(1000); });
+      // 4 countdown beeps + 1 transition beep = 5
+      expect(mockCreateBufferSource.mock.calls.length).toBe(5);
+    });
+
+    it('does not play transition beep when workout finishes', async () => {
+      vi.useFakeTimers();
+      const segments = createMockSegments(1);
+      segments[0].durationSeconds = 5;
+      const workout = createMockWorkout(segments);
+
+      // Mock fetch for completion tracking
+      global.fetch = vi.fn()
+        .mockImplementationOnce(() => Promise.resolve({
+          arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+        }))
+        .mockImplementation(() => Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ completionId: 1 }),
+        }));
+
+      render(<GuidedRoutinePlayer workout={workout} />);
+
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      // Advance second by second through the countdown
+      act(() => { vi.advanceTimersByTime(1000); }); // 4s remaining - beep 1
+      act(() => { vi.advanceTimersByTime(1000); }); // 3s remaining - beep 2
+      act(() => { vi.advanceTimersByTime(1000); }); // 2s remaining - beep 3
+      act(() => { vi.advanceTimersByTime(1000); }); // 1s remaining - beep 4
+      act(() => { vi.advanceTimersByTime(1000); }); // workout finishes
+
+      // Should only have countdown beeps (4, 3, 2, 1), no transition beep
+      expect(mockCreateBufferSource.mock.calls.length).toBe(4);
+    });
+
+    it('does not play transition beep on restart', async () => {
+      vi.useFakeTimers();
+      const segments = createMockSegments(2);
+      segments[0].durationSeconds = 5;
+      segments[1].durationSeconds = 5;
+      const workout = createMockWorkout(segments);
+
+      // Mock fetch for completion tracking
+      global.fetch = vi.fn()
+        .mockImplementationOnce(() => Promise.resolve({
+          arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+        }))
+        .mockImplementation(() => Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ completionId: 1 }),
+        }));
+
+      const { getByRole } = render(<GuidedRoutinePlayer workout={workout} />);
+
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      // Complete the workout
+      act(() => {
+        vi.advanceTimersByTime(12000);
+      });
+
+      const callsBeforeRestart = mockCreateBufferSource.mock.calls.length;
+
+      // Click restart
+      const restartButton = getByRole('button', { name: /restart/i });
+      act(() => {
+        restartButton.click();
+      });
+
+      // Restart should not play a transition beep (currentIndex goes to 0, not increasing)
+      expect(mockCreateBufferSource.mock.calls.length).toBe(callsBeforeRestart);
+    });
+  });
+
   describe('auto-scroll to current segment', () => {
     it('scrolls to first segment on mount with smooth behavior and center alignment', async () => {
       vi.useFakeTimers();

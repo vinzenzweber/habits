@@ -129,6 +129,8 @@ export function GuidedRoutinePlayer({
   // Track which countdown seconds have been played for the current segment
   const countdownBeepsPlayedRef = useRef<Set<number>>(new Set());
   const startTimeRef = useRef<number>(0);
+  // Track previous segment index for transition beep
+  const prevIndexRef = useRef(0);
   const hasTrackedCompletionRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
   // Refs for auto-scrolling to current segment
@@ -300,6 +302,15 @@ export function GuidedRoutinePlayer({
     }
   }, [currentIndex, hasFinished, isRunning]);
 
+  // Play a transition beep when advancing to the next segment
+  // This ensures the final countdown beep is audible at the transition point
+  useEffect(() => {
+    if (currentIndex > prevIndexRef.current && !hasFinished) {
+      playBeep();
+    }
+    prevIndexRef.current = currentIndex;
+  }, [currentIndex, hasFinished, playBeep]);
+
   const currentSegment = segments[currentIndex];
   const nextSegment = segments[currentIndex + 1];
 
@@ -374,6 +385,7 @@ export function GuidedRoutinePlayer({
     setCompletionId(null);
     countdownBeepsPlayedRef.current.clear();
     hasTrackedCompletionRef.current = false;
+    prevIndexRef.current = 0;
     startTimeRef.current = Date.now();
     setIsRunning(true);
   };
