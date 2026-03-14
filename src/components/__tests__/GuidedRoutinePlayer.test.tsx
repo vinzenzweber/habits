@@ -661,14 +661,24 @@ describe('GuidedRoutinePlayer countdown beeps', () => {
   });
 
   describe('app switching / visibility change (timestamp-based timer)', () => {
+    // Save the original descriptor so afterEach can fully restore it (deleting the
+    // instance override lets the jsdom prototype getter take over again).
+    const originalVisibilityDescriptor = Object.getOwnPropertyDescriptor(document, 'visibilityState');
+
     const simulateForeground = () => {
       Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
       document.dispatchEvent(new Event('visibilitychange'));
     };
 
     afterEach(() => {
-      // Restore default visibilityState
-      Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+      // Restore original property descriptor to avoid leaking state into other tests.
+      if (originalVisibilityDescriptor) {
+        Object.defineProperty(document, 'visibilityState', originalVisibilityDescriptor);
+      } else {
+        // No own descriptor existed before — delete the instance property so the
+        // prototype getter is used again.
+        delete (document as Document & { visibilityState?: string }).visibilityState;
+      }
     });
 
     const loadAudio = async () => {
