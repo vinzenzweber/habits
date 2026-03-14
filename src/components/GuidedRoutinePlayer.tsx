@@ -469,8 +469,9 @@ export function GuidedRoutinePlayer({
             <div className="mt-5 flex justify-center gap-2">
               <button
                 type="button"
-                onClick={handleRestart}
-                className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-slate-950 transition hover:bg-emerald-300"
+                onClick={handleToggle}
+                disabled={isTrackingCompletion}
+                className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-slate-950 transition hover:bg-emerald-300 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {t("replay")}
               </button>
@@ -516,7 +517,7 @@ export function GuidedRoutinePlayer({
                       const progressWithinSegment =
                         isActive
                           ? currentProgress
-                          : index < currentIndex
+                          : index < currentIndex || hasFinished
                             ? 100
                             : 0;
                       const styles =
