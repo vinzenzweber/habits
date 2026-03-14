@@ -131,6 +131,10 @@ export function GuidedRoutinePlayer({
   const startTimeRef = useRef<number>(0);
   // Track previous segment index for transition beep
   const prevIndexRef = useRef(0);
+  // Timestamp-based timer tracking: wall-clock time when current segment started
+  const segmentStartedAtRef = useRef<number>(Date.now());
+  // Mirror of currentIndex state for use in interval/visibility callbacks
+  const currentIndexRef = useRef(0);
   const hasTrackedCompletionRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
   // Refs for auto-scrolling to current segment
@@ -235,35 +239,70 @@ export function GuidedRoutinePlayer({
     });
   }, [openChat, workout.title, completionId, isNano]);
 
+  // Recalculate timer state from wall-clock timestamps
+  // Handles multiple segment advances (e.g., when returning from background)
+  const recalculateFromTimestamp = useCallback(() => {
+    const now = Date.now();
+    let idx = currentIndexRef.current;
+    let startedAt = segmentStartedAtRef.current;
+
+    while (idx < segments.length) {
+      const segDuration = segments[idx].durationSeconds;
+      const segEndAt = startedAt + segDuration * 1000;
+
+      if (now < segEndAt) {
+        // We're within this segment
+        if (idx !== currentIndexRef.current) {
+          currentIndexRef.current = idx;
+          segmentStartedAtRef.current = startedAt;
+          setCurrentIndex(idx);
+          countdownBeepsPlayedRef.current.clear();
+        }
+        setRemainingSeconds((segEndAt - now) / 1000);
+        return;
+      }
+
+      if (idx >= segments.length - 1) {
+        // Last segment completed — workout is done
+        if (idx !== currentIndexRef.current) {
+          currentIndexRef.current = idx;
+          segmentStartedAtRef.current = startedAt;
+          setCurrentIndex(idx);
+        }
+        setRemainingSeconds(0);
+        setHasFinished(true);
+        setIsRunning(false);
+        countdownBeepsPlayedRef.current.clear();
+        return;
+      }
+
+      startedAt = segEndAt;
+      idx++;
+    }
+  }, [segments]);
+
   useEffect(() => {
     if (!hasRoutine || !isRunning || hasFinished) {
       return undefined;
     }
 
-    const interval = window.setInterval(() => {
-      setRemainingSeconds((previous) => {
-        if (previous <= 0.25) {
-          setCurrentIndex((index) => {
-            if (index >= segments.length - 1) {
-              setHasFinished(true);
-              setIsRunning(false);
-              countdownBeepsPlayedRef.current.clear();
-              return index;
-            }
-            const nextIndex = index + 1;
-            const nextDuration = segments[nextIndex]?.durationSeconds ?? 0;
-            setRemainingSeconds(nextDuration);
-            countdownBeepsPlayedRef.current.clear();
-            return nextIndex;
-          });
-          return 0;
-        }
-        return Math.max(0, previous - 0.25);
-      });
-    }, 250);
-
+    const interval = window.setInterval(recalculateFromTimestamp, 250);
     return () => window.clearInterval(interval);
-  }, [hasFinished, hasRoutine, isRunning, segments]);
+  }, [hasFinished, hasRoutine, isRunning, recalculateFromTimestamp]);
+
+  // Recalculate immediately when app returns from background
+  useEffect(() => {
+    if (!hasRoutine || !isRunning || hasFinished) return undefined;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        recalculateFromTimestamp();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [hasRoutine, isRunning, hasFinished, recalculateFromTimestamp]);
 
   useEffect(() => {
     if (!hasRoutine || hasFinished || !isRunning) {
@@ -367,6 +406,8 @@ export function GuidedRoutinePlayer({
 
   const handleToggle = () => {
     if (hasFinished) {
+      currentIndexRef.current = 0;
+      segmentStartedAtRef.current = Date.now();
       setCurrentIndex(0);
       setRemainingSeconds(segments[0]?.durationSeconds ?? 0);
       setHasFinished(false);
@@ -374,10 +415,23 @@ export function GuidedRoutinePlayer({
       setIsRunning(true);
       return;
     }
+    if (isRunning) {
+      // Pausing: compute accurate remaining from wall clock
+      const segDuration = segments[currentIndexRef.current]?.durationSeconds ?? 0;
+      const elapsed = (Date.now() - segmentStartedAtRef.current) / 1000;
+      setRemainingSeconds(Math.max(0, segDuration - elapsed));
+    } else {
+      // Resuming: adjust segment start time based on remaining
+      const segDuration = segments[currentIndexRef.current]?.durationSeconds ?? 0;
+      const elapsed = segDuration - remainingSeconds;
+      segmentStartedAtRef.current = Date.now() - elapsed * 1000;
+    }
     setIsRunning((previous) => !previous);
   };
 
   const handleRestart = () => {
+    currentIndexRef.current = 0;
+    segmentStartedAtRef.current = Date.now();
     setCurrentIndex(0);
     setRemainingSeconds(segments[0]?.durationSeconds ?? 0);
     setHasFinished(false);

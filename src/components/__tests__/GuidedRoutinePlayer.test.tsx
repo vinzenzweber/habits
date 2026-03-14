@@ -659,4 +659,193 @@ describe('GuidedRoutinePlayer countdown beeps', () => {
       expect(mockScrollIntoView).not.toHaveBeenCalled();
     });
   });
+
+  describe('app switching / visibility change (timestamp-based timer)', () => {
+    const simulateForeground = () => {
+      Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+    };
+
+    afterEach(() => {
+      // Restore default visibilityState
+      Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+    });
+
+    const loadAudio = async () => {
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+    };
+
+    it('maintains accurate timer when returning from background within same segment', async () => {
+      vi.useFakeTimers();
+      const segments = createMockSegments(1);
+      segments[0].durationSeconds = 30;
+      const workout = createMockWorkout(segments);
+
+      const { getByText } = render(<GuidedRoutinePlayer workout={workout} />);
+      await loadAudio();
+
+      // Advance 5 seconds normally
+      act(() => { vi.advanceTimersByTime(5000); });
+
+      // Jump time forward 10 seconds without firing interval callbacks
+      // (simulates time passing while app is backgrounded)
+      vi.setSystemTime(new Date(Date.now() + 10000));
+
+      // Return to foreground — should trigger recalculation
+      act(() => { simulateForeground(); });
+
+      // Timer should show 15 seconds remaining (30 - 5 - 10 = 15)
+      expect(getByText('0:15')).toBeInTheDocument();
+    });
+
+    it('advances through segments when backgrounded past segment boundary', async () => {
+      vi.useFakeTimers();
+      const segments = createMockSegments(2);
+      segments[0].durationSeconds = 10;
+      segments[1].durationSeconds = 20;
+      const workout = createMockWorkout(segments);
+
+      const { getAllByText, getByText } = render(<GuidedRoutinePlayer workout={workout} />);
+      await loadAudio();
+
+      // Advance 5 seconds into first segment
+      act(() => { vi.advanceTimersByTime(5000); });
+
+      // Jump 10 seconds — past segment 1 boundary (5 + 10 = 15s > 10s segment)
+      // Should land 5 seconds into segment 2
+      vi.setSystemTime(new Date(Date.now() + 10000));
+
+      act(() => { simulateForeground(); });
+
+      // Should now be on segment 2 (appears in main display and timeline)
+      const exercise2Elements = getAllByText('Exercise 2');
+      expect(exercise2Elements.length).toBeGreaterThanOrEqual(1);
+      // With 15 seconds remaining (20 - 5 = 15)
+      expect(getByText('0:15')).toBeInTheDocument();
+    });
+
+    it('completes workout when backgrounded past total duration', async () => {
+      vi.useFakeTimers();
+      const segments = createMockSegments(1);
+      segments[0].durationSeconds = 10;
+      const workout = createMockWorkout(segments);
+
+      // Mock fetch for completion tracking
+      global.fetch = vi.fn()
+        .mockImplementationOnce(() => Promise.resolve({
+          arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+        }))
+        .mockImplementation(() => Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ completionId: 1 }),
+        }));
+
+      const { getByText } = render(<GuidedRoutinePlayer workout={workout} />);
+      await loadAudio();
+
+      // Advance 3 seconds
+      act(() => { vi.advanceTimersByTime(3000); });
+
+      // Jump 15 seconds — well past the 10s workout
+      vi.setSystemTime(new Date(Date.now() + 15000));
+
+      act(() => { simulateForeground(); });
+
+      // Workout should be marked as complete
+      expect(getByText('workoutComplete')).toBeInTheDocument();
+      expect(getByText('0:00')).toBeInTheDocument();
+    });
+
+    it('does not advance timer when paused and backgrounded', async () => {
+      vi.useFakeTimers();
+      const segments = createMockSegments(1);
+      segments[0].durationSeconds = 30;
+      const workout = createMockWorkout(segments);
+
+      const { getByRole, getByText } = render(<GuidedRoutinePlayer workout={workout} />);
+      await loadAudio();
+
+      // Advance 5 seconds
+      act(() => { vi.advanceTimersByTime(5000); });
+
+      // Pause the timer
+      const pauseButton = getByRole('button', { name: /pause/i });
+      act(() => { pauseButton.click(); });
+
+      // Timer should show ~25 seconds remaining
+      expect(getByText('0:25')).toBeInTheDocument();
+
+      // Jump time forward 10 seconds (app backgrounded while paused)
+      vi.setSystemTime(new Date(Date.now() + 10000));
+
+      // Return to foreground — visibilitychange handler should not run when paused
+      act(() => { simulateForeground(); });
+
+      // Timer should still show 25 seconds (paused, no advancement)
+      expect(getByText('0:25')).toBeInTheDocument();
+    });
+
+    it('resumes correctly after pause with accurate timestamp', async () => {
+      vi.useFakeTimers();
+      const segments = createMockSegments(1);
+      segments[0].durationSeconds = 30;
+      const workout = createMockWorkout(segments);
+
+      const { getByRole, getByText } = render(<GuidedRoutinePlayer workout={workout} />);
+      await loadAudio();
+
+      // Advance 10 seconds
+      act(() => { vi.advanceTimersByTime(10000); });
+
+      // Pause
+      const pauseButton = getByRole('button', { name: /pause/i });
+      act(() => { pauseButton.click(); });
+      expect(getByText('0:20')).toBeInTheDocument();
+
+      // Wait 5 seconds while paused (time passes but timer shouldn't advance)
+      vi.setSystemTime(new Date(Date.now() + 5000));
+
+      // Resume
+      const resumeButton = getByRole('button', { name: /resume/i });
+      act(() => { resumeButton.click(); });
+
+      // Advance 5 more seconds after resume
+      act(() => { vi.advanceTimersByTime(5000); });
+
+      // Should show 15 seconds remaining (30 - 10 paused at - 5 after resume = 15)
+      expect(getByText('0:15')).toBeInTheDocument();
+    });
+
+    it('skips multiple segments when backgrounded for a long time', async () => {
+      vi.useFakeTimers();
+      const segments = createMockSegments(3);
+      segments[0].durationSeconds = 5;
+      segments[1].durationSeconds = 5;
+      segments[2].durationSeconds = 10;
+      const workout = createMockWorkout([...segments]);
+
+      const { getAllByText, getByText } = render(<GuidedRoutinePlayer workout={workout} />);
+      await loadAudio();
+
+      // Advance 2 seconds into first segment
+      act(() => { vi.advanceTimersByTime(2000); });
+
+      // Jump 11 seconds — past segments 1 and 2, into segment 3
+      // Total elapsed: 2 + 11 = 13s. Segment 1 ends at 5s, segment 2 at 10s.
+      // Should be 3s into segment 3 (13 - 10 = 3), remaining = 10 - 3 = 7s
+      vi.setSystemTime(new Date(Date.now() + 11000));
+
+      act(() => { simulateForeground(); });
+
+      // Exercise 3 appears in both the main display (h1) and timeline (p)
+      const exercise3Elements = getAllByText('Exercise 3');
+      expect(exercise3Elements.length).toBeGreaterThanOrEqual(1);
+      // The main timer should show 7 seconds remaining
+      expect(getByText('0:07')).toBeInTheDocument();
+    });
+  });
 });
