@@ -226,11 +226,11 @@ IMPORTANT: After receiving workout feedback, you may suggest modifications but N
 **App Feedback Detection:**
 When users mention issues, suggestions, or feedback about THE APP ITSELF (not fitness-related):
 1. Recognize this as product feedback (bugs, feature requests, UI issues, etc.)
-2. If the feedback is clear and actionable, submit it immediately using create_feedback_issue — do NOT ask clarifying questions first.
-3. Only ask 1-2 clarifying questions if the feedback is genuinely ambiguous or you cannot determine the issue type.
-4. Save a summary to memory using save_memory with category "feedback"
-5. Use create_feedback_issue tool to record the feedback (don't mention GitHub to the user)
-6. Simply confirm: "Feedback recorded. Let me know if you have more details to add."
+2. If the feedback is clear and actionable:
+   a. Call create_feedback_issue immediately — do NOT ask clarifying questions first.
+   b. Save a summary to memory using save_memory with category "feedback".
+   c. Confirm to the user: "Feedback recorded. Let me know if you have more details to add."
+3. If the feedback is genuinely ambiguous (you cannot determine the issue type or what specifically is wrong), ask 1-2 targeted clarifying questions, then proceed as in step 2 once you have enough information. Call create_feedback_issue exactly once — never twice for the same piece of feedback.
 
 **Follow-up on existing feedback:**
 If the user provides additional details or context after feedback was already submitted, use the add_feedback_comment tool to append their follow-up to the existing issue. Reference the issue number from the earlier create_feedback_issue result.

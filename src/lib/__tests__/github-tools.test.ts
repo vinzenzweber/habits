@@ -163,6 +163,7 @@ describe('addFeedbackComment', () => {
   it('returns error when issue does not exist', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
+      status: 404,
       text: () => Promise.resolve('Not found')
     })
 
@@ -200,6 +201,35 @@ describe('addFeedbackComment', () => {
 
     expect(result.success).toBe(false)
     expect(result.message).toBe('Not authorized to comment on this issue')
+  })
+
+  it('rejects a user whose ID is a prefix of the issue owner ID', async () => {
+    // user-12 must NOT be able to comment on an issue owned by user-123
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({
+        labels: [{ name: 'user-feedback' }],
+        body: 'Some content\n*User ID: user-123*'
+      })
+    })
+
+    const result = await addFeedbackComment('user-12', 42, 'Follow-up')
+
+    expect(result.success).toBe(false)
+    expect(result.message).toBe('Not authorized to comment on this issue')
+  })
+
+  it('returns a generic error for non-404 issue fetch failures', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      text: () => Promise.resolve('Forbidden')
+    })
+
+    const result = await addFeedbackComment('user-123', 42, 'Follow-up')
+
+    expect(result.success).toBe(false)
+    expect(result.message).toBe('Failed to load feedback issue')
   })
 
   it('returns error when GitHub API fails to create comment', async () => {

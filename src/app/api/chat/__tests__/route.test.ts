@@ -225,7 +225,7 @@ describe("Chat Route - Concise Response Style (Issue #316)", () => {
 
   describe("App Feedback Confirmation", () => {
     it("uses concise 'Feedback recorded' confirmation", () => {
-      expect(routeFileContent).toContain('Simply confirm: "Feedback recorded. Let me know if you have more details to add."');
+      expect(routeFileContent).toContain('"Feedback recorded. Let me know if you have more details to add."');
     });
 
     it("does not use verbose 'Thanks for the feedback' confirmation", () => {

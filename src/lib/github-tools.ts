@@ -110,7 +110,12 @@ export async function addFeedbackComment(
     });
 
     if (!issueResponse.ok) {
-      return { success: false, message: 'Feedback issue not found' };
+      if (issueResponse.status === 404) {
+        return { success: false, message: 'Feedback issue not found' };
+      }
+      const errorBody = await issueResponse.text();
+      console.error('GitHub API error fetching issue:', issueResponse.status, errorBody);
+      return { success: false, message: 'Failed to load feedback issue' };
     }
 
     const issueData = await issueResponse.json();
@@ -121,8 +126,10 @@ export async function addFeedbackComment(
       return { success: false, message: 'Not a feedback issue' };
     }
 
-    // Verify ownership - check User ID in issue body
-    const bodyContainsUser = issueData.body?.includes(`User ID: ${userId}`);
+    // Verify ownership - exact match against the known issue body format "*User ID: <id>*"
+    // Using regex with escaped userId to prevent prefix bypass (e.g., "user-12" matching "user-123")
+    const escapedUserId = userId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const bodyContainsUser = new RegExp(`\\*User ID: ${escapedUserId}\\*`).test(issueData.body ?? '');
     if (!bodyContainsUser) {
       return { success: false, message: 'Not authorized to comment on this issue' };
     }
