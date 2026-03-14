@@ -659,4 +659,166 @@ describe('GuidedRoutinePlayer countdown beeps', () => {
       expect(mockScrollIntoView).not.toHaveBeenCalled();
     });
   });
+
+  describe('unified list layout', () => {
+    it('renders active segment with expanded treatment (timer, controls, large title)', async () => {
+      vi.useFakeTimers();
+      const segments = createMockSegments(3);
+      const workout = createMockWorkout(segments);
+
+      const { container } = render(<GuidedRoutinePlayer workout={workout} />);
+
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      // Active segment should have the expanded class
+      const activeSegment = container.querySelector('.border-emerald-300\\/40');
+      expect(activeSegment).toBeInTheDocument();
+
+      // Should contain the timer (formatTime output for 10s = "0:10")
+      expect(activeSegment?.textContent).toContain('0:10');
+
+      // Should contain pause button inside the active segment
+      const pauseButton = activeSegment?.querySelector('button');
+      expect(pauseButton).toBeInTheDocument();
+    });
+
+    it('does not render a separate hero section — controls are inside the active list item', async () => {
+      vi.useFakeTimers();
+      const segments = createMockSegments(2);
+      const workout = createMockWorkout(segments);
+
+      const { container } = render(<GuidedRoutinePlayer workout={workout} />);
+
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      // There should be no h1 with the current exercise title (that was the hero)
+      // Instead, the active item uses h2
+      const h1Elements = container.querySelectorAll('h1');
+      // No h1 should contain the exercise title (h1 is only for completion state)
+      for (const h1 of h1Elements) {
+        expect(h1.textContent).not.toBe('Exercise 1');
+      }
+
+      // The active exercise title should be in an h2
+      const h2Elements = container.querySelectorAll('h2');
+      const activeTitle = Array.from(h2Elements).find(
+        (h2) => h2.textContent === 'Exercise 1'
+      );
+      expect(activeTitle).toBeInTheDocument();
+    });
+
+    it('dims completed segments with opacity', async () => {
+      vi.useFakeTimers();
+      const segments = createMockSegments(3);
+      segments[0].durationSeconds = 2;
+      segments[1].durationSeconds = 10;
+      segments[2].durationSeconds = 10;
+      const workout = createMockWorkout(segments);
+
+      const { container } = render(<GuidedRoutinePlayer workout={workout} />);
+
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      // Advance past the first segment (2 seconds)
+      act(() => {
+        vi.advanceTimersByTime(2500);
+      });
+
+      // The first (completed) segment should have opacity-50 class
+      const dimmedSegments = container.querySelectorAll('.opacity-50');
+      expect(dimmedSegments.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('shows completion card when workout finishes', async () => {
+      vi.useFakeTimers();
+      const segments = createMockSegments(1);
+      segments[0].durationSeconds = 2;
+      const workout = createMockWorkout(segments);
+
+      // Mock fetch for completion tracking
+      global.fetch = vi.fn()
+        .mockImplementationOnce(() => Promise.resolve({
+          arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+        }))
+        .mockImplementation(() => Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ completionId: 1 }),
+        }));
+
+      const { getByText, container } = render(<GuidedRoutinePlayer workout={workout} />);
+
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      // Complete the workout
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+
+      // Completion card should show with h1 "workoutComplete"
+      expect(getByText('workoutComplete')).toBeInTheDocument();
+
+      // Replay and restart buttons should be in the completion card
+      expect(getByText('replay')).toBeInTheDocument();
+      expect(getByText('restart')).toBeInTheDocument();
+
+      // All segments should be dimmed after completion
+      const dimmedSegments = container.querySelectorAll('.opacity-50');
+      expect(dimmedSegments.length).toBe(1);
+    });
+
+    it('moves expanded highlight to next segment as exercises progress', async () => {
+      vi.useFakeTimers();
+      const segments = createMockSegments(3);
+      segments[0].durationSeconds = 2;
+      segments[1].durationSeconds = 10;
+      segments[2].durationSeconds = 10;
+      const workout = createMockWorkout(segments);
+
+      const { container } = render(<GuidedRoutinePlayer workout={workout} />);
+
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      // Initially, first exercise should be in an h2 (active)
+      const activeH2 = container.querySelector('h2');
+      expect(activeH2?.textContent).toBe('Exercise 1');
+
+      // Advance up to just before the transition point
+      // (segment 0 = 2s, so after 1750ms remaining is 0.25)
+      act(() => {
+        vi.advanceTimersByTime(1750);
+      });
+
+      // This interval triggers the transition to segment 2
+      // (separate act() prevents cascading transitions from batched updates)
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
+
+      // Only the active segment renders an h2 (inactive segments use <p>)
+      // After advancing, the active h2 should now be Exercise 2
+      const allH2s = container.querySelectorAll('h2');
+      expect(allH2s.length).toBe(1);
+      expect(allH2s[0].textContent).toBe('Exercise 2');
+    });
+  });
 });

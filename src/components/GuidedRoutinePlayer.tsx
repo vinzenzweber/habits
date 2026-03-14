@@ -312,7 +312,6 @@ export function GuidedRoutinePlayer({
   }, [currentIndex, hasFinished, playBeep]);
 
   const currentSegment = segments[currentIndex];
-  const nextSegment = segments[currentIndex + 1];
 
   const elapsedSeconds = useMemo(() => {
     const completedBefore = sumDuration(segments, currentIndex);
@@ -340,12 +339,6 @@ export function GuidedRoutinePlayer({
           )
         : 0;
   const totalRemaining = Math.max(0, totalSeconds - elapsedSeconds);
-
-  const currentStyles =
-    CATEGORY_STYLES[currentSegment?.category ?? "main"] ??
-    CATEGORY_STYLES.main;
-  const nextStyles =
-    CATEGORY_STYLES[nextSegment?.category ?? "rest"] ?? CATEGORY_STYLES.rest;
 
   const groupedSegments = useMemo(() => {
     const groups: Array<{
@@ -467,51 +460,19 @@ export function GuidedRoutinePlayer({
           </div>
         </div>
 
-        <section className="rounded-3xl border border-white/10 bg-white/5 px-5 py-6 shadow-2xl shadow-emerald-500/10 sm:px-8">
-          <div className="flex items-center justify-between gap-4 text-xs font-semibold uppercase tracking-[0.25em] text-slate-200">
-            <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 ${currentStyles.badge}`}>
-              {currentSegment?.category ? t(`categories.${currentSegment.category}`) : t("segment")}
-            </span>
-            {currentSegment?.round ? (
-              <span className="text-[11px] text-slate-300">
-                {currentSegment.round}
-              </span>
-            ) : null}
-          </div>
-          <div className="mt-4 flex gap-4">
-            {/* Exercise image for current segment */}
-            {!hasFinished && currentSegment && currentSegment.category !== 'prep' && currentSegment.category !== 'rest' && (
-              <ExerciseImages
-                exerciseName={currentSegment.title}
-                size="lg"
-                hasImages={hasImages(currentSegment.title)}
-              />
-            )}
-            <div className="flex-1 space-y-3">
-              <h1 className="text-5xl font-semibold leading-tight sm:text-6xl">
-                {hasFinished ? t("workoutComplete") : currentSegment?.title}
-              </h1>
-              {!hasFinished && currentSegment?.detail ? (
-                <p className="text-3xl text-slate-200 sm:text-4xl">
-                  {currentSegment.detail}
-                </p>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div className="flex items-baseline gap-4">
-              <span className="text-5xl font-mono font-semibold sm:text-6xl">
-                {formatTime(hasFinished ? 0 : remainingSeconds)}
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2">
+        {/* Completion card - shown when workout is finished */}
+        {hasFinished && (
+          <section className="rounded-3xl border border-emerald-300/30 bg-emerald-500/10 px-5 py-8 text-center shadow-2xl shadow-emerald-500/10 sm:px-8">
+            <h1 className="text-4xl font-semibold text-emerald-200 sm:text-5xl">
+              {t("workoutComplete")}
+            </h1>
+            <div className="mt-5 flex justify-center gap-2">
               <button
                 type="button"
                 onClick={handleToggle}
                 className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-slate-950 transition hover:bg-emerald-300"
               >
-                {hasFinished ? t("replay") : isRunning ? t("pause") : t("resume")}
+                {t("replay")}
               </button>
               <button
                 type="button"
@@ -522,16 +483,10 @@ export function GuidedRoutinePlayer({
                 {t("restart")}
               </button>
             </div>
-          </div>
+          </section>
+        )}
 
-          <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-white/10">
-            <div
-              className={`h-full rounded-full ${currentStyles.bar} transition-[width]`}
-              style={{ width: `${currentProgress}%` }}
-            />
-          </div>
-        </section>
-
+        {/* Unified exercise list — active exercise has expanded treatment */}
         <section className="space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-300">
@@ -557,8 +512,9 @@ export function GuidedRoutinePlayer({
                   </div>
                   <div className="grid gap-2">
                     {group.items.map(({ segment, index }) => {
+                      const isActive = index === currentIndex && !hasFinished;
                       const progressWithinSegment =
-                        index === currentIndex && !hasFinished
+                        isActive
                           ? currentProgress
                           : index < currentIndex
                             ? 100
@@ -575,47 +531,107 @@ export function GuidedRoutinePlayer({
                               segmentRefs.current.delete(index);
                             }
                           }}
-                          className={`rounded-2xl border border-white/5 bg-white/5 px-4 py-3 transition ${
-                            index === currentIndex
-                              ? "border-emerald-300/50 shadow-lg shadow-emerald-500/10"
-                              : ""
-                          }`}
+                          className={
+                            isActive
+                              ? "rounded-2xl border border-emerald-300/40 bg-white/[0.08] px-5 py-5 shadow-lg shadow-emerald-500/15 transition"
+                              : `rounded-2xl border border-white/5 bg-white/5 px-4 py-3 transition ${
+                                  index < currentIndex || hasFinished ? "opacity-50" : ""
+                                }`
+                          }
                         >
-                          <div className="flex items-center gap-3">
-                            {/* Timeline thumbnail */}
-                            {segment.category !== 'prep' && segment.category !== 'rest' && (
-                              <ExerciseImageThumbnail
-                                exerciseName={segment.title}
-                                hasImages={hasImages(segment.title)}
-                              />
-                            )}
-                            <div className="flex flex-1 items-center justify-between gap-3">
-                              <div className="flex flex-col gap-1">
-                                <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-300">
-                                  {segment.round ? (
-                                    <span className="text-[11px] text-slate-400">
+                          {isActive ? (
+                            <>
+                              {/* Active segment — expanded with image, timer, controls */}
+                              <div className="flex gap-4">
+                                {segment.category !== 'prep' && segment.category !== 'rest' && (
+                                  <ExerciseImages
+                                    exerciseName={segment.title}
+                                    size="lg"
+                                    hasImages={hasImages(segment.title)}
+                                  />
+                                )}
+                                <div className="flex-1 space-y-2">
+                                  {segment.round && (
+                                    <span className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-400">
                                       {segment.round}
                                     </span>
-                                  ) : null}
+                                  )}
+                                  <h2 className="text-3xl font-semibold leading-tight sm:text-4xl">
+                                    {segment.title}
+                                  </h2>
+                                  {segment.detail && (
+                                    <p className="text-xl text-slate-200 sm:text-2xl">
+                                      {segment.detail}
+                                    </p>
+                                  )}
                                 </div>
-                                <p className="text-base font-semibold text-white">
-                                  {segment.title}
-                                </p>
-                                {segment.detail ? (
-                                  <p className="text-xs text-slate-400">{segment.detail}</p>
-                                ) : null}
                               </div>
-                              <div className="text-sm font-semibold text-emerald-200">
-                                {formatTime(segment.durationSeconds)}
+                              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                                <span className="text-4xl font-mono font-semibold sm:text-5xl">
+                                  {formatTime(remainingSeconds)}
+                                </span>
+                                <div className="flex flex-wrap gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={handleToggle}
+                                    className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-slate-950 transition hover:bg-emerald-300"
+                                  >
+                                    {isRunning ? t("pause") : t("resume")}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={handleRestart}
+                                    disabled={isTrackingCompletion}
+                                    className="rounded-full border border-white/20 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white transition hover:border-emerald-300 hover:text-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    {t("restart")}
+                                  </button>
+                                </div>
                               </div>
-                            </div>
-                          </div>
-                          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-                            <div
-                              className={`h-full ${styles.bar}`}
-                              style={{ width: `${progressWithinSegment}%` }}
-                            />
-                          </div>
+                              <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-white/10">
+                                <div
+                                  className={`h-full rounded-full ${styles.bar} transition-[width]`}
+                                  style={{ width: `${currentProgress}%` }}
+                                />
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              {/* Inactive segment — compact view */}
+                              <div className="flex items-center gap-3">
+                                {segment.category !== 'prep' && segment.category !== 'rest' && (
+                                  <ExerciseImageThumbnail
+                                    exerciseName={segment.title}
+                                    hasImages={hasImages(segment.title)}
+                                  />
+                                )}
+                                <div className="flex flex-1 items-center justify-between gap-3">
+                                  <div className="flex flex-col gap-1">
+                                    {segment.round && (
+                                      <span className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-400">
+                                        {segment.round}
+                                      </span>
+                                    )}
+                                    <p className="text-base font-semibold text-white">
+                                      {segment.title}
+                                    </p>
+                                    {segment.detail && (
+                                      <p className="text-xs text-slate-400">{segment.detail}</p>
+                                    )}
+                                  </div>
+                                  <div className="text-sm font-semibold text-emerald-200">
+                                    {formatTime(segment.durationSeconds)}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                                <div
+                                  className={`h-full ${styles.bar}`}
+                                  style={{ width: `${progressWithinSegment}%` }}
+                                />
+                              </div>
+                            </>
+                          )}
                         </div>
                       );
                     })}
