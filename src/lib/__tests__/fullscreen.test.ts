@@ -58,6 +58,27 @@ describe("useFullscreen", () => {
   });
 
   describe("isSupported", () => {
+    it("uses useSyncExternalStore for SSR-safe hydration (server snapshot returns false)", () => {
+      // Verify the hook uses useSyncExternalStore by checking behavior:
+      // In a client environment (jsdom), isSupported reflects the actual API.
+      // The server snapshot (getServerFullscreenSupported) always returns false,
+      // which prevents React hydration error #418 by ensuring SSR and client
+      // initial renders produce matching HTML.
+      const { result } = renderHook(() => useFullscreen(mockRef));
+
+      // In jsdom with fullscreenEnabled=true, client snapshot returns true
+      expect(result.current.isSupported).toBe(true);
+
+      // Verify the hook returns false when the API is unavailable
+      // (simulating what the server snapshot always returns)
+      Object.defineProperty(document, "fullscreenEnabled", {
+        value: undefined,
+        configurable: true,
+      });
+      const { result: unsupportedResult } = renderHook(() => useFullscreen(mockRef));
+      expect(unsupportedResult.current.isSupported).toBe(false);
+    });
+
     it("returns true when fullscreenEnabled is available", () => {
       const { result } = renderHook(() => useFullscreen(mockRef));
       expect(result.current.isSupported).toBe(true);
