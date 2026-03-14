@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { useFullscreen } from "../fullscreen";
+import { useFullscreen, getServerFullscreenSupported } from "../fullscreen";
 import { RefObject } from "react";
 
 // Helper to create mock element with fullscreen methods
@@ -58,25 +58,12 @@ describe("useFullscreen", () => {
   });
 
   describe("isSupported", () => {
-    it("uses useSyncExternalStore for SSR-safe hydration (server snapshot returns false)", () => {
-      // Verify the hook uses useSyncExternalStore by checking behavior:
-      // In a client environment (jsdom), isSupported reflects the actual API.
-      // The server snapshot (getServerFullscreenSupported) always returns false,
-      // which prevents React hydration error #418 by ensuring SSR and client
-      // initial renders produce matching HTML.
-      const { result } = renderHook(() => useFullscreen(mockRef));
-
-      // In jsdom with fullscreenEnabled=true, client snapshot returns true
-      expect(result.current.isSupported).toBe(true);
-
-      // Verify the hook returns false when the API is unavailable
-      // (simulating what the server snapshot always returns)
-      Object.defineProperty(document, "fullscreenEnabled", {
-        value: undefined,
-        configurable: true,
-      });
-      const { result: unsupportedResult } = renderHook(() => useFullscreen(mockRef));
-      expect(unsupportedResult.current.isSupported).toBe(false);
+    it("server snapshot always returns false for SSR/hydration safety", () => {
+      // getServerFullscreenSupported is passed as the getServerSnapshot argument to
+      // useSyncExternalStore, so React uses it during SSR (where document is absent).
+      // It must always return false to match the server-rendered HTML on the first
+      // client render, preventing hydration error #418.
+      expect(getServerFullscreenSupported()).toBe(false);
     });
 
     it("returns true when fullscreenEnabled is available", () => {

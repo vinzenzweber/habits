@@ -58,7 +58,7 @@ function getFullscreenSupported(): boolean {
   );
 }
 
-function getServerFullscreenSupported(): boolean {
+export function getServerFullscreenSupported(): boolean {
   return false;
 }
 
