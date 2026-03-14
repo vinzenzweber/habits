@@ -359,15 +359,22 @@ export function GuidedRoutinePlayer({
   }, [segments]);
 
   const handleToggle = () => {
-    if (hasFinished) {
-      setCurrentIndex(0);
-      setRemainingSeconds(segments[0]?.durationSeconds ?? 0);
-      setHasFinished(false);
-      countdownBeepsPlayedRef.current.clear();
-      setIsRunning(true);
-      return;
-    }
     setIsRunning((previous) => !previous);
+  };
+
+  // Replay: reset timer without re-arming completion tracking (no second API call)
+  const handleReplay = () => {
+    setCurrentIndex(0);
+    setRemainingSeconds(segments[0]?.durationSeconds ?? 0);
+    setHasFinished(false);
+    setShowConfetti(false);
+    setCompletionId(null);
+    countdownBeepsPlayedRef.current.clear();
+    prevIndexRef.current = 0;
+    startTimeRef.current = Date.now();
+    setIsRunning(true);
+    // NOTE: hasTrackedCompletionRef.current intentionally NOT reset
+    // to prevent replay from triggering a second completion API call
   };
 
   const handleRestart = () => {
@@ -469,7 +476,7 @@ export function GuidedRoutinePlayer({
             <div className="mt-5 flex justify-center gap-2">
               <button
                 type="button"
-                onClick={handleToggle}
+                onClick={handleReplay}
                 disabled={isTrackingCompletion}
                 className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-slate-950 transition hover:bg-emerald-300 disabled:opacity-50 disabled:cursor-not-allowed"
               >
