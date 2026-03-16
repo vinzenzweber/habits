@@ -55,7 +55,7 @@
     "dotenv": "^17.2.4",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
-    "jsdom": "^27.4.0",
+    "jsdom": "^29.0.0",
     "pdf-lib": "^1.17.1",
     "serwist": "^9.5.5",
     "tailwindcss": "^4",
