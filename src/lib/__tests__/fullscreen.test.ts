@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { useFullscreen } from "../fullscreen";
+import { useFullscreen, getServerFullscreenSupported } from "../fullscreen";
 import { RefObject } from "react";
 
 // Helper to create mock element with fullscreen methods
@@ -58,6 +58,14 @@ describe("useFullscreen", () => {
   });
 
   describe("isSupported", () => {
+    it("server snapshot always returns false for SSR/hydration safety", () => {
+      // getServerFullscreenSupported is passed as the getServerSnapshot argument to
+      // useSyncExternalStore, so React uses it during SSR (where document is absent).
+      // It must always return false to match the server-rendered HTML on the first
+      // client render, preventing hydration error #418.
+      expect(getServerFullscreenSupported()).toBe(false);
+    });
+
     it("returns true when fullscreenEnabled is available", () => {
       const { result } = renderHook(() => useFullscreen(mockRef));
       expect(result.current.isSupported).toBe(true);

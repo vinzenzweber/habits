@@ -1,6 +1,6 @@
 "use client";
 
-import { RefObject, useCallback, useEffect, useMemo, useState } from "react";
+import { RefObject, useCallback, useEffect, useState, useSyncExternalStore } from "react";
 
 /**
  * Extended Document interface with vendor-prefixed fullscreen properties
@@ -42,6 +42,26 @@ export interface UseFullscreenReturn {
   isSupported: boolean;
 }
 
+// Stable references for useSyncExternalStore (must be defined outside the hook)
+function subscribeNoop() {
+  // Fullscreen support is static — it never changes, so no subscription needed
+  return () => {};
+}
+
+function getFullscreenSupported(): boolean {
+  const doc = document as FullscreenDocument;
+  return !!(
+    doc.fullscreenEnabled ||
+    doc.webkitFullscreenEnabled ||
+    doc.mozFullScreenEnabled ||
+    doc.msFullscreenEnabled
+  );
+}
+
+export function getServerFullscreenSupported(): boolean {
+  return false;
+}
+
 /**
  * A cross-browser fullscreen API hook with vendor prefix support.
  *
@@ -72,18 +92,15 @@ export function useFullscreen(
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   /**
-   * Detects if the Fullscreen API is supported in the current browser
+   * Detects if the Fullscreen API is supported in the current browser.
+   * Uses useSyncExternalStore with a server snapshot of false to avoid
+   * hydration mismatch (SSR has no document, so fullscreen is never supported).
    */
-  const isSupported = useMemo(() => {
-    if (typeof document === "undefined") return false;
-    const doc = document as FullscreenDocument;
-    return !!(
-      doc.fullscreenEnabled ||
-      doc.webkitFullscreenEnabled ||
-      doc.mozFullScreenEnabled ||
-      doc.msFullscreenEnabled
-    );
-  }, []);
+  const isSupported = useSyncExternalStore(
+    subscribeNoop,
+    getFullscreenSupported,
+    getServerFullscreenSupported,
+  );
 
   /**
    * Gets the current fullscreen element across all vendor prefixes
