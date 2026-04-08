@@ -21,7 +21,7 @@ import {
   MEMORY_CATEGORIES,
   type MemoryCategory
 } from "@/lib/memory-tools";
-import { createFeedbackIssue } from "@/lib/github-tools";
+import { createFeedbackIssue, addFeedbackComment } from "@/lib/github-tools";
 import {
   searchExercises,
   getOrCreateExercise,
@@ -226,16 +226,21 @@ IMPORTANT: After receiving workout feedback, you may suggest modifications but N
 **App Feedback Detection:**
 When users mention issues, suggestions, or feedback about THE APP ITSELF (not fitness-related):
 1. Recognize this as product feedback (bugs, feature requests, UI issues, etc.)
-2. Ask 1-2 clarifying questions to understand what happened and what they expected
-3. Once you have enough context, save a summary to memory using save_memory with category "feedback"
-4. Use create_feedback_issue tool to record the feedback (don't mention GitHub to the user)
-5. Simply confirm: "Feedback recorded."
+2. If the feedback is clear and actionable:
+   a. Call create_feedback_issue immediately — do NOT ask clarifying questions first.
+   b. Save a summary to memory using save_memory with category "feedback".
+   c. Confirm to the user: "Feedback recorded. Let me know if you have more details to add."
+3. If the feedback is genuinely ambiguous (you cannot determine the issue type or what specifically is wrong), ask 1-2 targeted clarifying questions, then proceed as in step 2 once you have enough information. Call create_feedback_issue exactly once — never twice for the same piece of feedback.
+
+**Follow-up on existing feedback:**
+If the user provides additional details or context after feedback was already submitted, use the add_feedback_comment tool to append their follow-up to the existing issue. Reference the issue number from the earlier create_feedback_issue result.
 
 **APP feedback examples (trigger this flow):**
-- "The timer keeps resetting when I switch apps"
-- "Can you add Apple Watch support?"
-- "The workout player is hard to read in sunlight"
-- "I wish I could reorder the exercises"
+- "The timer keeps resetting when I switch apps" → Submit directly (clear bug)
+- "Can you add Apple Watch support?" → Submit directly (clear feature request)
+- "The workout player is hard to read in sunlight" → Submit directly (clear improvement)
+- "I wish I could reorder the exercises" → Submit directly (clear feature request)
+- "Something feels off about the app" → Ask what specifically feels off (ambiguous)
 
 **FITNESS feedback examples (do NOT trigger - handle normally):**
 - "This workout was too hard"
@@ -427,6 +432,27 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
           }
         },
         required: ["title", "description", "feedbackType"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_feedback_comment",
+      description: "Add follow-up information to an existing feedback issue. Use this when the user provides additional details or context after feedback was already submitted via create_feedback_issue.",
+      parameters: {
+        type: "object",
+        properties: {
+          issueNumber: {
+            type: "number",
+            description: "The issue number returned from the earlier create_feedback_issue call"
+          },
+          comment: {
+            type: "string",
+            description: "The follow-up information or additional context from the user"
+          }
+        },
+        required: ["issueNumber", "comment"]
       }
     }
   },
@@ -810,6 +836,14 @@ async function executeTool(
       );
       break;
 
+    case "add_feedback_comment":
+      result = await addFeedbackComment(
+        userId,
+        args.issueNumber,
+        args.comment
+      );
+      break;
+
     case "search_exercises":
       try {
         const exercises = await searchExercises(
@@ -1100,6 +1134,7 @@ ${memoryContext}${pageContextSection}${instructionSection}`;
       delete_memory: "Deleting memory",
       web_search: "Searching the web",
       create_feedback_issue: "Recording feedback",
+      add_feedback_comment: "Adding follow-up",
       search_exercises: "Searching exercises",
       create_exercise: "Creating exercise",
       get_exercise_images: "Checking exercise images",
