@@ -112,8 +112,8 @@ test.describe('Workout Flow', () => {
     test('displays current exercise with details', async ({ authenticatedPage: page }) => {
       await page.goto('/workouts/monday/play')
 
-      // Should show current exercise name
-      const exerciseHeading = page.locator('h1')
+      // Should show current exercise name (active segment uses h2 in the unified list layout)
+      const exerciseHeading = page.locator('h2').first()
       await expect(exerciseHeading).toBeVisible({ timeout: 10000 })
 
       // Should show some exercise details
